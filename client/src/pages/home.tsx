@@ -40,7 +40,7 @@ export default function Home() {
       <section id="how-it-works" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">How BitLend Works</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">How BitConquer Works</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Secure, non-custodial Bitcoin-backed lending with transparent processes and automatic protections.
             </p>
@@ -201,7 +201,7 @@ export default function Home() {
             <div>
               <div className="flex items-center mb-4">
                 <Bitcoin className="text-primary h-8 w-8 mr-2" />
-                <span className="text-2xl font-bold">BitLend</span>
+                <span className="text-2xl font-bold">BitConquer</span>
               </div>
               <p className="text-gray-400 text-sm mb-4">
                 The open marketplace for Bitcoin-backed loans, connecting Bitcoiners and investors globally.

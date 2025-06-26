@@ -22,7 +22,7 @@ export const loans = pgTable("loans", {
   interestRate: decimal("interest_rate", { precision: 5, scale: 2 }).notNull(),
   termMonths: integer("term_months").notNull(),
   collateralBtc: decimal("collateral_btc", { precision: 10, scale: 8 }).notNull(),
-  ltvRatio: decimal("ltv_ratio", { precision: 5, case: 2 }).notNull(),
+  ltvRatio: decimal("ltv_ratio", { precision: 5, scale: 2 }).notNull(),
   purpose: text("purpose"),
   status: text("status").notNull().default("pending"), // pending, active, completed, defaulted
   requestedAt: timestamp("requested_at").notNull().defaultNow(),

@@ -177,6 +177,7 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...insertUser,
       id,
+      role: insertUser.role || "borrower",
       reputation: 0,
       completedLoans: 0,
       createdAt: new Date(),
@@ -205,9 +206,12 @@ export class MemStorage implements IStorage {
       ...loanData,
       id,
       lenderId: null,
+      currency: loanData.currency || "USDC",
+      purpose: loanData.purpose || null,
       status: "pending",
       requestedAt: new Date(),
       fundedAt: null,
+      dueDate: loanData.dueDate ?? null,
       repaidAt: null,
     };
     this.loans.set(id, loan);

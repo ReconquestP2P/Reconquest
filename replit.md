@@ -1,8 +1,8 @@
-# BitLend - Bitcoin-Backed Lending Platform
+# BitConquer - Bitcoin-Backed Lending Platform
 
 ## Overview
 
-BitLend is a full-stack web application that facilitates peer-to-peer Bitcoin-backed lending. The platform connects borrowers who need capital with lenders looking for yield opportunities. Borrowers can use their Bitcoin as collateral to secure loans in stablecoins, while lenders can earn competitive returns by funding these loans.
+BitConquer is a full-stack web application that facilitates peer-to-peer Bitcoin-backed lending. The platform connects borrowers who need capital with lenders looking for yield opportunities. Borrowers can use their Bitcoin as collateral to secure loans in stablecoins, while lenders can earn competitive returns by funding these loans.
 
 ## System Architecture
 
@@ -89,7 +89,8 @@ The application uses three main entities:
 - **Schema Location**: Centralized schema in `shared/schema.ts`
 
 ## Changelog
-- June 26, 2025. Initial setup
+- June 26, 2025: Initial setup with BitLend name
+- June 26, 2025: Changed application name from BitLend to BitConquer
 
 ## User Preferences
 

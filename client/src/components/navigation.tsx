@@ -6,7 +6,7 @@ import { Fish, Bitcoin } from "lucide-react";
 export default function Navigation() {
   const [location] = useLocation();
 
-  const { data: btcPrice } = useQuery({
+  const { data: btcPrice } = useQuery<{ price: number; timestamp: string; currency: string }>({
     queryKey: ["/api/btc-price"],
     refetchInterval: 30000, // Update every 30 seconds
   });
@@ -18,7 +18,7 @@ export default function Navigation() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
               <Fish className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-gray-900">BitLend</span>
+              <span className="text-2xl font-bold text-gray-900">BitConquer</span>
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               <Link
