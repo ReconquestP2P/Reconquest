@@ -1,4 +1,6 @@
 import { users, loans, loanOffers, type User, type InsertUser, type Loan, type InsertLoan, type LoanOffer, type InsertLoanOffer } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -256,4 +258,107 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        role: insertUser.role || "borrower",
+      })
+      .returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async getLoan(id: number): Promise<Loan | undefined> {
+    const [loan] = await db.select().from(loans).where(eq(loans.id, id));
+    return loan || undefined;
+  }
+
+  async getUserLoans(userId: number): Promise<Loan[]> {
+    return await db
+      .select()
+      .from(loans)
+      .where(eq(loans.borrowerId, userId))
+      .union(
+        db.select().from(loans).where(eq(loans.lenderId, userId))
+      );
+  }
+
+  async createLoan(loanData: InsertLoan & { borrowerId: number }): Promise<Loan> {
+    const [loan] = await db
+      .insert(loans)
+      .values({
+        ...loanData,
+        currency: loanData.currency || "USDC",
+        purpose: loanData.purpose || null,
+        dueDate: loanData.dueDate ?? null,
+      })
+      .returning();
+    return loan;
+  }
+
+  async updateLoan(id: number, updates: Partial<Loan>): Promise<Loan | undefined> {
+    const [loan] = await db
+      .update(loans)
+      .set(updates)
+      .where(eq(loans.id, id))
+      .returning();
+    return loan || undefined;
+  }
+
+  async getAllLoans(): Promise<Loan[]> {
+    return await db.select().from(loans);
+  }
+
+  async getAvailableLoans(): Promise<Loan[]> {
+    return await db
+      .select()
+      .from(loans)
+      .where(eq(loans.status, "pending"));
+  }
+
+  async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
+    const [loanOffer] = await db
+      .insert(loanOffers)
+      .values(offer)
+      .returning();
+    return loanOffer;
+  }
+
+  async getLoanOffers(loanId: number): Promise<LoanOffer[]> {
+    return await db
+      .select()
+      .from(loanOffers)
+      .where(eq(loanOffers.loanId, loanId));
+  }
+
+  async getUserOffers(userId: number): Promise<LoanOffer[]> {
+    return await db
+      .select()
+      .from(loanOffers)
+      .where(eq(loanOffers.lenderId, userId));
+  }
+}
+
+export const storage = new DatabaseStorage();

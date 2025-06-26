@@ -23,11 +23,12 @@ BitConquer is a full-stack web application that facilitates peer-to-peer Bitcoin
 - **Development Setup**: Hot reload with Vite middleware integration
 
 ### Data Storage Solutions
-- **Primary Database**: PostgreSQL hosted on Neon
+- **Primary Database**: PostgreSQL with persistent storage
 - **ORM**: Drizzle with TypeScript-first schema definitions
 - **Migration Strategy**: Drizzle Kit for schema migrations
-- **Development Storage**: In-memory storage class for rapid prototyping
+- **Storage Implementation**: DatabaseStorage class with full CRUD operations
 - **Schema Validation**: Zod integration with Drizzle for type-safe data validation
+- **Connection**: Neon serverless PostgreSQL with WebSocket support
 
 ## Key Components
 
@@ -91,6 +92,7 @@ The application uses three main entities:
 ## Changelog
 - June 26, 2025: Initial setup with BitLend name
 - June 26, 2025: Changed application name from BitLend to BitConquer
+- June 26, 2025: Added PostgreSQL database with persistent storage, replaced in-memory storage with DatabaseStorage class
 
 ## User Preferences
 
