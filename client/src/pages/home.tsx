@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
+import logoImage from "@assets/Lendify logo 5_1750907086020.png";
 
 export default function Home() {
   return (
@@ -200,8 +201,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-4">
-                <Bitcoin className="text-primary h-8 w-8 mr-2" />
-                <span className="text-2xl font-bold">BitConquer</span>
+                <img src={logoImage} alt="BitConquer" className="h-8 w-auto" />
               </div>
               <p className="text-gray-400 text-sm mb-4">
                 The open marketplace for Bitcoin-backed loans, connecting Bitcoiners and investors globally.

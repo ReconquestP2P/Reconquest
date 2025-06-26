@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Fish, Bitcoin } from "lucide-react";
+import { Bitcoin } from "lucide-react";
+import logoImage from "@assets/Lendify logo 5_1750907086020.png";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -17,8 +18,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <Fish className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold text-gray-900">BitConquer</span>
+              <img src={logoImage} alt="BitConquer" className="h-10 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               <Link
