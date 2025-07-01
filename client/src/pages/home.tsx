@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
+import SignupForm from "@/components/signup-form";
 
 export default function Home() {
   return (
@@ -18,17 +19,8 @@ export default function Home() {
             Built for Bitcoiners needing capital and investors who provide it. 
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/borrower">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg">
-                Start Borrowing
-              </Button>
-            </Link>
-            <Link href="/lender">
-              <Button size="lg" variant="outline" className="border-secondary text-secondary hover:bg-secondary hover:text-white px-8 py-4 text-lg">
-                Start Lending
-              </Button>
-            </Link>
+          <div className="flex justify-center mt-12">
+            <SignupForm />
           </div>
           <div className="mt-12 text-sm text-gray-500">
             Trusted by <span className="font-semibold text-primary">10,000+</span> users • 

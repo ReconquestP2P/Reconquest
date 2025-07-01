@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertLoanSchema, insertLoanOfferSchema } from "@shared/schema";
+import { insertLoanSchema, insertLoanOfferSchema, insertSignupSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -155,6 +155,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = parseInt(req.params.id);
     const offers = await storage.getUserOffers(userId);
     res.json(offers);
+  });
+
+  // Create signup
+  app.post("/api/signups", async (req, res) => {
+    try {
+      const validatedData = insertSignupSchema.parse(req.body);
+      const signup = await storage.createSignup(validatedData);
+      res.status(201).json(signup);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get all signups (admin endpoint)
+  app.get("/api/admin/signups", async (req, res) => {
+    try {
+      const signups = await storage.getAllSignups();
+      res.json(signups);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
   const httpServer = createServer(app);

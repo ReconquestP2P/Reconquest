@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
+import AdminSignups from "@/pages/admin-signups";
 import Navigation from "@/components/navigation";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
+        <Route path="/admin" component={AdminSignups} />
         <Route component={NotFound} />
       </Switch>
     </div>
