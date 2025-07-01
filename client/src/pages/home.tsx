@@ -201,7 +201,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-4">
-                <img src={logoImage} alt="Reconquest" className="h-8 w-auto" />
+                <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
               </div>
               <p className="text-gray-400 text-sm mb-4">
                 The open marketplace for Bitcoin-backed loans, connecting Bitcoiners and investors globally.
