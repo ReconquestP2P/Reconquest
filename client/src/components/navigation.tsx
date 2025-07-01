@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Bitcoin } from "lucide-react";
-import logoImage from "@assets/Lendify logo 5_1750907086020.png";
+import logoImage from "@assets/Reconquest logo_1751398567900.png";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -18,7 +18,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <img src={logoImage} alt="BitConquer" className="h-10 w-auto" />
+              <img src={logoImage} alt="Reconquest" className="h-10 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               <Link
@@ -29,7 +29,7 @@ export default function Navigation() {
                     : "text-gray-700 hover:text-primary"
                 }`}
               >
-                For Borrowers
+                Borrow
               </Link>
               <Link
                 href="/lender"
@@ -39,7 +39,7 @@ export default function Navigation() {
                     : "text-gray-700 hover:text-primary"
                 }`}
               >
-                For Lenders
+                Lend
               </Link>
               <a
                 href="#how-it-works"

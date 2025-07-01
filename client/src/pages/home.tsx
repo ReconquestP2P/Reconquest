@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
-import logoImage from "@assets/Lendify logo 5_1750907086020.png";
+import logoImage from "@assets/Reconquest logo_1751398567900.png";
 
 export default function Home() {
   return (
@@ -41,7 +41,7 @@ export default function Home() {
       <section id="how-it-works" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">How BitConquer Works</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Secure, non-custodial Bitcoin-backed lending with transparent processes and automatic protections.
             </p>
@@ -201,7 +201,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-4">
-                <img src={logoImage} alt="BitConquer" className="h-8 w-auto" />
+                <img src={logoImage} alt="Reconquest" className="h-8 w-auto" />
               </div>
               <p className="text-gray-400 text-sm mb-4">
                 The open marketplace for Bitcoin-backed loans, connecting Bitcoiners and investors globally.
@@ -210,8 +210,8 @@ export default function Home() {
             <div>
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/borrower" className="hover:text-white">For Borrowers</Link></li>
-                <li><Link href="/lender" className="hover:text-white">For Lenders</Link></li>
+                <li><Link href="/borrower" className="hover:text-white">Borrow</Link></li>
+                <li><Link href="/lender" className="hover:text-white">Lend</Link></li>
                 <li><a href="#how-it-works" className="hover:text-white">How it Works</a></li>
                 <li><a href="#" className="hover:text-white">Security</a></li>
               </ul>
@@ -236,7 +236,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 mt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2025 BitLend. All rights reserved. Non-custodial Bitcoin-backed lending platform.</p>
+            <p>&copy; 2025 Reconquest. All rights reserved. Non-custodial Bitcoin-backed lending platform.</p>
           </div>
         </div>
       </footer>

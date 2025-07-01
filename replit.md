@@ -1,8 +1,8 @@
-# BitConquer - Bitcoin-Backed Lending Platform
+# Reconquest - Bitcoin-Backed Lending Platform
 
 ## Overview
 
-BitConquer is a full-stack web application that facilitates peer-to-peer Bitcoin-backed lending. The platform connects borrowers who need capital with lenders looking for yield opportunities. Borrowers can use their Bitcoin as collateral to secure loans in stablecoins, while lenders can earn competitive returns by funding these loans.
+Reconquest is a full-stack web application that facilitates peer-to-peer Bitcoin-backed lending. The platform connects borrowers who need capital with lenders looking for yield opportunities. Borrowers can use their Bitcoin as collateral to secure loans in stablecoins, while lenders can earn competitive returns by funding these loans.
 
 ## System Architecture
 
@@ -93,6 +93,7 @@ The application uses three main entities:
 - June 26, 2025: Initial setup with BitLend name
 - June 26, 2025: Changed application name from BitLend to BitConquer
 - June 26, 2025: Added PostgreSQL database with persistent storage, replaced in-memory storage with DatabaseStorage class
+- July 1, 2025: Updated branding from BitConquer to Reconquest with new logo, simplified navigation from "For Borrowers/Lenders" to "Borrow/Lend"
 
 ## User Preferences
 
