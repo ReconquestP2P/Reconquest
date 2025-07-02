@@ -24,13 +24,15 @@ export default function LoanCalculator() {
 
   const createLoanMutation = useMutation({
     mutationFn: async () => {
+      const ltvRatio = (loanAmount / (requiredCollateral * currentBtcPrice)) * 100;
       return await apiRequest("/api/loans", "POST", {
         borrowerId: 1, // Mock user ID
         amount: loanAmount.toString(),
         currency,
         termMonths: parseInt(term),
-        interestRate: parseFloat(interestRate),
+        interestRate: interestRate,
         collateralBtc: requiredCollateral.toString(),
+        ltvRatio: ltvRatio.toString(),
         status: "pending"
       });
     },
@@ -178,33 +180,35 @@ export default function LoanCalculator() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirm Loan Request</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <p>You are about to request a loan with the following terms:</p>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Loan Amount:</span>
-                        <span className="font-semibold">{formatCurrency(loanAmount, currency)}</span>
+                  <AlertDialogDescription>
+                    <div className="space-y-2">
+                      <span>You are about to request a loan with the following terms:</span>
+                      <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span>Loan Amount:</span>
+                          <span className="font-semibold">{formatCurrency(loanAmount, currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Required Collateral:</span>
+                          <span className="font-semibold">{formatBTC(requiredCollateral)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Term:</span>
+                          <span className="font-semibold">{term} months</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Interest Rate:</span>
+                          <span className="font-semibold">{interestRate}% p.a.</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Monthly Payment:</span>
+                          <span className="font-semibold">{formatCurrency(monthlyPayment, currency)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Required Collateral:</span>
-                        <span className="font-semibold">{formatBTC(requiredCollateral)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Term:</span>
-                        <span className="font-semibold">{term} months</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Interest Rate:</span>
-                        <span className="font-semibold">{interestRate}% p.a.</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Monthly Payment:</span>
-                        <span className="font-semibold">{formatCurrency(monthlyPayment, currency)}</span>
-                      </div>
+                      <span className="text-xs text-gray-500 mt-2 block">
+                        By confirming, you agree to provide the required Bitcoin collateral and accept the loan terms.
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      By confirming, you agree to provide the required Bitcoin collateral and accept the loan terms.
-                    </p>
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
