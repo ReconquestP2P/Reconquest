@@ -255,9 +255,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mock Bitcoin price endpoint
   app.get("/api/btc-price", async (req, res) => {
-    // Simulate Bitcoin price with slight variations
-    const basePrice = 67245;
-    const variation = (Math.random() - 0.5) * 1000;
+    // Simulate Bitcoin price with slight variations around $100k
+    const basePrice = 100000;
+    const variation = (Math.random() - 0.5) * 2000;
     const currentPrice = Math.round(basePrice + variation);
     
     res.json({ 
@@ -474,8 +474,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const bitcoinEscrow = new BitcoinEscrowService();
   const ltvValidator = new LtvValidationService();
   const getCurrentBtcPrice = async () => {
-    const basePrice = 67245;
-    const variation = (Math.random() - 0.5) * 1000;
+    const basePrice = 100000;
+    const variation = (Math.random() - 0.5) * 2000;
     return Math.round(basePrice + variation);
   };
   
