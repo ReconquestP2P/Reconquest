@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
-import { reconquestLogoDataURI } from './logo-svg';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY environment variable must be set");
@@ -37,6 +38,19 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
   }
 }
 
+// Create logo data URI from PNG file
+function getLogoDataURI(): string {
+  try {
+    const logoPath = join(process.cwd(), 'attached_assets', 'Reconquest logo_1751398567900.png');
+    const logoBuffer = readFileSync(logoPath);
+    const logoBase64 = logoBuffer.toString('base64');
+    return `data:image/png;base64,${logoBase64}`;
+  } catch (error) {
+    console.error('Failed to load logo:', error);
+    return ''; // Return empty string if logo fails to load
+  }
+}
+
 export function createWelcomeEmail(name: string, email: string): string {
   return `
     <!DOCTYPE html>
@@ -48,7 +62,7 @@ export function createWelcomeEmail(name: string, email: string): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${reconquestLogoDataURI}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />
+        <img src="${getLogoDataURI()}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />
         <h1 style="color: #D4AF37; margin-bottom: 10px;">Welcome to Reconquest</h1>
         <p style="color: #5DADE2; font-size: 18px; margin: 0;">World's #1 Marketplace for Bitcoin-Backed Loans</p>
       </div>
@@ -98,7 +112,7 @@ export function createAdminNotificationEmail(signup: any): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${reconquestLogoDataURI}" alt="Reconquest Logo" style="width: 200px; height: auto; margin-bottom: 20px;" />
+        <img src="${getLogoDataURI()}" alt="Reconquest Logo" style="width: 200px; height: auto; margin-bottom: 20px;" />
         <h1 style="color: #D4AF37; margin-bottom: 10px;">New Waitlist Signup</h1>
         <p style="color: #5DADE2; font-size: 16px; margin: 0;">Reconquest Platform</p>
       </div>
