@@ -13,6 +13,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static logo for emails
   app.use('/public', express.static('client/public'));
 
+  // Bitcoin lending workflow test page
+  app.get("/test-lending", (req, res) => {
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Lending Workflow Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .step { 
+            background: white; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-radius: 8px;
+            border-left: 4px solid #D4AF37;
+        }
+        .step h3 { 
+            color: #D4AF37; 
+            margin-top: 0; 
+        }
+        button { 
+            background: #D4AF37; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { 
+            background: #B8941F; 
+        }
+        input { 
+            padding: 8px; 
+            margin: 5px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+        }
+        .result { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 4px; 
+            font-family: monospace; 
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { border-left: 4px solid #28a745; }
+        .error { border-left: 4px solid #dc3545; }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Bitcoin Lending Workflow Test</h1>
+    
+    <div class="instructions">
+        <h3>📋 How to Test:</h3>
+        <ol>
+            <li><strong>Start with Step 1</strong> - Test LTV validation first</li>
+            <li><strong>Use the default values</strong> (1.0 BTC, $30,000 loan) or try your own</li>
+            <li><strong>Copy the Loan ID</strong> from Step 2 to use in later steps</li>
+            <li><strong>Follow the workflow</strong> in order to see the complete process</li>
+            <li><strong>Check your email</strong> - notifications are sent at key steps</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h3>Step 1: LTV Validation</h3>
+        <p>Test if your loan request meets the 50-60% LTV requirements:</p>
+        <input type="number" id="collateral" placeholder="Bitcoin amount (e.g., 1.0)" step="0.1" value="1.0">
+        <input type="number" id="loanAmount" placeholder="Loan amount USD (e.g., 30000)" step="1000" value="30000">
+        <button onclick="testLTV()">Test LTV</button>
+        <div id="ltvResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Initiate Loan</h3>
+        <p>Create a Bitcoin-backed loan request:</p>
+        <input type="number" id="borrowerId" placeholder="Borrower ID" value="1">
+        <input type="number" id="loanCollateral" placeholder="Bitcoin collateral" step="0.1" value="1.0">
+        <input type="number" id="loanAmountReq" placeholder="Loan amount USD" step="1000" value="30000">
+        <button onclick="initiateLoan()">Initiate Loan</button>
+        <div id="loanResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Verify Escrow</h3>
+        <p>Simulate Bitcoin deposit to escrow:</p>
+        <input type="number" id="loanId" placeholder="Loan ID from Step 2">
+        <button onclick="verifyEscrow()">Verify Escrow</button>
+        <div id="escrowResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Confirm Fiat Transfer</h3>
+        <p>Lender confirms fiat payment sent:</p>
+        <input type="number" id="lenderLoanId" placeholder="Loan ID">
+        <input type="number" id="lenderId" placeholder="Lender ID" value="2">
+        <button onclick="confirmFiat()">Confirm Fiat Transfer</button>
+        <div id="fiatResult"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Confirm Receipt</h3>
+        <p>Borrower confirms fiat received:</p>
+        <input type="number" id="receiptLoanId" placeholder="Loan ID">
+        <button onclick="confirmReceipt()">Confirm Receipt</button>
+        <div id="receiptResult"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = \`result \${isError ? 'error' : 'success'}\`;
+            element.innerHTML = \`<pre>\${JSON.stringify(data, null, 2)}</pre>\`;
+        }
+
+        async function testLTV() {
+            const collateral = document.getElementById('collateral').value;
+            const loanAmount = document.getElementById('loanAmount').value;
+            
+            try {
+                const response = await fetch('/api/loans/validate-ltv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        collateralBtc: parseFloat(collateral),
+                        loanAmount: parseFloat(loanAmount)
+                    })
+                });
+                const data = await response.json();
+                showResult('ltvResult', {
+                    ...data,
+                    summary: \`BTC Price: $\${data.btcPrice?.toLocaleString()}, LTV: \${(data.validation?.ltvRatio * 100)?.toFixed(1)}%, Valid: \${data.validation?.isValid}\`
+                }, !response.ok);
+            } catch (error) {
+                showResult('ltvResult', { error: error.message }, true);
+            }
+        }
+
+        async function initiateLoan() {
+            const borrowerId = document.getElementById('borrowerId').value;
+            const collateral = document.getElementById('loanCollateral').value;
+            const amount = document.getElementById('loanAmountReq').value;
+            
+            try {
+                const response = await fetch('/api/loans/bitcoin/initiate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        borrowerId: parseInt(borrowerId),
+                        collateralBtc: parseFloat(collateral),
+                        loanAmount: parseFloat(amount)
+                    })
+                });
+                const data = await response.json();
+                showResult('loanResult', data, !response.ok);
+                
+                // Auto-fill loan ID for next steps
+                if (data.loanId) {
+                    document.getElementById('loanId').value = data.loanId;
+                    document.getElementById('lenderLoanId').value = data.loanId;
+                    document.getElementById('receiptLoanId').value = data.loanId;
+                }
+            } catch (error) {
+                showResult('loanResult', { error: error.message }, true);
+            }
+        }
+
+        async function verifyEscrow() {
+            const loanId = document.getElementById('loanId').value;
+            
+            try {
+                const response = await fetch(\`/api/loans/\${loanId}/escrow/verify\`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                showResult('escrowResult', data, !response.ok);
+            } catch (error) {
+                showResult('escrowResult', { error: error.message }, true);
+            }
+        }
+
+        async function confirmFiat() {
+            const loanId = document.getElementById('lenderLoanId').value;
+            const lenderId = document.getElementById('lenderId').value;
+            
+            try {
+                const response = await fetch(\`/api/loans/\${loanId}/fiat/confirm\`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lenderId: parseInt(lenderId) })
+                });
+                const data = await response.json();
+                showResult('fiatResult', data, !response.ok);
+            } catch (error) {
+                showResult('fiatResult', { error: error.message }, true);
+            }
+        }
+
+        async function confirmReceipt() {
+            const loanId = document.getElementById('receiptLoanId').value;
+            
+            try {
+                const response = await fetch(\`/api/loans/\${loanId}/receipt/confirm\`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                showResult('receiptResult', data, !response.ok);
+            } catch (error) {
+                showResult('receiptResult', { error: error.message }, true);
+            }
+        }
+
+        // Auto-load current Bitcoin price
+        fetch('/api/btc-price')
+            .then(r => r.json())
+            .then(data => {
+                document.querySelector('h1').innerHTML += \` (Current BTC: $\${data.price.toLocaleString()})\`;
+            });
+    </script>
+</body>
+</html>`);
+  });
+
   // Mock Bitcoin price endpoint
   app.get("/api/btc-price", async (req, res) => {
     // Simulate Bitcoin price with slight variations
