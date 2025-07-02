@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { insertSignupSchema } from "@shared/schema";
 import { z } from "zod";
 
