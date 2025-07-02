@@ -1,13 +1,51 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
+import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent, CheckCircle, X } from "lucide-react";
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
 import SimpleSignupForm from "@/components/simple-signup-form";
+import { useState, useEffect } from "react";
 
 export default function Home() {
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+
+  useEffect(() => {
+    // Check if URL has success parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setShowSuccessBanner(true);
+      // Remove the success parameter from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen">
+      {/* Success Banner */}
+      {showSuccessBanner && (
+        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6 mx-4 sm:mx-6 lg:mx-8 rounded-r-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-green-800">
+                  Success! You've been added to the waitlist.
+                </p>
+                <p className="text-sm text-green-700 mt-1">
+                  Check your email for a welcome message with next steps.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSuccessBanner(false)}
+              className="text-green-400 hover:text-green-600 p-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
