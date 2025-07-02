@@ -24,8 +24,27 @@ export default function SignupForm() {
 
   const mutation = useMutation({
     mutationFn: async (data: SignupForm) => {
-      const response = await apiRequest("/api/signups", "POST", data);
-      return await response.json();
+      console.log("Submitting data:", data);
+      try {
+        const response = await fetch("/api/signups", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log("Success:", result);
+        return result;
+      } catch (error) {
+        console.error("Fetch error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
