@@ -149,7 +149,7 @@ export default function LoanCalculator() {
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Monthly Payment</p>
+              <p className="text-sm text-gray-600">Interest Payment</p>
               <p className="text-lg font-bold text-blue-600">
                 {formatCurrency(monthlyPayment, currency)}
               </p>
@@ -201,7 +201,7 @@ export default function LoanCalculator() {
                           <span className="font-semibold">{interestRate}% p.a.</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Monthly Payment:</span>
+                          <span>Interest Payment:</span>
                           <span className="font-semibold">{formatCurrency(monthlyPayment, currency)}</span>
                         </div>
                       </div>
