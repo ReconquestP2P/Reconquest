@@ -1,0 +1,1 @@
+// Test setup and global mocks - basic setup for ES modules

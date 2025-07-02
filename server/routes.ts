@@ -5,6 +5,9 @@ import { storage } from "./storage";
 import { insertLoanSchema, insertLoanOfferSchema, insertSignupSchema } from "@shared/schema";
 import { z } from "zod";
 import { sendEmail, createWelcomeEmail, createAdminNotificationEmail } from "./email";
+import { LendingWorkflowService } from "./services/LendingWorkflowService";
+import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
+import { LtvValidationService } from "./services/LtvValidationService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static logo for emails
@@ -223,6 +226,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const signups = await storage.getAllSignups();
       res.json(signups);
     } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Initialize Bitcoin lending workflow services
+  const bitcoinEscrow = new BitcoinEscrowService();
+  const ltvValidator = new LtvValidationService();
+  const getCurrentBtcPrice = async () => {
+    const basePrice = 67245;
+    const variation = (Math.random() - 0.5) * 1000;
+    return Math.round(basePrice + variation);
+  };
+  
+  const lendingWorkflow = new LendingWorkflowService(
+    storage,
+    bitcoinEscrow,
+    ltvValidator,
+    getCurrentBtcPrice
+  );
+
+  // Bitcoin Lending Workflow API Endpoints
+
+  // Step 1: Initiate a Bitcoin-backed loan
+  app.post("/api/loans/bitcoin/initiate", async (req, res) => {
+    try {
+      const { borrowerId, collateralBtc, loanAmount } = req.body;
+      
+      if (!borrowerId || !collateralBtc || !loanAmount) {
+        return res.status(400).json({ 
+          message: "Missing required fields: borrowerId, collateralBtc, loanAmount" 
+        });
+      }
+
+      const result = await lendingWorkflow.initiateLoan(
+        parseInt(borrowerId), 
+        parseFloat(collateralBtc), 
+        parseFloat(loanAmount)
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          message: result.errorMessage,
+          ltvValidation: result.ltvValidation
+        });
+      }
+
+      res.status(201).json({
+        message: "Loan initiated successfully",
+        loanId: result.loanId,
+        escrowAddress: result.escrowAddress,
+        ltvRatio: result.ltvValidation.ltvRatio,
+        instructions: `Please send ${collateralBtc} BTC to the escrow address: ${result.escrowAddress}`
+      });
+    } catch (error) {
+      console.error("Error initiating Bitcoin loan:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Step 2: Process Bitcoin escrow deposit
+  app.post("/api/loans/:id/escrow/verify", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      
+      const result = await lendingWorkflow.processEscrowDeposit(loanId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.errorMessage });
+      }
+
+      res.json({
+        message: "Bitcoin escrow verified successfully",
+        txHash: result.txHash,
+        transactionUrl: result.transactionUrl,
+        status: "Lenders have been notified. Waiting for funding."
+      });
+    } catch (error) {
+      console.error("Error processing escrow:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Step 3: Lender confirms fiat transfer
+  app.post("/api/loans/:id/fiat/confirm", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const { lenderId } = req.body;
+
+      if (!lenderId) {
+        return res.status(400).json({ message: "Missing lenderId" });
+      }
+
+      await lendingWorkflow.confirmFiatTransfer(loanId, parseInt(lenderId));
+
+      res.json({
+        message: "Fiat transfer confirmed. Borrower has been notified to confirm receipt."
+      });
+    } catch (error) {
+      console.error("Error confirming fiat transfer:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Step 4: Borrower confirms receipt of fiat
+  app.post("/api/loans/:id/receipt/confirm", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+
+      await lendingWorkflow.confirmBorrowerReceipt(loanId);
+
+      res.json({
+        message: "Receipt confirmed. Loan is now active and countdown has started."
+      });
+    } catch (error) {
+      console.error("Error confirming receipt:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // LTV Validation endpoint for frontend
+  app.post("/api/loans/validate-ltv", async (req, res) => {
+    try {
+      const { collateralBtc, loanAmount } = req.body;
+      
+      if (!collateralBtc || !loanAmount) {
+        return res.status(400).json({ 
+          message: "Missing required fields: collateralBtc, loanAmount" 
+        });
+      }
+
+      const btcPrice = await getCurrentBtcPrice();
+      const validation = ltvValidator.validateLoanRequest(
+        parseFloat(collateralBtc), 
+        parseFloat(loanAmount), 
+        btcPrice
+      );
+
+      res.json({
+        validation,
+        btcPrice,
+        collateralValue: parseFloat(collateralBtc) * btcPrice
+      });
+    } catch (error) {
+      console.error("Error validating LTV:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
