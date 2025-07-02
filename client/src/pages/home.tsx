@@ -53,7 +53,7 @@ export default function Home() {
                   {
                     step: "2",
                     title: "Lock Bitcoin Collateral",
-                    description: "Bitcoin secured in 3-of-3 multisig escrow contract on Bitcoin network.",
+                    description: "Bitcoin secured in 2-of-3 multisig escrow contract on Bitcoin network.",
                   },
                   {
                     step: "3",
