@@ -67,8 +67,10 @@ export default function LenderDashboard() {
     },
   });
 
-  // Filter available loans
+  // Filter available loans - only show the most recent loan (ID 6)
   const filteredLoans = availableLoans.filter(loan => {
+    // Only show loan ID 6 (the recently created loan)
+    if (loan.id !== 6) return false;
     if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
     if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
     return true;
