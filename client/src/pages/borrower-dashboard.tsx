@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Coins, DollarSign, Bitcoin, TrendingUp } from "lucide-react";
 import StatsCard from "@/components/stats-card";
-import LoanRequestForm from "@/components/loan-request-form";
 import LoanCalculator from "@/components/loan-calculator";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
@@ -150,9 +149,6 @@ export default function BorrowerDashboard() {
       <div className="mb-8">
         <LoanCalculator />
       </div>
-
-      {/* Loan Request Form */}
-      <LoanRequestForm />
     </div>
   );
 }

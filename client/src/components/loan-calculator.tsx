@@ -3,21 +3,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatBTC, calculateCollateral } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function LoanCalculator() {
   const [amount, setAmount] = useState("25000");
   const [currency, setCurrency] = useState("USDC");
   const [term, setTerm] = useState("6");
   const [interestRate, setInterestRate] = useState("8.5");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: btcPrice } = useQuery({
     queryKey: ["/api/btc-price"],
   });
 
+  const createLoanMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/loans", "POST", {
+        borrowerId: 1, // Mock user ID
+        amount: loanAmount.toString(),
+        currency,
+        termMonths: parseInt(term),
+        interestRate: parseFloat(interestRate),
+        collateralBtc: requiredCollateral.toString(),
+        status: "pending"
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Loan Request Created",
+        description: "Your loan request has been submitted successfully. Lenders will review your request soon.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", 1, "loans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to create loan request: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const loanAmount = parseFloat(amount) || 0;
-  const currentBtcPrice = btcPrice?.price || 67245;
+  const currentBtcPrice = (btcPrice as any)?.price || 100000;
   const requiredCollateral = calculateCollateral(loanAmount, currentBtcPrice);
   const monthlyPayment = loanAmount * (1 + parseFloat(interestRate || "0") / 100 * parseInt(term) / 12) / parseInt(term);
 
@@ -102,7 +137,7 @@ export default function LoanCalculator() {
 
         <div className="border-t pt-6">
           <h4 className="font-semibold text-gray-900 mb-4">Calculation Results</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-orange-50 p-4 rounded-lg">
               <p className="text-sm text-gray-600">Required Collateral</p>
               <p className="text-lg font-bold text-orange-600">
@@ -126,6 +161,64 @@ export default function LoanCalculator() {
               </p>
               <p className="text-xs text-gray-500">Principal + Interest</p>
             </div>
+          </div>
+
+          {/* Request Loan Button with Confirmation Dialog */}
+          <div className="flex justify-center">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  size="lg" 
+                  className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
+                  disabled={!loanAmount || loanAmount <= 0}
+                >
+                  Request New Loan
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm Loan Request</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2">
+                    <p>You are about to request a loan with the following terms:</p>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Loan Amount:</span>
+                        <span className="font-semibold">{formatCurrency(loanAmount, currency)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Required Collateral:</span>
+                        <span className="font-semibold">{formatBTC(requiredCollateral)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Term:</span>
+                        <span className="font-semibold">{term} months</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Interest Rate:</span>
+                        <span className="font-semibold">{interestRate}% p.a.</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Monthly Payment:</span>
+                        <span className="font-semibold">{formatCurrency(monthlyPayment, currency)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      By confirming, you agree to provide the required Bitcoin collateral and accept the loan terms.
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => createLoanMutation.mutate()}
+                    disabled={createLoanMutation.isPending}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {createLoanMutation.isPending ? "Creating..." : "Confirm Request"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>
