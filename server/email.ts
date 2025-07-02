@@ -38,16 +38,44 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
   }
 }
 
-// Create logo data URI from PNG file
+// Create logo data URI from PNG file with size optimization for emails
 function getLogoDataURI(): string {
   try {
     const logoPath = join(process.cwd(), 'attached_assets', 'Reconquest logo_1751398567900.png');
+    console.log('Loading logo from:', logoPath);
     const logoBuffer = readFileSync(logoPath);
+    console.log('Logo loaded successfully, size:', logoBuffer.length, 'bytes');
+    
+    // If logo is too large (>500KB), return empty to use text fallback
+    if (logoBuffer.length > 500000) {
+      console.log('Logo too large for email, using text fallback');
+      return '';
+    }
+    
     const logoBase64 = logoBuffer.toString('base64');
     return `data:image/png;base64,${logoBase64}`;
   } catch (error) {
     console.error('Failed to load logo:', error);
     return ''; // Return empty string if logo fails to load
+  }
+}
+
+// Create email header with logo or text fallback
+function getEmailHeader(): string {
+  const logoDataURI = getLogoDataURI();
+  
+  if (logoDataURI) {
+    return `<img src="${logoDataURI}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />`;
+  } else {
+    // Fallback to styled text logo
+    return `
+      <div style="margin-bottom: 20px;">
+        <h1 style="color: #D4AF37; font-size: 48px; font-weight: bold; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+          👑 RECONQUEST
+        </h1>
+        <p style="color: #5DADE2; font-size: 14px; margin: 5px 0 0 0; letter-spacing: 2px;">BITCOIN LENDING PLATFORM</p>
+      </div>
+    `;
   }
 }
 
@@ -62,7 +90,7 @@ export function createWelcomeEmail(name: string, email: string): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${getLogoDataURI()}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />
+${getEmailHeader()}
         <h1 style="color: #D4AF37; margin-bottom: 10px;">Welcome to Reconquest</h1>
         <p style="color: #5DADE2; font-size: 18px; margin: 0;">World's #1 Marketplace for Bitcoin-Backed Loans</p>
       </div>
@@ -112,7 +140,7 @@ export function createAdminNotificationEmail(signup: any): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${getLogoDataURI()}" alt="Reconquest Logo" style="width: 200px; height: auto; margin-bottom: 20px;" />
+${getEmailHeader()}
         <h1 style="color: #D4AF37; margin-bottom: 10px;">New Waitlist Signup</h1>
         <p style="color: #5DADE2; font-size: 16px; margin: 0;">Reconquest Platform</p>
       </div>
