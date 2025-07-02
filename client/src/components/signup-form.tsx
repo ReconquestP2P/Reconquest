@@ -23,39 +23,40 @@ export default function SignupForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: SignupForm) => {
+    mutationFn: async (data: SignupForm): Promise<any> => {
       console.log("Submitting data:", data);
-      console.log("About to make fetch request");
       
-      try {
-        // Test if fetch is available
-        console.log("Fetch function:", typeof fetch, fetch);
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/signups', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
         
-        const url = "/api/signups";
-        const options = {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const result = JSON.parse(xhr.responseText);
+                console.log("Success:", result);
+                resolve(result);
+              } catch (e) {
+                reject(new Error('Invalid JSON response'));
+              }
+            } else {
+              reject(new Error(`HTTP error! status: ${xhr.status}`));
+            }
+          }
         };
         
-        console.log("URL:", url);
-        console.log("Options:", options);
+        xhr.onerror = function() {
+          reject(new Error('Network error'));
+        };
         
-        const response = await window.fetch(url, options);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+          xhr.send(JSON.stringify(data));
+        } catch (error) {
+          reject(error);
         }
-        
-        const result = await response.json();
-        console.log("Success:", result);
-        return result;
-      } catch (error) {
-        console.error("Fetch error:", error);
-        throw error;
-      }
+      });
     },
     onSuccess: () => {
       toast({
