@@ -25,14 +25,25 @@ export default function SignupForm() {
   const mutation = useMutation({
     mutationFn: async (data: SignupForm) => {
       console.log("Submitting data:", data);
+      console.log("About to make fetch request");
+      
       try {
-        const response = await fetch("/api/signups", {
+        // Test if fetch is available
+        console.log("Fetch function:", typeof fetch, fetch);
+        
+        const url = "/api/signups";
+        const options = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(data),
-        });
+        };
+        
+        console.log("URL:", url);
+        console.log("Options:", options);
+        
+        const response = await window.fetch(url, options);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
