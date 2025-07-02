@@ -69,11 +69,11 @@ function getEmailHeader(): string {
   } else {
     // Fallback to styled text logo
     return `
-      <div style="margin-bottom: 20px;">
-        <h1 style="color: #D4AF37; font-size: 48px; font-weight: bold; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+      <div style="margin-bottom: 15px;">
+        <h1 style="color: #D4AF37; font-size: 28px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
           👑 RECONQUEST
         </h1>
-        <p style="color: #5DADE2; font-size: 14px; margin: 5px 0 0 0; letter-spacing: 2px;">BITCOIN LENDING PLATFORM</p>
+        <p style="color: #5DADE2; font-size: 12px; margin: 3px 0 0 0; letter-spacing: 1px;">BITCOIN LENDING PLATFORM</p>
       </div>
     `;
   }
