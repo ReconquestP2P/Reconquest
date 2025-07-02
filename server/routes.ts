@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLoanSchema, insertLoanOfferSchema, insertSignupSchema } from "@shared/schema";
 import { z } from "zod";
+import { sendEmail, createWelcomeEmail, createAdminNotificationEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Mock Bitcoin price endpoint
@@ -165,6 +166,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertSignupSchema.parse(req.body);
       const signup = await storage.createSignup(validatedData);
+      
+      // Send welcome email to user (if RESEND_API_KEY is configured)
+      if (process.env.RESEND_API_KEY) {
+        try {
+          await sendEmail({
+            to: signup.email,
+            from: 'onboarding@resend.dev', // Using Resend's verified domain
+            subject: 'Welcome to Reconquest - You\'re on the waitlist!',
+            html: createWelcomeEmail(signup.name || '', signup.email)
+          });
+
+          // Send admin notification email
+          const adminEmail = process.env.ADMIN_EMAIL || 'your-email@example.com';
+          await sendEmail({
+            to: adminEmail,
+            from: 'onboarding@resend.dev', // Using Resend's verified domain
+            subject: 'New Waitlist Signup - Reconquest',
+            html: createAdminNotificationEmail(signup)
+          });
+
+          console.log('Welcome and admin notification emails sent successfully');
+        } catch (emailError) {
+          console.error('Email sending failed:', emailError);
+          // Continue even if email fails - don't block the signup
+        }
+      } else {
+        console.log('RESEND_API_KEY not configured, skipping email notifications');
+      }
       
       // If this is a form submission (not AJAX), redirect back with success
       if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
