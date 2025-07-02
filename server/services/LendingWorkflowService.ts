@@ -85,6 +85,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       console.log(`Escrow address: ${escrowAddress}`);
       console.log(`LTV ratio: ${(ltvValidation.ltvRatio * 100).toFixed(1)}%`);
 
+      // Send email notification to borrower with escrow instructions
+      await this.notifyBorrowerOfEscrowGeneration(loan, escrowAddress, collateralBtc);
+
       return {
         success: true,
         loanId: loan.id,
@@ -198,6 +201,53 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     if (loan) {
       await this.notifyLoanActivation(loan);
       console.log(`Loan ${loanId} is now active with countdown started`);
+    }
+  }
+
+  /**
+   * Email notification for borrower when escrow address is generated
+   */
+  private async notifyBorrowerOfEscrowGeneration(loan: Loan, escrowAddress: string, collateralBtc: number): Promise<void> {
+    try {
+      const borrower = await this.storage.getUser(loan.borrowerId);
+      
+      if (borrower?.email) {
+        await sendEmail({
+          to: borrower.email,
+          from: 'Reconquest Team <onboarding@resend.dev>',
+          subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
+          html: `
+            <h2>Your loan has been funded! Time to deposit collateral.</h2>
+            <p>Hello ${borrower.username},</p>
+            <p>Great news! A lender has agreed to fund your ${loan.amount} ${loan.currency} loan request.</p>
+            
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #d4af37;">Next Step: Deposit Bitcoin Collateral</h3>
+              <p><strong>Bitcoin Address:</strong></p>
+              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">${escrowAddress}</code>
+              <p><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
+              <p><strong>Network:</strong> Bitcoin Testnet</p>
+            </div>
+            
+            <p><strong>Loan Details:</strong></p>
+            <ul>
+              <li><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</li>
+              <li><strong>Interest Rate:</strong> ${loan.interestRate}% per year</li>
+              <li><strong>Term:</strong> ${loan.termMonths} months</li>
+              <li><strong>Collateral Required:</strong> ${collateralBtc} BTC</li>
+            </ul>
+            
+            <p>Once you send the Bitcoin to the escrow address above, the lender will transfer the ${loan.currency} to your account.</p>
+            
+            <p><strong>Important:</strong> Only send Bitcoin to this exact address. Do not send any other cryptocurrency.</p>
+            
+            <p>Best regards,<br>The Reconquest Team</p>
+          `
+        });
+        console.log(`📧 Escrow instructions sent to borrower: ${borrower.email}`);
+      }
+    } catch (error) {
+      console.error('Error sending escrow notification to borrower:', error);
     }
   }
 
