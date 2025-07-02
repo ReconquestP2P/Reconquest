@@ -70,6 +70,8 @@ export default function SignupForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted with:", formData);
+    console.log("About to call mutation.mutate");
     mutation.mutate(formData);
   };
 
