@@ -67,11 +67,8 @@ export default function LenderDashboard() {
     },
   });
 
-  // Get the most recent loan (highest ID) and filter
-  const mostRecentLoanId = availableLoans.length > 0 ? Math.max(...availableLoans.map(loan => loan.id)) : 0;
+  // Filter all available loans
   const filteredLoans = availableLoans.filter(loan => {
-    // Only show the most recent loan (highest ID)
-    if (loan.id !== mostRecentLoanId) return false;
     if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
     if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
     return true;
@@ -148,7 +145,7 @@ export default function LenderDashboard() {
             <div className="flex items-center gap-4">
               <CardTitle>Available Loan Requests</CardTitle>
               <span className="text-sm text-gray-500">
-                (Showing most recent: #{mostRecentLoanId})
+                ({filteredLoans.length} available)
               </span>
             </div>
             <div className="flex gap-2">
