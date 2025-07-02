@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertLoanSchema, insertLoanOfferSchema, insertSignupSchema } from "@shared/schema";
@@ -6,6 +7,9 @@ import { z } from "zod";
 import { sendEmail, createWelcomeEmail, createAdminNotificationEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static logo for emails
+  app.use('/public', express.static('client/public'));
+
   // Mock Bitcoin price endpoint
   app.get("/api/btc-price", async (req, res) => {
     // Simulate Bitcoin price with slight variations
