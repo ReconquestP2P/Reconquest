@@ -56,7 +56,16 @@ export default function LoanCalculator() {
   const loanAmount = parseFloat(amount) || 0;
   const currentBtcPrice = (btcPrice as any)?.price || 100000;
   const requiredCollateral = calculateCollateral(loanAmount, currentBtcPrice);
-  const monthlyPayment = loanAmount * (1 + parseFloat(interestRate || "0") / 100 * parseInt(term) / 12) / parseInt(term);
+  
+  // Simple interest calculation: Interest = Principal × Rate × Time
+  // Time is in years, so divide term (months) by 12
+  const annualRate = parseFloat(interestRate || "0") / 100;
+  const timeInYears = parseInt(term) / 12;
+  const totalInterest = loanAmount * annualRate * timeInYears;
+  const totalRepayment = loanAmount + totalInterest;
+  
+  // For display purposes, show monthly breakdown even though interest is paid at end
+  const monthlyPayment = totalRepayment / parseInt(term);
 
   return (
     <Card className="border-gray-200 shadow-sm">
@@ -149,11 +158,11 @@ export default function LoanCalculator() {
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Interest Payment</p>
+              <p className="text-sm text-gray-600">Total Interest</p>
               <p className="text-lg font-bold text-blue-600">
-                {formatCurrency(monthlyPayment, currency)}
+                {formatCurrency(totalInterest, currency)}
               </p>
-              <p className="text-xs text-gray-500">Interest included</p>
+              <p className="text-xs text-gray-500">Paid at loan end</p>
             </div>
 
             <div className="bg-green-50 p-4 rounded-lg">
@@ -201,8 +210,12 @@ export default function LoanCalculator() {
                           <span className="font-semibold">{interestRate}% p.a.</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Interest Payment:</span>
-                          <span className="font-semibold">{formatCurrency(monthlyPayment, currency)}</span>
+                          <span>Total Interest:</span>
+                          <span className="font-semibold">{formatCurrency(totalInterest, currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Repayment:</span>
+                          <span className="font-semibold">{formatCurrency(totalRepayment, currency)}</span>
                         </div>
                       </div>
                       <span className="text-xs text-gray-500 mt-2 block">
