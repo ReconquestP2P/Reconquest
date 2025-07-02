@@ -47,21 +47,23 @@ export default function LenderDashboard() {
 
   const fundLoan = useMutation({
     mutationFn: async (loanId: number) => {
-      const response = await apiRequest("POST", `/api/loans/${loanId}/fund`, {});
-      return response.json();
+      const response = await apiRequest(`/api/loans/${loanId}/fund`, "POST", {
+        lenderId: 3 // Jorge's lender ID
+      });
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Loan Funded Successfully",
-        description: "You have successfully funded the loan. It is now active.",
+        title: "Loan Funding Initiated",
+        description: `Bitcoin escrow address generated: ${data.escrowAddress}. Borrower will be notified to deposit collateral.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to fund loan. Please try again.",
+        description: error.message || "Failed to fund loan. Please try again.",
         variant: "destructive",
       });
     },

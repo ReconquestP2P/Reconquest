@@ -267,6 +267,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Fund loan endpoint - triggers the full lending workflow
+  app.post("/api/loans/:loanId/fund", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { lenderId } = req.body;
+
+      if (!loanId || !lenderId) {
+        return res.status(400).json({ message: "Loan ID and Lender ID are required" });
+      }
+
+      // Get the loan details
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      if (loan.status !== "pending") {
+        return res.status(400).json({ message: "Loan is not available for funding" });
+      }
+
+      // Update loan with lender and set status to escrow_pending
+      const updatedLoan = await storage.updateLoan(loanId, {
+        lenderId: lenderId,
+        status: "escrow_pending"
+      });
+
+      if (!updatedLoan) {
+        return res.status(500).json({ message: "Failed to update loan" });
+      }
+
+      // Use the existing lending workflow service
+      const result = await lendingWorkflow.initiateLoan(
+        updatedLoan.borrowerId,
+        parseFloat(updatedLoan.collateralBtc),
+        parseFloat(updatedLoan.amount)
+      );
+
+      if (result.success) {
+        // Update loan with escrow address
+        await storage.updateLoan(loanId, {
+          escrowAddress: result.escrowAddress
+        });
+
+        res.json({
+          success: true,
+          message: "Loan funding initiated successfully",
+          escrowAddress: result.escrowAddress,
+          loanId: loanId,
+          instructions: `Borrower will be notified to send ${updatedLoan.collateralBtc} BTC to escrow address: ${result.escrowAddress}`
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.errorMessage || "Failed to initiate loan"
+        });
+      }
+    } catch (error) {
+      console.error("Error funding loan:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Internal server error while funding loan" 
+      });
+    }
+  });
+
   // Get all users
   app.get("/api/users", async (req, res) => {
     const users = await storage.getAllUsers();
