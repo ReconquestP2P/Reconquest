@@ -39,9 +39,10 @@ export default function SignupForm() {
       });
     },
     onError: (error) => {
+      console.error("Signup error:", error);
       toast({
         title: "Error",
-        description: "Failed to submit your information. Please try again.",
+        description: `Failed to submit your information: ${error.message}`,
         variant: "destructive",
       });
     },
