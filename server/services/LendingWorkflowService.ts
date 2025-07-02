@@ -214,7 +214,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (borrower?.email) {
         await sendEmail({
           to: borrower.email,
-          from: 'Reconquest Team <onboarding@resend.dev>',
+          from: 'onboarding@resend.dev',
           subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
           html: `
             <h2>Your loan has been funded! Time to deposit collateral.</h2>
@@ -268,7 +268,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     // In production, would send to registered lenders
     await sendEmail({
       to: 'lender@example.com',
-      from: 'noreply@reconquest.com',
+      from: 'onboarding@resend.dev',
       subject: 'New Bitcoin-Backed Loan Available',
       html: emailHtml
     });
@@ -293,7 +293,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
     await sendEmail({
       to: borrower.email,
-      from: 'noreply@reconquest.com',
+      from: 'onboarding@resend.dev',
       subject: 'Please Confirm Receipt of Loan Funds',
       html: emailHtml
     });
