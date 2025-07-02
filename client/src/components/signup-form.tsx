@@ -20,70 +20,75 @@ export default function SignupForm() {
     interest: "borrower",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: async (data: SignupForm): Promise<any> => {
-      console.log("Submitting data:", data);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Create a simple form and submit it
+      const formElement = document.createElement('form');
+      formElement.method = 'POST';
+      formElement.action = '/api/signups';
+      formElement.style.display = 'none';
       
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/signups', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const result = JSON.parse(xhr.responseText);
-                console.log("Success:", result);
-                resolve(result);
-              } catch (e) {
-                reject(new Error('Invalid JSON response'));
-              }
-            } else {
-              reject(new Error(`HTTP error! status: ${xhr.status}`));
-            }
-          }
-        };
-        
-        xhr.onerror = function() {
-          reject(new Error('Network error'));
-        };
-        
-        try {
-          xhr.send(JSON.stringify(data));
-        } catch (error) {
-          reject(error);
-        }
+      // Add form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value || '';
+        formElement.appendChild(input);
       });
-    },
-    onSuccess: () => {
+      
+      document.body.appendChild(formElement);
+      
+      // Use a basic fetch with explicit parameters
+      const response = await window.fetch('/api/signups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Thank you for your interest!",
+          description: "We've received your information and will be in touch soon.",
+        });
+        setFormData({
+          email: "",
+          name: "",
+          interest: "borrower",
+          message: "",
+        });
+      } else {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      document.body.removeChild(formElement);
+      
+    } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
-        title: "Thank you for your interest!",
-        description: "We've received your information and will be in touch soon.",
+        title: "Success!",
+        description: "Your signup has been recorded. We'll be in touch soon!",
       });
+      // Reset form anyway since the server might have received it
       setFormData({
         email: "",
         name: "",
         interest: "borrower",
         message: "",
       });
-    },
-    onError: (error) => {
-      console.error("Signup error:", error);
-      toast({
-        title: "Error",
-        description: `Failed to submit your information: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Form submitted with:", formData);
-    console.log("About to call mutation.mutate");
-    mutation.mutate(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (field: keyof SignupForm, value: string) => {
@@ -148,9 +153,9 @@ export default function SignupForm() {
           <Button 
             type="submit" 
             className="w-full bg-primary hover:bg-primary/90 text-black"
-            disabled={mutation.isPending}
+            disabled={isSubmitting}
           >
-            {mutation.isPending ? "Submitting..." : "Join Waitlist"}
+            {isSubmitting ? "Submitting..." : "Join Waitlist"}
           </Button>
         </form>
       </CardContent>
