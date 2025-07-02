@@ -24,6 +24,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 
     if (error) {
       console.error('Resend email error:', error);
+      // Don't fail the signup process for email issues
       return false;
     }
 
@@ -46,7 +47,7 @@ export function createWelcomeEmail(name: string, email: string): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/public/reconquest-logo.png` : 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />
+        <img src="https://ecbaa3b6-3c57-4b22-9330-2931c34cf628-00-2kcf1n1hg9fft.picard.replit.dev/public/reconquest-logo.png" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />
         <h1 style="color: #D4AF37; margin-bottom: 10px;">Welcome to Reconquest</h1>
         <p style="color: #5DADE2; font-size: 18px; margin: 0;">World's #1 Marketplace for Bitcoin-Backed Loans</p>
       </div>
@@ -96,7 +97,7 @@ export function createAdminNotificationEmail(signup: any): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}/public/reconquest-logo.png` : ''}" alt="Reconquest Logo" style="width: 200px; height: auto; margin-bottom: 20px;" />
+        <img src="https://ecbaa3b6-3c57-4b22-9330-2931c34cf628-00-2kcf1n1hg9fft.picard.replit.dev/public/reconquest-logo.png" alt="Reconquest Logo" style="width: 200px; height: auto; margin-bottom: 20px;" />
         <h1 style="color: #D4AF37; margin-bottom: 10px;">New Waitlist Signup</h1>
         <p style="color: #5DADE2; font-size: 16px; margin: 0;">Reconquest Platform</p>
       </div>
