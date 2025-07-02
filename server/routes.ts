@@ -160,10 +160,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create signup
   app.post("/api/signups", async (req, res) => {
     try {
+      console.log("Received signup request:", req.body);
+      console.log("Content-Type:", req.headers['content-type']);
+      
       const validatedData = insertSignupSchema.parse(req.body);
       const signup = await storage.createSignup(validatedData);
+      
+      // If this is a form submission (not AJAX), redirect back with success
+      if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+        return res.redirect('/?success=true');
+      }
+      
       res.status(201).json(signup);
     } catch (error) {
+      console.error("Signup error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error", 

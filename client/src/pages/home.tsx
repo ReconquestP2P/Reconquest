@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
-import SignupForm from "@/components/signup-form";
+import SimpleSignupForm from "@/components/simple-signup-form";
 
 export default function Home() {
   return (
@@ -20,7 +20,7 @@ export default function Home() {
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
           <div className="flex justify-center mt-12">
-            <SignupForm />
+            <SimpleSignupForm />
           </div>
           <div className="mt-12 text-sm text-gray-500">
             Trusted by <span className="font-semibold text-primary">10,000+</span> users • 
