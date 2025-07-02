@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingUp, DollarSign, PiggyBank, Percent } from "lucide-react";
+import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import { useToast } from "@/hooks/use-toast";
@@ -67,14 +67,23 @@ export default function LenderDashboard() {
     },
   });
 
-  // Filter available loans - only show the most recent loan (ID 6)
+  // Get the most recent loan (highest ID) and filter
+  const mostRecentLoanId = availableLoans.length > 0 ? Math.max(...availableLoans.map(loan => loan.id)) : 0;
   const filteredLoans = availableLoans.filter(loan => {
-    // Only show loan ID 6 (the recently created loan)
-    if (loan.id !== 6) return false;
+    // Only show the most recent loan (highest ID)
+    if (loan.id !== mostRecentLoanId) return false;
     if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
     if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
     return true;
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/loans", "available"] });
+    toast({
+      title: "Refreshed",
+      description: "Latest loan requests have been loaded.",
+    });
+  };
 
   const handleFundLoan = (loanId: number) => {
     fundLoan.mutate(loanId);
@@ -136,8 +145,22 @@ export default function LenderDashboard() {
       <Card className="mb-8">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Available Loan Requests</CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle>Available Loan Requests</CardTitle>
+              <span className="text-sm text-gray-500">
+                (Showing most recent: #{mostRecentLoanId})
+              </span>
+            </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
               <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All Currencies" />
