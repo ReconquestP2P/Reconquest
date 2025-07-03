@@ -1,4 +1,4 @@
-import { users, loans, loanOffers, signups, type User, type InsertUser, type Loan, type InsertLoan, type LoanOffer, type InsertLoanOffer, type Signup, type InsertSignup } from "@shared/schema";
+import { users, loans, loanOffers, type User, type InsertUser, type Loan, type InsertLoan, type LoanOffer, type InsertLoanOffer } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -23,9 +23,7 @@ export interface IStorage {
   getLoanOffers(loanId: number): Promise<LoanOffer[]>;
   getUserOffers(userId: number): Promise<LoanOffer[]>;
 
-  // Signup operations
-  createSignup(signup: InsertSignup): Promise<Signup>;
-  getAllSignups(): Promise<Signup[]>;
+
 }
 
 export class MemStorage implements IStorage {
@@ -261,24 +259,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.loanOffers.values()).filter(offer => offer.lenderId === userId);
   }
 
-  async createSignup(signup: InsertSignup): Promise<Signup> {
-    // Mock implementation for MemStorage - not used in production
-    const id = Date.now();
-    const newSignup: Signup = {
-      id,
-      email: signup.email,
-      name: signup.name || null,
-      interest: signup.interest,
-      message: signup.message || null,
-      createdAt: new Date(),
-    };
-    return newSignup;
-  }
 
-  async getAllSignups(): Promise<Signup[]> {
-    // Mock implementation for MemStorage - not used in production
-    return [];
-  }
 }
 
 // Database storage implementation
@@ -383,19 +364,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(loanOffers.lenderId, userId));
   }
 
-  async createSignup(signup: InsertSignup): Promise<Signup> {
-    const [newSignup] = await db
-      .insert(signups)
-      .values(signup)
-      .returning();
-    return newSignup;
-  }
 
-  async getAllSignups(): Promise<Signup[]> {
-    return await db
-      .select()
-      .from(signups);
-  }
 }
 
 export const storage = new DatabaseStorage();

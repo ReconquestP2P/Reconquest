@@ -1,51 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent, CheckCircle, X } from "lucide-react";
+import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
-import SimpleSignupForm from "@/components/simple-signup-form";
-import { useState, useEffect } from "react";
 
 export default function Home() {
-  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-
-  useEffect(() => {
-    // Check if URL has success parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-      setShowSuccessBanner(true);
-      // Remove the success parameter from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
-
   return (
     <div className="min-h-screen">
-      {/* Success Banner */}
-      {showSuccessBanner && (
-        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6 mx-4 sm:mx-6 lg:mx-8 rounded-r-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
-              <div>
-                <p className="text-sm font-medium text-green-800">
-                  Success! You've been added to the waitlist.
-                </p>
-                <p className="text-sm text-green-700 mt-1">
-                  Check your email for a welcome message with next steps.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowSuccessBanner(false)}
-              className="text-green-400 hover:text-green-600 p-1"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
@@ -57,8 +18,17 @@ export default function Home() {
             Built for Bitcoiners needing capital and investors who provide it. 
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
-          <div className="flex justify-center mt-12">
-            <SimpleSignupForm />
+          <div className="flex gap-4 justify-center mt-12">
+            <Link href="/borrower">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
+                Get a Bitcoin-Backed Loan
+              </Button>
+            </Link>
+            <Link href="/lender">
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-4 text-lg font-semibold">
+                Lend & Earn Yield
+              </Button>
+            </Link>
           </div>
           <div className="mt-12 text-sm text-gray-500">
             Trusted by <span className="font-semibold text-primary">10,000+</span> users • 
@@ -67,209 +37,177 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-white">
+      {/* Key Features */}
+      <section className="py-16 bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Secure, non-custodial Bitcoin-backed lending with transparent processes and automatic protections.
-            </p>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Reconquest?</h2>
+            <p className="text-lg text-gray-600">The most secure and efficient Bitcoin-backed lending platform</p>
           </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="text-center p-0">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Non-Custodial Security</h3>
+                <p className="text-gray-600">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="text-center p-0">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Competitive Rates</h3>
+                <p className="text-gray-600">Borrowers get low rates, lenders earn attractive yields.</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <CardContent className="text-center p-0">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Code className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Smart Contracts</h3>
+                <p className="text-gray-600">Automated, transparent lending with programmable escrow.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+      {/* How It Works */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
+            <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 3 steps</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* For Borrowers */}
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">For Borrowers</h3>
-              <div className="space-y-6">
-                {[
-                  {
-                    step: "1",
-                    title: "Submit Loan Request",
-                    description: "Specify amount, term, and interest rate preference. 2:1 collateral ratio required.",
-                  },
-                  {
-                    step: "2",
-                    title: "Lock Bitcoin Collateral",
-                    description: "Bitcoin secured in 2-of-3 multisig escrow contract on Bitcoin network.",
-                  },
-                  {
-                    step: "3",
-                    title: "Receive Funds",
-                    description: "Get loan funds in your preferred currency (USDC, EUR, CHF) within 24 hours.",
-                  },
-                  {
-                    step: "4",
-                    title: "Repay & Unlock",
-                    description: "Repay loan by maturity date to unlock your Bitcoin collateral automatically.",
-                  },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start space-x-4">
-                    <div className="bg-primary text-black w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
-                      {item.step}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                      <p className="text-gray-600 text-sm">{item.description}</p>
-                    </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <Bitcoin className="h-8 w-8 text-primary mr-3" />
+                For Borrowers
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    1
                   </div>
-                ))}
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Deposit Bitcoin Collateral</h4>
+                    <p className="text-gray-600">Lock your Bitcoin in a secure 2-of-3 multisig escrow</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Get Matched with Lenders</h4>
+                    <p className="text-gray-600">Receive competitive loan offers from verified lenders</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Receive Funds</h4>
+                    <p className="text-gray-600">Get stablecoins instantly after loan confirmation</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* For Lenders */}
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">For Lenders</h3>
-              <div className="space-y-6">
-                {[
-                  {
-                    step: "1",
-                    title: "Browse Loan Requests",
-                    description: "Review available loans with detailed borrower profiles and risk assessments.",
-                  },
-                  {
-                    step: "2",
-                    title: "Fund Selected Loans",
-                    description: "Invest directly from your bank account with chosen terms and interest rates.",
-                  },
-                  {
-                    step: "3",
-                    title: "Monitor Investments",
-                    description: "Track loan performance and LTV ratios with automated liquidation protection.",
-                  },
-                  {
-                    step: "4",
-                    title: "Earn Fixed Returns",
-                    description: "Receive principal plus interest at maturity, secured by Bitcoin collateral.",
-                  },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start space-x-4">
-                    <div className="bg-secondary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
-                      {item.step}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                      <p className="text-gray-600 text-sm">{item.description}</p>
-                    </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
+                For Lenders
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    1
                   </div>
-                ))}
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Browse Loan Requests</h4>
+                    <p className="text-gray-600">View vetted loans with Bitcoin collateral backing</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Make Competitive Offers</h4>
+                    <p className="text-gray-600">Set your interest rate and loan terms</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Earn Yield</h4>
+                    <p className="text-gray-600">Receive interest payments secured by Bitcoin collateral</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Security Features */}
-          <Card className="p-8 shadow-sm">
-            <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-              Secured by Code, Not Custodians
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bitcoin className="text-orange-500 h-8 w-8" />
-                </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Bitcoin Native</h4>
-                <p className="text-gray-600 text-sm">
-                  Built on Bitcoin's secure, time-tested network infrastructure with no intermediaries.
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="text-green-600 h-8 w-8" />
-                </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Non-Custodial</h4>
-                <p className="text-gray-600 text-sm">
-                  Your Bitcoin remains in decentralized multisig escrow, never held by any central party.
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Code className="text-blue-600 h-8 w-8" />
-                </div>
-                <h4 className="font-semibold text-gray-900 mb-2">Open Protocol</h4>
-                <p className="text-gray-600 text-sm">
-                  Transparent, auditable smart contracts with pre-signed recovery mechanisms.
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-
-      {/* Statistics */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Trusted by the Bitcoin Community
-            </h2>
-            <p className="text-xl text-gray-600">
-              Join thousands of Bitcoiners and investors already using our platform
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {[
-              { icon: Users, value: "10,000+", label: "Active Users" },
-              { icon: Bitcoin, value: "1,500+", label: "BTC Collateralized" },
-              { icon: DollarSign, value: "€200M+", label: "Value Transacted" },
-              { icon: Percent, value: "9.2%", label: "Average Interest Rate" },
-            ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <stat.icon className="text-primary h-8 w-8" />
-                </div>
-                <div className="text-4xl font-bold text-primary mb-2">{stat.value}</div>
-                <div className="text-gray-600">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      {/* Stats Section */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="flex items-center mb-4">
-                <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
-              </div>
-              <p className="text-gray-400 text-sm mb-4">
-                The open marketplace for Bitcoin-backed loans, connecting Bitcoiners and investors globally.
-              </p>
+              <div className="text-3xl font-bold text-primary mb-2">$50M+</div>
+              <div className="text-gray-600">Total Volume</div>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/borrower" className="hover:text-white">Borrow</Link></li>
-                <li><Link href="/lender" className="hover:text-white">Lend</Link></li>
-                <li><a href="#how-it-works" className="hover:text-white">How it Works</a></li>
-                <li><a href="#" className="hover:text-white">Security</a></li>
-              </ul>
+              <div className="text-3xl font-bold text-primary mb-2">1,500+</div>
+              <div className="text-gray-600">BTC Collateralized</div>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
-                <li><a href="#" className="hover:text-white">Careers</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
-              </ul>
+              <div className="text-3xl font-bold text-primary mb-2">99.9%</div>
+              <div className="text-gray-600">Uptime</div>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">Documentation</a></li>
-                <li><a href="#" className="hover:text-white">API</a></li>
-                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-              </ul>
+              <div className="text-3xl font-bold text-primary mb-2">10,000+</div>
+              <div className="text-gray-600">Active Users</div>
             </div>
-          </div>
-          <div className="border-t border-gray-800 pt-8 mt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2025 Reconquest. All rights reserved. Non-custodial Bitcoin-backed lending platform.</p>
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-primary/10 to-blue-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h2>
+          <p className="text-xl text-gray-600 mb-8">Join thousands of users leveraging Bitcoin for financial freedom</p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/borrower">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
+                Get a Loan
+              </Button>
+            </Link>
+            <Link href="/lender">
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-4 text-lg font-semibold">
+                Start Lending
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

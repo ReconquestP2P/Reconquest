@@ -2,9 +2,8 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertLoanSchema, insertLoanOfferSchema, insertSignupSchema } from "@shared/schema";
+import { insertLoanSchema, insertLoanOfferSchema } from "@shared/schema";
 import { z } from "zod";
-import { sendEmail, createWelcomeEmail, createAdminNotificationEmail } from "./email";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
@@ -470,70 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(offers);
   });
 
-  // Create signup
-  app.post("/api/signups", async (req, res) => {
-    try {
-      console.log("Received signup request:", req.body);
-      console.log("Content-Type:", req.headers['content-type']);
-      
-      const validatedData = insertSignupSchema.parse(req.body);
-      const signup = await storage.createSignup(validatedData);
-      
-      // Send welcome email to user (if RESEND_API_KEY is configured)
-      if (process.env.RESEND_API_KEY) {
-        try {
-          await sendEmail({
-            to: signup.email,
-            from: 'onboarding@resend.dev', // Using Resend's verified domain
-            subject: 'Welcome to Reconquest - You\'re on the waitlist!',
-            html: createWelcomeEmail(signup.name || '', signup.email)
-          });
 
-          // Send admin notification email
-          const adminEmail = process.env.ADMIN_EMAIL || 'your-email@example.com';
-          await sendEmail({
-            to: adminEmail,
-            from: 'onboarding@resend.dev', // Using Resend's verified domain
-            subject: 'New Waitlist Signup - Reconquest',
-            html: createAdminNotificationEmail(signup)
-          });
-
-          console.log('Welcome and admin notification emails sent successfully');
-        } catch (emailError) {
-          console.error('Email sending failed:', emailError);
-          // Continue even if email fails - don't block the signup
-        }
-      } else {
-        console.log('RESEND_API_KEY not configured, skipping email notifications');
-      }
-      
-      // If this is a form submission (not AJAX), redirect back with success
-      if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
-        return res.redirect('/?success=true');
-      }
-      
-      res.status(201).json(signup);
-    } catch (error) {
-      console.error("Signup error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Get all signups (admin endpoint)
-  app.get("/api/admin/signups", async (req, res) => {
-    try {
-      const signups = await storage.getAllSignups();
-      res.json(signups);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   // Initialize Bitcoin lending workflow services
   const bitcoinEscrow = new BitcoinEscrowService();

@@ -46,14 +46,7 @@ export const loanOffers = pgTable("loan_offers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const signups = pgTable("signups", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  name: text("name"),
-  interest: text("interest").notNull(), // borrower, lender, both
-  message: text("message"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -76,16 +69,9 @@ export const insertLoanOfferSchema = createInsertSchema(loanOffers).omit({
   createdAt: true,
 });
 
-export const insertSignupSchema = createInsertSchema(signups).omit({
-  id: true,
-  createdAt: true,
-});
-
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Loan = typeof loans.$inferSelect;
 export type InsertLoan = z.infer<typeof insertLoanSchema>;
 export type LoanOffer = typeof loanOffers.$inferSelect;
 export type InsertLoanOffer = z.infer<typeof insertLoanOfferSchema>;
-export type Signup = typeof signups.$inferSelect;
-export type InsertSignup = z.infer<typeof insertSignupSchema>;
