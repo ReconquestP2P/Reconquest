@@ -52,7 +52,7 @@ export class MemStorage implements IStorage {
       {
         id: 1,
         username: "bitcoiner1",
-        email: "bitcoiner1@example.com",
+        email: "jfestrada93@gmail.com",
         password: "hashed_password",
         role: "borrower",
         reputation: 95,
@@ -62,7 +62,7 @@ export class MemStorage implements IStorage {
       {
         id: 2,
         username: "investor1",
-        email: "investor1@example.com",
+        email: "jorge.frdzestrada@gmail.com",
         password: "hashed_password",
         role: "lender",
         reputation: 98,
