@@ -15,14 +15,13 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
   private readonly testnetPrefix = 'tb1'; // Testnet Bech32 prefix
 
   /**
-   * Generates a testnet Bitcoin address for escrow
+   * Generates a valid testnet Bitcoin address for escrow
    * In production: Would integrate with HD wallet or multisig setup
-   * For POC: Generates valid-looking testnet addresses
+   * For POC: Generates real testnet addresses that can be verified on block explorers
    */
   async generateEscrowAddress(): Promise<string> {
-    // Generate a deterministic testnet address for POC
-    const randomBytes = crypto.randomBytes(20);
-    const address = this.testnetPrefix + this.bech32Encode(randomBytes);
+    // Generate a proper testnet Bech32 address
+    const address = this.generateValidTestnetAddress();
     
     console.log(`Generated testnet escrow address: ${address}`);
     return address;
@@ -57,11 +56,103 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
   }
 
   /**
-   * Simple Bech32 encoding simulation for testnet addresses
-   * In production: Use proper Bitcoin libraries like bitcoinjs-lib
+   * Generates a valid testnet Bech32 address
+   * Uses proper Bitcoin testnet address format that can be verified on block explorers
    */
-  private bech32Encode(data: Buffer): string {
-    return data.toString('hex').substring(0, 39); // Simplified for POC
+  private generateValidTestnetAddress(): string {
+    // Generate random 20-byte hash (P2WPKH)
+    const pubkeyHash = crypto.randomBytes(20);
+    
+    // Convert to 5-bit groups for Bech32 encoding
+    const fiveBitData = this.convertTo5Bit(pubkeyHash);
+    
+    // Create witness version 0 program
+    const data = [0, ...fiveBitData];
+    
+    // Calculate checksum
+    const checksum = this.bech32Checksum('tb', data);
+    
+    // Combine all parts
+    const combined = [...data, ...checksum];
+    
+    // Convert to Bech32 characters
+    const charset = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+    const encoded = combined.map(x => charset[x]).join('');
+    
+    return 'tb1' + encoded;
+  }
+
+  /**
+   * Convert 8-bit bytes to 5-bit groups for Bech32
+   */
+  private convertTo5Bit(data: Buffer): number[] {
+    const result: number[] = [];
+    let acc = 0;
+    let bits = 0;
+    
+    for (const byte of data) {
+      acc = (acc << 8) | byte;
+      bits += 8;
+      
+      while (bits >= 5) {
+        bits -= 5;
+        result.push((acc >> bits) & 31);
+      }
+    }
+    
+    if (bits > 0) {
+      result.push((acc << (5 - bits)) & 31);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Calculate Bech32 checksum
+   */
+  private bech32Checksum(hrp: string, data: number[]): number[] {
+    const values = this.hrpExpand(hrp).concat(data).concat([0, 0, 0, 0, 0, 0]);
+    const mod = this.polymod(values) ^ 1;
+    const checksum: number[] = [];
+    
+    for (let i = 0; i < 6; i++) {
+      checksum.push((mod >> (5 * (5 - i))) & 31);
+    }
+    
+    return checksum;
+  }
+
+  /**
+   * Expand human readable part for checksum calculation
+   */
+  private hrpExpand(hrp: string): number[] {
+    const ret: number[] = [];
+    for (let i = 0; i < hrp.length; i++) {
+      ret.push(hrp.charCodeAt(i) >> 5);
+    }
+    ret.push(0);
+    for (let i = 0; i < hrp.length; i++) {
+      ret.push(hrp.charCodeAt(i) & 31);
+    }
+    return ret;
+  }
+
+  /**
+   * Bech32 polymod function
+   */
+  private polymod(values: number[]): number {
+    const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+    let chk = 1;
+    
+    for (const value of values) {
+      const top = chk >> 25;
+      chk = (chk & 0x1ffffff) << 5 ^ value;
+      for (let i = 0; i < 5; i++) {
+        chk ^= ((top >> i) & 1) ? GEN[i] : 0;
+      }
+    }
+    
+    return chk;
   }
 
   /**
