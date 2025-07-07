@@ -560,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await sendEmail({
         to: "admin.reconquest@protonmail.com",
-        from: "noreply@reconquest.app",
+        from: "onboarding@resend.dev",
         subject: `💰 Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -610,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin notification
       await sendEmail({
         to: "admin.reconquest@protonmail.com",
-        from: "noreply@reconquest.app",
+        from: "onboarding@resend.dev",
         subject: `🆕 New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -649,7 +649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Borrower notification
       await sendEmail({
         to: "jfestrada93@gmail.com", // Testing phase email
-        from: "noreply@reconquest.app",
+        from: "onboarding@resend.dev",
         subject: `✅ Your Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
