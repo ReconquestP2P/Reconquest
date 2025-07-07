@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
 import PriceOracle from "@/pages/price-oracle";
+import AdminDashboard from "@/pages/admin-dashboard";
 
 import Navigation from "@/components/navigation";
 
@@ -20,6 +21,7 @@ function Router() {
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
         <Route path="/price-oracle" component={PriceOracle} />
+        <Route path="/admin" component={AdminDashboard} />
 
         <Route component={NotFound} />
       </Switch>

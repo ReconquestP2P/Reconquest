@@ -24,8 +24,8 @@ export const loans = pgTable("loans", {
   collateralBtc: decimal("collateral_btc", { precision: 10, scale: 8 }).notNull(),
   ltvRatio: decimal("ltv_ratio", { precision: 5, scale: 2 }).notNull(),
   purpose: text("purpose"),
-  status: text("status").notNull().default("pending"), // pending, escrow_pending, funded, active, completed, defaulted
-  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  status: text("status").notNull().default("posted"), // posted, funding, initiated, active, completed, defaulted
+  createdAt: timestamp("created_at").notNull().defaultNow(),
   fundedAt: timestamp("funded_at"),
   dueDate: timestamp("due_date"),
   repaidAt: timestamp("repaid_at"),

@@ -662,6 +662,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin routes
+  app.get("/api/admin/stats", async (req, res) => {
+    try {
+      const allLoans = await storage.getAllLoans();
+      const activeLoans = allLoans.filter(loan => 
+        loan.status === "initiated" || loan.status === "active" || loan.status === "funding"
+      );
+      
+      const totalVolume = allLoans.reduce((sum, loan) => sum + Number(loan.amount), 0);
+      const activeLtvs = activeLoans
+        .filter(loan => loan.status === "initiated" || loan.status === "active")
+        .map(loan => Number(loan.ltvRatio));
+      
+      const averageLtv = activeLtvs.length > 0 
+        ? activeLtvs.reduce((sum, ltv) => sum + ltv, 0) / activeLtvs.length 
+        : 0;
+
+      res.json({
+        totalLoans: allLoans.length,
+        activeLoans: activeLoans.length,
+        totalVolume,
+        averageLtv
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
+  app.get("/api/admin/loans", async (req, res) => {
+    try {
+      const allLoans = await storage.getAllLoans();
+      const currentBtcPrice = await getCurrentBtcPrice();
+      
+      const loansWithLtv = allLoans.map(loan => {
+        let currentLtv = undefined;
+        let ltvStatus = undefined;
+        
+        if (loan.status === "initiated" || loan.status === "active") {
+          const currentCollateralValue = Number(loan.collateralBtc) * currentBtcPrice;
+          currentLtv = (Number(loan.amount) / currentCollateralValue) * 100;
+          
+          if (currentLtv < 50) {
+            ltvStatus = "healthy";
+          } else if (currentLtv < 70) {
+            ltvStatus = "warning";
+          } else {
+            ltvStatus = "critical";
+          }
+        }
+        
+        return {
+          ...loan,
+          currentLtv,
+          ltvStatus
+        };
+      });
+      
+      res.json(loansWithLtv);
+    } catch (error) {
+      console.error("Error fetching admin loans:", error);
+      res.status(500).json({ message: "Failed to fetch admin loans" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

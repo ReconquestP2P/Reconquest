@@ -100,7 +100,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "45.00",
         purpose: "Business expansion funding",
         status: "active",
-        requestedAt: new Date("2024-12-01"),
+        createdAt: new Date("2024-12-01"),
         fundedAt: new Date("2024-12-02"),
         dueDate: new Date("2025-06-02"),
         repaidAt: null,
@@ -117,7 +117,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "49.00",
         purpose: "Property investment",
         status: "active",
-        requestedAt: new Date("2024-11-15"),
+        createdAt: new Date("2024-11-15"),
         fundedAt: new Date("2024-11-16"),
         dueDate: new Date("2025-11-16"),
         repaidAt: null,
@@ -133,8 +133,8 @@ export class MemStorage implements IStorage {
         collateralBtc: "0.89000000",
         ltvRatio: "45.00",
         purpose: "Business expansion funding",
-        status: "pending",
-        requestedAt: new Date("2025-01-20"),
+        status: "initiated",
+        createdAt: new Date("2025-01-20"),
         fundedAt: null,
         dueDate: null,
         repaidAt: null,
@@ -150,8 +150,8 @@ export class MemStorage implements IStorage {
         collateralBtc: "0.45000000",
         ltvRatio: "48.00",
         purpose: "Property investment down payment",
-        status: "pending",
-        requestedAt: new Date("2025-01-18"),
+        status: "funding", 
+        createdAt: new Date("2025-01-18"),
         fundedAt: null,
         dueDate: null,
         repaidAt: null,
@@ -212,8 +212,8 @@ export class MemStorage implements IStorage {
       lenderId: null,
       currency: loanData.currency || "USDC",
       purpose: loanData.purpose || null,
-      status: "pending",
-      requestedAt: new Date(),
+      status: "posted",
+      createdAt: new Date(),
       fundedAt: null,
       dueDate: loanData.dueDate ?? null,
       repaidAt: null,
@@ -236,7 +236,7 @@ export class MemStorage implements IStorage {
   }
 
   async getAvailableLoans(): Promise<Loan[]> {
-    return Array.from(this.loans.values()).filter(loan => loan.status === "pending");
+    return Array.from(this.loans.values()).filter(loan => loan.status === "posted");
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
