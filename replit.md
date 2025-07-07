@@ -99,6 +99,8 @@ The application uses three main entities:
 - July 7, 2025: Added comprehensive email notification system: alerts when new loans are posted and when users initiate loan funding (currently sent to jfestrada93@gmail.com due to Resend email verification requirements)
 - July 7, 2025: Added 9-month loan term option to complement existing 3, 6, 12, 18 month terms
 - July 7, 2025: Removed CHF currency option, platform now supports USDC and EUR only
+- July 7, 2025: Fixed email notification templates to display correct collateral amounts and loan terms (termMonths instead of termDays), improved currency formatting
+- July 7, 2025: Fixed Fund Loan button visibility issue - buttons now appear for all fundable loan statuses (posted, initiated, funding) instead of only posted loans
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
