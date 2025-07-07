@@ -97,6 +97,8 @@ The application uses three main entities:
 - July 7, 2025: Implemented real-time Bitcoin price oracle using CoinGecko API with USD/EUR support, replaced mock price data with live market data
 - July 7, 2025: Implemented private admin dashboard with email-based authentication for admin.reconquest@protonmail.com, added automatic email notifications to admin when loans enter funding process
 - July 7, 2025: Added comprehensive email notification system: alerts when new loans are posted and when users initiate loan funding (currently sent to jfestrada93@gmail.com due to Resend email verification requirements)
+- July 7, 2025: Added 9-month loan term option to complement existing 3, 6, 12, 18 month terms
+- July 7, 2025: Removed CHF currency option, platform now supports USDC and EUR only
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

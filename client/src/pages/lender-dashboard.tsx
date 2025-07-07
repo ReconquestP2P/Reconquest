@@ -169,7 +169,6 @@ export default function LenderDashboard() {
                   <SelectItem value="all">All Currencies</SelectItem>
                   <SelectItem value="USDC">USDC</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="CHF">CHF</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={termFilter} onValueChange={setTermFilter}>

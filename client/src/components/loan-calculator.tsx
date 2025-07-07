@@ -96,7 +96,6 @@ export default function LoanCalculator() {
                 <SelectContent>
                   <SelectItem value="USDC">USDC</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="CHF">CHF</SelectItem>
                 </SelectContent>
               </Select>
             </div>

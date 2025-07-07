@@ -99,7 +99,6 @@ export default function LoanRequestForm() {
                             <SelectContent>
                               <SelectItem value="USDC">USDC</SelectItem>
                               <SelectItem value="EUR">EUR</SelectItem>
-                              <SelectItem value="CHF">CHF</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
