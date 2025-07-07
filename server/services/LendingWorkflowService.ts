@@ -271,7 +271,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       await sendEmail({
         to: "admin.reconquest@protonmail.com",
         from: "noreply@reconquest.app",
-        subject: `🆕 New Loan Posted - Loan #${loan.id}`,
+        subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
@@ -322,7 +322,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       await sendEmail({
         to: "admin.reconquest@protonmail.com",
         from: "noreply@reconquest.app",
-        subject: `💰 Loan Funding Initiated - Loan #${loan.id}`,
+        subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">

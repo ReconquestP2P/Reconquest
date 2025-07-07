@@ -559,9 +559,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!borrower || !lender) return;
 
       await sendEmail({
-        to: "admin.reconquest@protonmail.com",
+        to: "jfestrada93@gmail.com",
         from: "onboarding@resend.dev",
-        subject: `💰 Loan Funding Initiated - Loan #${loan.id}`,
+        subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
@@ -607,11 +607,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const borrower = await storage.getUser(borrowerId);
       if (!borrower) return;
 
-      // Admin notification
+      // Admin notification (sent to testing email since domain not verified)
       await sendEmail({
-        to: "admin.reconquest@protonmail.com",
+        to: "jfestrada93@gmail.com",
         from: "onboarding@resend.dev",
-        subject: `🆕 New Loan Posted - Loan #${loan.id}`,
+        subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
@@ -882,6 +882,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching admin loans:", error);
       res.status(500).json({ message: "Failed to fetch admin loans" });
+    }
+  });
+
+  // Test email endpoint
+  app.post("/api/test-email", async (req, res) => {
+    try {
+      const success = await sendEmail({
+        to: "jfestrada93@gmail.com",
+        from: "onboarding@resend.dev",
+        subject: "🔔 [ADMIN TEST] Email System Test",
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Email System Test</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Email Test Successful!</h2>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #155724;">
+                  <strong>Test Result:</strong> Email notifications are working correctly. This is a test email to confirm admin notifications can be sent.
+                </p>
+              </div>
+              
+              <p>Admin notifications will be sent to this email address (jfestrada93@gmail.com) during testing phase since the reconquest.app domain is not verified with Resend.</p>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated test from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+
+      if (success) {
+        res.json({ success: true, message: "Test email sent successfully" });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to send test email" });
+      }
+    } catch (error) {
+      console.error("Test email error:", error);
+      res.status(500).json({ success: false, message: "Email test failed" });
     }
   });
 
