@@ -96,6 +96,7 @@ The application uses three main entities:
 - July 1, 2025: Updated branding from BitConquer to Reconquest with new logo, simplified navigation from "For Borrowers/Lenders" to "Borrow/Lend"
 - July 7, 2025: Implemented real-time Bitcoin price oracle using CoinGecko API with USD/EUR support, replaced mock price data with live market data
 - July 7, 2025: Implemented private admin dashboard with email-based authentication for admin.reconquest@protonmail.com, added automatic email notifications to admin when loans enter funding process
+- July 7, 2025: Added comprehensive email notification system for admin.reconquest@protonmail.com: alerts when new loans are posted and when users initiate loan funding
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

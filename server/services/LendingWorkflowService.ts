@@ -85,6 +85,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       console.log(`Escrow address: ${escrowAddress}`);
       console.log(`LTV ratio: ${(ltvValidation.ltvRatio * 100).toFixed(1)}%`);
 
+      // Notify admin about new loan posting
+      await this.notifyAdminOfNewLoan(loan);
+
       // Send email notification to borrower with escrow instructions
       await this.notifyBorrowerOfEscrowGeneration(loan, escrowAddress, collateralBtc);
 
@@ -172,6 +175,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     });
 
     if (loan) {
+      // Notify admin about funding attempt
+      await this.notifyAdminOfFundingAttempt(loan, lenderId);
+      
       await this.notifyBorrowerOfFiatTransfer(loan);
       console.log(`Fiat transfer confirmed for loan ${loanId} by lender ${lenderId}`);
     }
@@ -251,6 +257,107 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       }
     } catch (error) {
       console.error('Error sending escrow notification to borrower:', error);
+    }
+  }
+
+  /**
+   * Email notification for admin when a new loan is posted
+   */
+  private async notifyAdminOfNewLoan(loan: Loan): Promise<void> {
+    try {
+      const user = await this.storage.getUser(loan.borrowerId);
+      if (!user) return;
+
+      await sendEmail({
+        to: "admin.reconquest@protonmail.com",
+        from: "noreply@reconquest.app",
+        subject: `🆕 New Loan Posted - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">New Loan Posted</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">New Loan Request</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
+                <p><strong>Amount Requested:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Status:</strong> ${loan.status}</p>
+                <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #0c5460;">
+                  <strong>New Activity:</strong> A borrower has posted a new loan request and is looking for funding.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send admin new loan notification:", error);
+    }
+  }
+
+  /**
+   * Email notification for admin when a user initiates loan funding
+   */
+  private async notifyAdminOfFundingAttempt(loan: Loan, lenderId: number): Promise<void> {
+    try {
+      const borrower = await this.storage.getUser(loan.borrowerId);
+      const lender = await this.storage.getUser(lenderId);
+      if (!borrower || !lender) return;
+
+      await sendEmail({
+        to: "admin.reconquest@protonmail.com",
+        from: "noreply@reconquest.app",
+        subject: `💰 Loan Funding Initiated - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Initiated</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Funding Activity</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
+                <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
+                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                  <strong>Funding Activity:</strong> A lender has clicked to fund this loan and the funding process has begun.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send admin funding attempt notification:", error);
     }
   }
 

@@ -474,6 +474,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...validatedData,
         lenderId,
       });
+
+      // Get loan details and notify admin about funding attempt
+      const loan = await storage.getLoan(validatedData.loanId);
+      if (loan) {
+        // Create a method to notify admin about funding attempt
+        const lendingWorkflow = new LendingWorkflowService(
+          storage,
+          bitcoinEscrow,
+          ltvValidator,
+          getCurrentBtcPrice
+        );
+        // We'll add this notification method
+        await lendingWorkflow.confirmFiatTransfer(validatedData.loanId, lenderId);
+      }
       
       res.status(201).json(offer);
     } catch (error) {
