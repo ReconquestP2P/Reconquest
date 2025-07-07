@@ -56,7 +56,7 @@ const getLtvColor = (ltvStatus: string) => {
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [adminPassword, setAdminPassword] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [authError, setAuthError] = useState("");
 
   const { data: adminStats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -83,12 +83,12 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple admin password check (in production, use proper authentication)
-    if (adminPassword === "admin123") {
+    // Check if the email is the authorized admin email
+    if (adminEmail === "admin.reconquest@protonmail.com") {
       setIsAuthenticated(true);
       setAuthError("");
     } else {
-      setAuthError("Invalid admin password");
+      setAuthError("Access denied. Only authorized admin can access this dashboard.");
     }
   };
 
@@ -104,17 +104,17 @@ export default function AdminDashboard() {
                 Admin Access Required
               </CardTitle>
               <CardDescription>
-                Enter the admin password to access the dashboard
+                Enter the authorized admin email to access the dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <Input
-                    type="password"
-                    placeholder="Admin password"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
+                    type="email"
+                    placeholder="Admin email address"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
                     className="w-full"
                   />
                 </div>

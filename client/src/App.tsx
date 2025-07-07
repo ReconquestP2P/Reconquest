@@ -22,6 +22,7 @@ function Router() {
         <Route path="/lender" component={LenderDashboard} />
         <Route path="/price-oracle" component={PriceOracle} />
         <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin-dashboard" component={AdminDashboard} />
 
         <Route component={NotFound} />
       </Switch>

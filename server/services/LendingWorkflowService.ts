@@ -138,6 +138,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       // Get transaction URL
       const transactionUrl = this.bitcoinEscrow.getTransactionUrl(verification.txHash);
 
+      // Notify admin about loan funding process
+      await this.notifyAdminOfLoanFunding(loan);
+
       // Notify potential lenders
       await this.notifyLendersOfEscrow(loan, verification.txHash, transactionUrl);
 
@@ -248,6 +251,56 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       }
     } catch (error) {
       console.error('Error sending escrow notification to borrower:', error);
+    }
+  }
+
+  /**
+   * Email notification for admin when loan funding begins
+   */
+  private async notifyAdminOfLoanFunding(loan: Loan): Promise<void> {
+    try {
+      const user = await this.storage.getUser(loan.borrowerId);
+      if (!user) return;
+
+      await sendEmail({
+        to: "admin.reconquest@protonmail.com",
+        from: "noreply@reconquest.app",
+        subject: `🔄 Loan Funding Alert - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Alert</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Loan Being Funded</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
+                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Status:</strong> ${loan.status}</p>
+                <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                  <strong>Action Required:</strong> Monitor this loan as it progresses through the funding process.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send admin funding notification:", error);
     }
   }
 
