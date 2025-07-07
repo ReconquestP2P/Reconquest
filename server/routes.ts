@@ -7,6 +7,7 @@ import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
+import { sendEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static logo for emails
@@ -421,6 +422,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const loan = await storage.createLoan(loanData);
+
+      // Send email notifications for new loan
+      console.log(`Attempting to send email notifications for new loan #${loan.id}`);
+      await sendNotificationsForNewLoan(loan, borrowerId);
+      
       res.status(201).json(loan);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -455,6 +461,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "active",
         fundedAt: new Date(),
       });
+
+      // Notify admin about funding attempt
+      if (updatedLoan) {
+        await sendFundingNotification(updatedLoan, lenderId);
+      }
       
       res.json(updatedLoan);
     } catch (error) {
@@ -475,18 +486,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lenderId,
       });
 
-      // Get loan details and notify admin about funding attempt
+      // Notify admin about funding attempt
       const loan = await storage.getLoan(validatedData.loanId);
       if (loan) {
-        // Create a method to notify admin about funding attempt
-        const lendingWorkflow = new LendingWorkflowService(
-          storage,
-          bitcoinEscrow,
-          ltvValidator,
-          getCurrentBtcPrice
-        );
-        // We'll add this notification method
-        await lendingWorkflow.confirmFiatTransfer(validatedData.loanId, lenderId);
+        await sendFundingNotification(loan, lenderId);
       }
       
       res.status(201).json(offer);
@@ -547,6 +550,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ltvValidator,
     getCurrentBtcPrice
   );
+
+  // Email notification helper for funding attempts
+  async function sendFundingNotification(loan: any, lenderId: number) {
+    try {
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lender = await storage.getUser(lenderId);
+      if (!borrower || !lender) return;
+
+      await sendEmail({
+        to: "admin.reconquest@protonmail.com",
+        from: "noreply@reconquest.app",
+        subject: `💰 Loan Funding Initiated - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Initiated</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Funding Activity</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
+                <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
+                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404;">
+                  <strong>Funding Activity:</strong> A lender has clicked to fund this loan and the funding process has begun.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+
+      console.log(`Funding notification sent for loan #${loan.id}`);
+    } catch (error) {
+      console.error(`Failed to send funding notification for loan #${loan.id}:`, error);
+    }
+  }
+
+  // Email notification helper for new loans
+  async function sendNotificationsForNewLoan(loan: any, borrowerId: number) {
+    try {
+      const borrower = await storage.getUser(borrowerId);
+      if (!borrower) return;
+
+      // Admin notification
+      await sendEmail({
+        to: "admin.reconquest@protonmail.com",
+        from: "noreply@reconquest.app",
+        subject: `🆕 New Loan Posted - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">New Loan Posted</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">New Loan Request</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
+                <p><strong>Amount Requested:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
+                <p><strong>Status:</strong> ${loan.status}</p>
+                <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #0c5460;">
+                  <strong>New Activity:</strong> A borrower has posted a new loan request and is looking for funding.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+
+      // Borrower notification
+      await sendEmail({
+        to: "jfestrada93@gmail.com", // Testing phase email
+        from: "noreply@reconquest.app",
+        subject: `✅ Your Loan Request Posted - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Request Submitted</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Hi ${borrower.username}!</h2>
+              
+              <p>Your loan request has been successfully posted on Reconquest. Here are the details:</p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Your Loan Request</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
+                <p><strong>Required Collateral:</strong> ${loan.collateralBtc} BTC</p>
+                <p><strong>Status:</strong> Awaiting lenders</p>
+              </div>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #155724;">
+                  <strong>Next Steps:</strong> Your loan is now visible to lenders. You'll receive notifications when lenders show interest in funding your request.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">Thank you for using Reconquest!</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+
+      console.log(`Email notifications sent for new loan #${loan.id}`);
+    } catch (error) {
+      console.error(`Failed to send email notifications for loan #${loan.id}:`, error);
+    }
+  }
 
   // Bitcoin Lending Workflow API Endpoints
 

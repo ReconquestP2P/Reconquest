@@ -17,6 +17,8 @@ interface EmailParams {
 
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
+    console.log(`Attempting to send email to: ${params.to}, subject: ${params.subject}`);
+    
     const { data, error } = await resend.emails.send({
       from: params.from,
       to: [params.to],
@@ -26,7 +28,6 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 
     if (error) {
       console.error('Resend email error:', error);
-      // Don't fail the signup process for email issues
       return false;
     }
 
