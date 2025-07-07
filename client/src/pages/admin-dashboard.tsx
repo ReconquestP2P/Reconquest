@@ -198,8 +198,8 @@ export default function AdminDashboard() {
                   <TableRow key={loan.id}>
                     <TableCell className="font-medium">#{loan.id}</TableCell>
                     <TableCell>{loan.borrowerId}</TableCell>
-                    <TableCell>{formatCurrency(loan.amount)}</TableCell>
-                    <TableCell>{loan.collateralBtc.toFixed(4)} BTC</TableCell>
+                    <TableCell>{formatCurrency(Number(loan.amount))}</TableCell>
+                    <TableCell>{Number(loan.collateralBtc).toFixed(4)} BTC</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(loan.status)}>
                         {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
                     </TableCell>
                     <TableCell>{loan.interestRate}%</TableCell>
                     <TableCell>
-                      {new Date(loan.createdAt).toLocaleDateString()}
+                      {new Date(loan.requestedAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -25,7 +25,7 @@ export const loans = pgTable("loans", {
   ltvRatio: decimal("ltv_ratio", { precision: 5, scale: 2 }).notNull(),
   purpose: text("purpose"),
   status: text("status").notNull().default("posted"), // posted, funding, initiated, active, completed, defaulted
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
   fundedAt: timestamp("funded_at"),
   dueDate: timestamp("due_date"),
   repaidAt: timestamp("repaid_at"),

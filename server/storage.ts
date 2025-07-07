@@ -100,7 +100,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "45.00",
         purpose: "Business expansion funding",
         status: "active",
-        createdAt: new Date("2024-12-01"),
+        requestedAt: new Date("2024-12-01"),
         fundedAt: new Date("2024-12-02"),
         dueDate: new Date("2025-06-02"),
         repaidAt: null,
@@ -117,7 +117,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "49.00",
         purpose: "Property investment",
         status: "active",
-        createdAt: new Date("2024-11-15"),
+        requestedAt: new Date("2024-11-15"),
         fundedAt: new Date("2024-11-16"),
         dueDate: new Date("2025-11-16"),
         repaidAt: null,
@@ -134,7 +134,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "45.00",
         purpose: "Business expansion funding",
         status: "initiated",
-        createdAt: new Date("2025-01-20"),
+        requestedAt: new Date("2025-01-20"),
         fundedAt: null,
         dueDate: null,
         repaidAt: null,
@@ -151,7 +151,7 @@ export class MemStorage implements IStorage {
         ltvRatio: "48.00",
         purpose: "Property investment down payment",
         status: "funding", 
-        createdAt: new Date("2025-01-18"),
+        requestedAt: new Date("2025-01-18"),
         fundedAt: null,
         dueDate: null,
         repaidAt: null,
@@ -213,7 +213,7 @@ export class MemStorage implements IStorage {
       currency: loanData.currency || "USDC",
       purpose: loanData.purpose || null,
       status: "posted",
-      createdAt: new Date(),
+      requestedAt: new Date(),
       fundedAt: null,
       dueDate: loanData.dueDate ?? null,
       repaidAt: null,
@@ -367,4 +367,4 @@ export class DatabaseStorage implements IStorage {
 
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
