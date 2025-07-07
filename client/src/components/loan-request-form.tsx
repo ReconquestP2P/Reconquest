@@ -128,6 +128,7 @@ export default function LoanRequestForm() {
                       <SelectContent>
                         <SelectItem value="3">3 months</SelectItem>
                         <SelectItem value="6">6 months</SelectItem>
+                        <SelectItem value="9">9 months</SelectItem>
                         <SelectItem value="12">12 months</SelectItem>
                         <SelectItem value="18">18 months</SelectItem>
                       </SelectContent>
