@@ -1,6 +1,6 @@
 import { users, loans, loanOffers, type User, type InsertUser, type Loan, type InsertLoan, type LoanOffer, type InsertLoanOffer } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -236,7 +236,9 @@ export class MemStorage implements IStorage {
   }
 
   async getAvailableLoans(): Promise<Loan[]> {
-    return Array.from(this.loans.values()).filter(loan => loan.status === "posted");
+    return Array.from(this.loans.values()).filter(loan => 
+      loan.status === "pending" || loan.status === "posted"
+    );
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
@@ -339,7 +341,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(loans)
-      .where(eq(loans.status, "pending"));
+      .where(or(eq(loans.status, "pending"), eq(loans.status, "posted")));
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
