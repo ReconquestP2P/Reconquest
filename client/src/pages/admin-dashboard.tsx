@@ -57,6 +57,7 @@ const getLtvColor = (ltvStatus: string) => {
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
   const { data: adminStats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -83,12 +84,12 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Check if the email is the authorized admin email
-    if (adminEmail === "admin.reconquest@protonmail.com") {
+    // Check if both email and password are correct
+    if (adminEmail === "admin.reconquest@protonmail.com" && adminPassword === "admin123") {
       setIsAuthenticated(true);
       setAuthError("");
     } else {
-      setAuthError("Access denied. Only authorized admin can access this dashboard.");
+      setAuthError("Invalid admin credentials. Please check your email and password.");
     }
   };
 
@@ -104,7 +105,7 @@ export default function AdminDashboard() {
                 Admin Access Required
               </CardTitle>
               <CardDescription>
-                Enter the authorized admin email to access the dashboard
+                Enter your admin credentials to access the dashboard
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -116,6 +117,17 @@ export default function AdminDashboard() {
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     className="w-full"
+                    required
+                  />
+                </div>
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Admin password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full"
+                    required
                   />
                 </div>
                 {authError && (

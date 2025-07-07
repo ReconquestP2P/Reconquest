@@ -99,9 +99,10 @@ The application uses three main entities:
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
-- **Dashboard Access**: /admin or /admin-dashboard routes with email authentication
+- **Admin Password**: admin123
+- **Dashboard Access**: /admin or /admin-dashboard routes with email + password authentication
 - **Notifications**: Automatic email alerts when loans enter funding process
-- **Security**: Email-based authentication, hidden from main navigation
+- **Security**: Two-factor authentication (email + password), hidden from main navigation
 
 ## User Preferences
 
