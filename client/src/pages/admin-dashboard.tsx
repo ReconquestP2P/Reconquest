@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Shield, TrendingUp, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { RefreshCw, Shield, TrendingUp, Users, Lock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
@@ -53,24 +55,82 @@ const getLtvColor = (ltvStatus: string) => {
 };
 
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const { data: adminStats, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 
   const { data: loans, isLoading: loansLoading, refetch } = useQuery<LoanWithLtv[]>({
     queryKey: ["/api/admin/loans"],
     refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 
   const { data: btcPrice } = useQuery({
     queryKey: ["/api/btc-price"],
     refetchInterval: 30000,
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 
   const handleRefresh = () => {
     refetch();
   };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simple admin password check (in production, use proper authentication)
+    if (adminPassword === "admin123") {
+      setIsAuthenticated(true);
+      setAuthError("");
+    } else {
+      setAuthError("Invalid admin password");
+    }
+  };
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto mt-20">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Admin Access Required
+              </CardTitle>
+              <CardDescription>
+                Enter the admin password to access the dashboard
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <Input
+                    type="password"
+                    placeholder="Admin password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                {authError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+                )}
+                <Button type="submit" className="w-full">
+                  Access Dashboard
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (statsLoading || loansLoading) {
     return (
@@ -110,10 +170,20 @@ export default function AdminDashboard() {
           </h1>
           <p className="text-muted-foreground">Monitor active loans and platform metrics</p>
         </div>
-        <Button onClick={handleRefresh} variant="outline" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleRefresh} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => setIsAuthenticated(false)} 
+            variant="destructive" 
+            className="gap-2"
+          >
+            <Lock className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

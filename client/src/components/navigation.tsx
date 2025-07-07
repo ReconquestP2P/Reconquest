@@ -45,16 +45,7 @@ export default function Navigation() {
               >
                 Price Oracle
               </Link>
-              <Link
-                href="/admin"
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  location === "/admin"
-                    ? "text-primary"
-                    : "text-gray-700 hover:text-primary"
-                }`}
-              >
-                Admin
-              </Link>
+
               <a
                 href="#how-it-works"
                 className="text-gray-700 hover:text-primary px-3 py-2 text-sm font-medium"
