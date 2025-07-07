@@ -39,7 +39,7 @@ The application uses three main entities:
 3. **Loan Offers**: Enables multiple lenders to compete on loan terms
 
 ### API Endpoints
-- **Bitcoin Price Oracle**: Real-time BTC price endpoint via CoinGecko API supporting USD/EUR currencies with 24h change data
+- **Bitcoin Price API**: Real-time BTC price endpoint via CoinGecko API supporting USD/EUR currencies with 24h change data (displayed in navigation)
 - **User Management**: CRUD operations for user profiles
 - **Loan Management**: Create requests, view available loans, manage loan lifecycle
 - **Loan Offers**: Submit and manage competitive lending offers

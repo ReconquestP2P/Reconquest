@@ -7,9 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
-import PriceOracle from "@/pages/price-oracle";
 import AdminDashboard from "@/pages/admin-dashboard";
-
 import Navigation from "@/components/navigation";
 
 function Router() {
@@ -20,7 +18,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
-        <Route path="/price-oracle" component={PriceOracle} />
+
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin-dashboard" component={AdminDashboard} />
 

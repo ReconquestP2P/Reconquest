@@ -35,16 +35,7 @@ export default function Navigation() {
               >
                 Lend
               </Link>
-              <Link
-                href="/price-oracle"
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  location === "/price-oracle"
-                    ? "text-primary"
-                    : "text-gray-700 hover:text-primary"
-                }`}
-              >
-                Price Oracle
-              </Link>
+
 
               <a
                 href="#how-it-works"
