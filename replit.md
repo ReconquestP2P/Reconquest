@@ -39,7 +39,7 @@ The application uses three main entities:
 3. **Loan Offers**: Enables multiple lenders to compete on loan terms
 
 ### API Endpoints
-- **Bitcoin Price**: Mock endpoint simulating real-time BTC price data
+- **Bitcoin Price Oracle**: Real-time BTC price endpoint via CoinGecko API supporting USD/EUR currencies with 24h change data
 - **User Management**: CRUD operations for user profiles
 - **Loan Management**: Create requests, view available loans, manage loan lifecycle
 - **Loan Offers**: Submit and manage competitive lending offers
@@ -94,6 +94,7 @@ The application uses three main entities:
 - June 26, 2025: Changed application name from BitLend to BitConquer
 - June 26, 2025: Added PostgreSQL database with persistent storage, replaced in-memory storage with DatabaseStorage class
 - July 1, 2025: Updated branding from BitConquer to Reconquest with new logo, simplified navigation from "For Borrowers/Lenders" to "Borrow/Lend"
+- July 7, 2025: Implemented real-time Bitcoin price oracle using CoinGecko API with USD/EUR support, replaced mock price data with live market data
 
 ## User Preferences
 

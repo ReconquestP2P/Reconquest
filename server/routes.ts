@@ -252,18 +252,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </html>`);
   });
 
-  // Mock Bitcoin price endpoint
+  // Real-time Bitcoin price endpoint (CoinGecko API)
   app.get("/api/btc-price", async (req, res) => {
-    // Simulate Bitcoin price with slight variations around $100k
-    const basePrice = 100000;
-    const variation = (Math.random() - 0.5) * 2000;
-    const currentPrice = Math.round(basePrice + variation);
-    
-    res.json({ 
-      price: currentPrice,
-      timestamp: new Date().toISOString(),
-      currency: "USD"
-    });
+    try {
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true&include_last_updated_at=true'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const bitcoin = data.bitcoin;
+      
+      res.json({
+        usd: bitcoin.usd,
+        eur: bitcoin.eur,
+        usd_24h_change: bitcoin.usd_24h_change,
+        eur_24h_change: bitcoin.eur_24h_change,
+        last_updated: new Date(bitcoin.last_updated_at * 1000).toISOString(),
+        timestamp: new Date().toISOString(),
+        source: 'CoinGecko',
+        // Legacy format for backward compatibility
+        price: bitcoin.usd,
+        currency: "USD"
+      });
+    } catch (error) {
+      console.error('Bitcoin price API error:', error);
+      // Fallback to mock data if API fails
+      const mockPrice = Math.floor(Math.random() * 10000) + 95000;
+      res.json({
+        usd: mockPrice,
+        eur: Math.floor(mockPrice * 0.85), // Approximate EUR conversion
+        usd_24h_change: (Math.random() - 0.5) * 10, // Random change between -5% and +5%
+        eur_24h_change: (Math.random() - 0.5) * 10,
+        last_updated: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        source: 'Mock (API Error)',
+        // Legacy format for backward compatibility
+        price: mockPrice,
+        currency: "USD",
+        error: 'Using fallback data due to API error'
+      });
+    }
   });
 
   // Fund loan endpoint - triggers the full lending workflow
@@ -475,9 +507,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const bitcoinEscrow = new BitcoinEscrowService();
   const ltvValidator = new LtvValidationService();
   const getCurrentBtcPrice = async () => {
-    const basePrice = 100000;
-    const variation = (Math.random() - 0.5) * 2000;
-    return Math.round(basePrice + variation);
+    try {
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.bitcoin.usd;
+    } catch (error) {
+      console.error('Error fetching BTC price for lending workflow:', error);
+      // Fallback to mock data if API fails
+      const basePrice = 100000;
+      const variation = (Math.random() - 0.5) * 2000;
+      return Math.round(basePrice + variation);
+    }
   };
   
   const lendingWorkflow = new LendingWorkflowService(

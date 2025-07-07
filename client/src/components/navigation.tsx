@@ -1,16 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { Bitcoin } from "lucide-react";
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
+import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 
 export default function Navigation() {
   const [location] = useLocation();
-
-  const { data: btcPrice } = useQuery<{ price: number; timestamp: string; currency: string }>({
-    queryKey: ["/api/btc-price"],
-    refetchInterval: 30000, // Update every 30 seconds
-  });
 
   return (
     <nav className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -41,6 +35,16 @@ export default function Navigation() {
               >
                 Lend
               </Link>
+              <Link
+                href="/price-oracle"
+                className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  location === "/price-oracle"
+                    ? "text-primary"
+                    : "text-gray-700 hover:text-primary"
+                }`}
+              >
+                Price Oracle
+              </Link>
               <a
                 href="#how-it-works"
                 className="text-gray-700 hover:text-primary px-3 py-2 text-sm font-medium"
@@ -50,15 +54,7 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {btcPrice && (
-              <div className="flex items-center space-x-2 text-sm">
-                <Bitcoin className="h-4 w-4 text-orange-500" />
-                <span className="text-gray-600">BTC Price:</span>
-                <span className="font-semibold text-primary">
-                  ${btcPrice.price.toLocaleString()}
-                </span>
-              </div>
-            )}
+            <BitcoinPriceOracle variant="compact" />
             <Link href="/admin">
               <Button variant="ghost" size="sm">
                 Admin

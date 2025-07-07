@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
+import PriceOracle from "@/pages/price-oracle";
 
 import Navigation from "@/components/navigation";
 
@@ -18,6 +19,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
+        <Route path="/price-oracle" component={PriceOracle} />
 
         <Route component={NotFound} />
       </Switch>
