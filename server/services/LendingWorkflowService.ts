@@ -285,9 +285,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
-                <p><strong>Amount Requested:</strong> $${loan.amount}</p>
+                <p><strong>Amount Requested:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
-                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
                 <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
               </div>
@@ -337,9 +337,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
                 <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
-                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
-                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
               </div>
               
@@ -386,9 +386,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
-                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
-                <p><strong>Term:</strong> ${loan.termDays} days</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
                 <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
               </div>
