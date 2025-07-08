@@ -104,6 +104,7 @@ The application uses three main entities:
 - July 8, 2025: Implemented currency-specific BTC price calculations - EUR loans now use BTC/EUR pricing (~€92,400) and USDC loans use BTC/USD pricing (~$108,500) for more accurate collateral requirements
 - July 8, 2025: Fixed email notification currency display - all templates now show correct currency symbols (USDC/EUR) instead of hardcoded dollar signs
 - July 8, 2025: Fixed loan calculator frontend to use currency-specific BTC prices - EUR 93,000 loan now correctly requires 2.0 BTC collateral (using €92,800 price) instead of 1.7 BTC (was using $108,900 USD price)
+- July 8, 2025: Updated "How it works" section on homepage - restructured borrower workflow (offer terms first, wait for lender, then deposit collateral) and lender workflow (browse, pick loan, send funds)
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

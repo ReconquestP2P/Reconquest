@@ -100,8 +100,8 @@ export default function Home() {
                     1
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Deposit Bitcoin Collateral</h4>
-                    <p className="text-gray-600">Lock your Bitcoin in a secure 2-of-3 multisig escrow</p>
+                    <h4 className="font-semibold text-gray-900">Make Competitive Offers</h4>
+                    <p className="text-gray-600">Set your interest rate and loan terms</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -110,7 +110,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Get Matched with Lenders</h4>
-                    <p className="text-gray-600">Receive competitive loan offers from verified lenders</p>
+                    <p className="text-gray-600">Wait for a lender to accept your terms</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -118,8 +118,8 @@ export default function Home() {
                     3
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Receive Funds</h4>
-                    <p className="text-gray-600">Get stablecoins instantly after loan confirmation</p>
+                    <h4 className="font-semibold text-gray-900">Deposit Bitcoin Collateral</h4>
+                    <p className="text-gray-600">Lock your Bitcoin in a secure 2-of-3 multisig escrow. Then receive funds from lender after deposit confirmation</p>
                   </div>
                 </div>
               </div>
@@ -146,8 +146,8 @@ export default function Home() {
                     2
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Make Competitive Offers</h4>
-                    <p className="text-gray-600">Set your interest rate and loan terms</p>
+                    <h4 className="font-semibold text-gray-900">Pick a Published Loan</h4>
+                    <p className="text-gray-600">Confirm your interest in a specific Loan and wait for confirmation of Lock of Collateral</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -155,8 +155,8 @@ export default function Home() {
                     3
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Earn Yield</h4>
-                    <p className="text-gray-600">Receive interest payments secured by Bitcoin collateral</p>
+                    <h4 className="font-semibold text-gray-900">Send Funds to Borrower</h4>
+                    <p className="text-gray-600">Relax and enjoy while your money works for you</p>
                   </div>
                 </div>
               </div>
