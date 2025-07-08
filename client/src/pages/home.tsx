@@ -84,7 +84,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
-            <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 3 steps</p>
+            <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 4 steps</p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -101,7 +101,7 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Make Competitive Offers</h4>
-                    <p className="text-gray-600">Set your interest rate and loan terms</p>
+                    <p className="text-gray-600">Set your preferred interest rate and loan terms</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -119,7 +119,16 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Deposit Bitcoin Collateral</h4>
-                    <p className="text-gray-600">Lock your Bitcoin in a secure 2-of-3 multisig escrow. Then receive funds from lender after deposit confirmation</p>
+                    <p className="text-gray-600">Lock your Bitcoin in a secure 2-of-3 multisig escrow</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    4
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Receive Funds</h4>
+                    <p className="text-gray-600">Receive your agreed amount to be repaid at maturity</p>
                   </div>
                 </div>
               </div>
@@ -156,7 +165,16 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Send Funds to Borrower</h4>
-                    <p className="text-gray-600">Relax and enjoy while your money works for you</p>
+                    <p className="text-gray-600">Send agreed amount to Borrower</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1">
+                    4
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Earn Yield</h4>
+                    <p className="text-gray-600">Receive back from the borrower principal+interest at maturity</p>
                   </div>
                 </div>
               </div>
