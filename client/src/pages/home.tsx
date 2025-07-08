@@ -197,8 +197,13 @@ export default function Home() {
               <h3 className="text-xl font-bold text-gray-900 mb-4">General</h3>
               
               <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">Why Reconquest?</h4>
+                <p className="text-gray-600">At Reconquest, members are in control. Unlike centralized lenders that have recently collapsed, Reconquest does not have access to Bitcoin collateral - it is never touched, traded or exchanged. Instead, it is securely locked in a smart contract built on top of the Bitcoin network, making the process secure for both Borrowers and Investors. You don't have to worry about Reconquest's solvency or reputation - we only provide the technology for secure interaction between Borrower and Investor, and we never have access to members' funds or collateral.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h4 className="font-semibold text-gray-900 mb-2">What is Bitcoin-backed lending?</h4>
-                <p className="text-gray-600">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn yield by funding these collateralized loans.</p>
+                <p className="text-gray-600">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn a Fixed Yield by funding these collateralized loans.</p>
               </div>
               
               <div className="bg-white p-6 rounded-lg shadow-sm">

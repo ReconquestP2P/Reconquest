@@ -107,7 +107,8 @@ The application uses three main entities:
 - July 8, 2025: Updated "How it works" section on homepage - restructured borrower workflow (offer terms first, wait for lender, then deposit collateral) and lender workflow (browse, pick loan, send funds)
 - July 8, 2025: Expanded "How it works" to 4-step process for both borrowers and lenders, added "Receive Funds" step for borrowers and "Earn Yield" step for lenders
 - July 8, 2025: Updated step titles and fixed circle sizing consistency - replaced dollar icon with cash emoji for lenders, ensured all numbered circles have identical dimensions
-- July 8, 2025: Added comprehensive FAQs section after "How it works" with 7 essential questions covering general information and borrowing/lending specifics
+- July 8, 2025: Added comprehensive FAQs section after "How it works" with 8 essential questions covering general information and borrowing/lending specifics
+- July 8, 2025: Enhanced FAQs with "Why Reconquest?" as first question emphasizing platform security and Fixed Yield messaging for lenders
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
