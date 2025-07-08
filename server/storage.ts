@@ -237,7 +237,7 @@ export class MemStorage implements IStorage {
 
   async getAvailableLoans(): Promise<Loan[]> {
     return Array.from(this.loans.values()).filter(loan => 
-      loan.status === "pending" || loan.status === "posted"
+      loan.status === "posted" || loan.status === "initiated" || loan.status === "funding"
     );
   }
 
@@ -341,7 +341,11 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(loans)
-      .where(or(eq(loans.status, "pending"), eq(loans.status, "posted")));
+      .where(or(
+        eq(loans.status, "posted"), 
+        eq(loans.status, "initiated"), 
+        eq(loans.status, "funding")
+      ));
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {

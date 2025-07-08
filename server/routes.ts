@@ -315,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Loan not found" });
       }
 
-      if (loan.status !== "pending") {
+      if (loan.status !== "posted" && loan.status !== "initiated" && loan.status !== "funding") {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
 
@@ -453,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Loan not found" });
       }
       
-      if (loan.status !== "pending") {
+      if (loan.status !== "posted" && loan.status !== "initiated" && loan.status !== "funding") {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
       
