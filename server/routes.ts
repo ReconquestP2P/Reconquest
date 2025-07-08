@@ -407,8 +407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mock user ID (in real app, get from authentication)
       const borrowerId = 1;
       
-      // Calculate collateral based on 2:1 ratio using real-time BTC price
-      const btcPrice = await getCurrentBtcPrice();
+      // Calculate collateral based on 2:1 ratio using real-time BTC price in loan currency
+      const btcPrice = await getBtcPriceForCurrency(validatedData.currency);
       const loanAmount = parseFloat(validatedData.amount);
       const requiredCollateralValue = loanAmount * 2;
       const requiredBtc = (requiredCollateralValue / btcPrice).toFixed(8);
@@ -541,6 +541,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const basePrice = 100000;
       const variation = (Math.random() - 0.5) * 2000;
       return Math.round(basePrice + variation);
+    }
+  };
+
+  // Helper function to get BTC price in specific currency
+  const getBtcPriceForCurrency = async (currency: string) => {
+    try {
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur'
+      );
+      
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (currency === 'EUR') {
+        return data.bitcoin.eur;
+      } else {
+        return data.bitcoin.usd; // Default to USD for USDC and other currencies
+      }
+    } catch (error) {
+      console.error('Error fetching BTC price for currency:', error);
+      // Fallback prices
+      return currency === 'EUR' ? 85000 : 100000;
     }
   };
   
