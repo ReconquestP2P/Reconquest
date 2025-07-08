@@ -576,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
                 <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
-                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
               </div>
@@ -625,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
-                <p><strong>Amount Requested:</strong> $${loan.amount}</p>
+                <p><strong>Amount Requested:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
@@ -665,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="color: #333; margin-top: 0;">Your Loan Request</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
-                <p><strong>Amount:</strong> $${loan.amount}</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Required Collateral:</strong> ${loan.collateralBtc} BTC</p>
