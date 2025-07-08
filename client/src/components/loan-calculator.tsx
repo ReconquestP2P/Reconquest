@@ -54,7 +54,10 @@ export default function LoanCalculator() {
   });
 
   const loanAmount = parseFloat(amount) || 0;
-  const currentBtcPrice = (btcPrice as any)?.price || 100000;
+  // Use currency-specific BTC price
+  const currentBtcPrice = currency === "EUR" 
+    ? ((btcPrice as any)?.eur || 85000)
+    : ((btcPrice as any)?.usd || 100000);
   const requiredCollateral = calculateCollateral(loanAmount, currentBtcPrice);
   
   // Simple interest calculation: Interest = Principal × Rate × Time
@@ -140,7 +143,7 @@ export default function LoanCalculator() {
             </Label>
             <div className="mt-1 p-3 bg-gray-50 rounded-lg">
               <span className="text-lg font-semibold text-gray-900">
-                ${currentBtcPrice.toLocaleString()}
+                {currency === "EUR" ? "€" : "$"}{currentBtcPrice.toLocaleString()}
               </span>
             </div>
           </div>
