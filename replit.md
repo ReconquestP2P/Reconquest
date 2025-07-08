@@ -101,6 +101,8 @@ The application uses three main entities:
 - July 7, 2025: Removed CHF currency option, platform now supports USDC and EUR only
 - July 7, 2025: Fixed email notification templates to display correct collateral amounts and loan terms (termMonths instead of termDays), improved currency formatting
 - July 7, 2025: Fixed Fund Loan button visibility issue - buttons now appear for all fundable loan statuses (posted, initiated, funding) instead of only posted loans
+- July 8, 2025: Implemented currency-specific BTC price calculations - EUR loans now use BTC/EUR pricing (~€92,400) and USDC loans use BTC/USD pricing (~$108,500) for more accurate collateral requirements
+- July 8, 2025: Fixed email notification currency display - all templates now show correct currency symbols (USDC/EUR) instead of hardcoded dollar signs
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

@@ -61,6 +61,14 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   requestedAt: true,
   fundedAt: true,
   repaidAt: true,
+  collateralBtc: true,
+  ltvRatio: true,
+  dueDate: true,
+  escrowAddress: true,
+  escrowTxHash: true,
+  fiatTransferConfirmed: true,
+  borrowerConfirmedReceipt: true,
+  loanStartedAt: true,
 });
 
 export const insertLoanOfferSchema = createInsertSchema(loanOffers).omit({

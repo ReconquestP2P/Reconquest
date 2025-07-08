@@ -402,23 +402,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new loan request
   app.post("/api/loans", async (req, res) => {
     try {
-      const validatedData = insertLoanSchema.parse(req.body);
+      // Parse only the required fields from the request body
+      const requestData = insertLoanSchema.parse(req.body);
       
       // Mock user ID (in real app, get from authentication)
       const borrowerId = 1;
       
       // Calculate collateral based on 2:1 ratio using real-time BTC price in loan currency
-      const btcPrice = await getBtcPriceForCurrency(validatedData.currency);
-      const loanAmount = parseFloat(validatedData.amount);
+      const btcPrice = await getBtcPriceForCurrency(requestData.currency);
+      const loanAmount = parseFloat(requestData.amount);
       const requiredCollateralValue = loanAmount * 2;
       const requiredBtc = (requiredCollateralValue / btcPrice).toFixed(8);
       
       const loanData = {
-        ...validatedData,
+        ...requestData,
         borrowerId,
         collateralBtc: requiredBtc,
         ltvRatio: "50.00",
-        dueDate: new Date(Date.now() + validatedData.termMonths * 30 * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + requestData.termMonths * 30 * 24 * 60 * 60 * 1000),
       };
       
       const loan = await storage.createLoan(loanData);
