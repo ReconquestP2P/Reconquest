@@ -100,7 +100,7 @@ export default function Home() {
                     1
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Make Competitive Offers</h4>
+                    <h4 className="font-semibold text-gray-900">Set your Loan Terms</h4>
                     <p className="text-gray-600">Set your preferred interest rate and loan terms</p>
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export default function Home() {
                     2
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Pick a Published Loan</h4>
+                    <h4 className="font-semibold text-gray-900">Select a Loan Request</h4>
                     <p className="text-gray-600">Confirm your interest in a specific Loan and wait for confirmation of Lock of Collateral</p>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function Home() {
                     4
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Earn Yield</h4>
+                    <h4 className="font-semibold text-gray-900">Earn Yield Automatically</h4>
                     <p className="text-gray-600">Receive back from the borrower principal+interest at maturity</p>
                   </div>
                 </div>
