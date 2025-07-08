@@ -106,6 +106,7 @@ The application uses three main entities:
 - July 8, 2025: Fixed loan calculator frontend to use currency-specific BTC prices - EUR 93,000 loan now correctly requires 2.0 BTC collateral (using €92,800 price) instead of 1.7 BTC (was using $108,900 USD price)
 - July 8, 2025: Updated "How it works" section on homepage - restructured borrower workflow (offer terms first, wait for lender, then deposit collateral) and lender workflow (browse, pick loan, send funds)
 - July 8, 2025: Expanded "How it works" to 4-step process for both borrowers and lenders, added "Receive Funds" step for borrowers and "Earn Yield" step for lenders
+- July 8, 2025: Updated step titles and fixed circle sizing consistency - replaced dollar icon with cash emoji for lenders, ensured all numbered circles have identical dimensions
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
