@@ -407,8 +407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mock user ID (in real app, get from authentication)
       const borrowerId = 1;
       
-      // Calculate collateral based on 2:1 ratio
-      const btcPrice = 67245; // Mock current BTC price
+      // Calculate collateral based on 2:1 ratio using real-time BTC price
+      const btcPrice = await getCurrentBtcPrice();
       const loanAmount = parseFloat(validatedData.amount);
       const requiredCollateralValue = loanAmount * 2;
       const requiredBtc = (requiredCollateralValue / btcPrice).toFixed(8);
