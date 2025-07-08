@@ -183,8 +183,65 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* FAQs Section */}
       <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+            <p className="text-lg text-gray-600">Everything you need to know about Bitcoin-backed lending</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* General Questions */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">General</h3>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">What is Bitcoin-backed lending?</h4>
+                <p className="text-gray-600">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn yield by funding these collateralized loans.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">How secure is Reconquest?</h4>
+                <p className="text-gray-600">Reconquest uses 2-of-3 multisig escrow to secure Bitcoin collateral. Your Bitcoin is held in smart contracts that require multiple signatures for any transactions, ensuring maximum security.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">What happens if Bitcoin's price drops?</h4>
+                <p className="text-gray-600">Loans maintain a maximum 60% loan-to-value ratio. If Bitcoin's price drops significantly, borrowers may need to add more collateral or partially repay the loan to maintain healthy ratios.</p>
+              </div>
+            </div>
+            
+            {/* Borrowing & Lending */}
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Borrowing & Lending</h3>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">What currencies can I borrow?</h4>
+                <p className="text-gray-600">Reconquest supports loans in USDC and EUR. You can request loans in either currency using your Bitcoin as collateral.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">What are the loan terms available?</h4>
+                <p className="text-gray-600">Loan terms range from 3 to 18 months, with options for 3, 6, 9, 12, and 18-month durations. Interest rates are competitive and set through market dynamics.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">How do I start lending on Reconquest?</h4>
+                <p className="text-gray-600">Simply browse available loan requests, select loans that match your criteria, and fund them. You'll earn interest payments secured by Bitcoin collateral throughout the loan term.</p>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h4 className="font-semibold text-gray-900 mb-2">When do I get my Bitcoin back?</h4>
+                <p className="text-gray-600">Your Bitcoin collateral is automatically released from escrow once you repay the loan principal plus interest at maturity. Early repayment options may also be available.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
