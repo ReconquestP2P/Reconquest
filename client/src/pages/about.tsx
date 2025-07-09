@@ -17,14 +17,14 @@ export default function About() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="prose prose-lg text-gray-600 space-y-6 max-w-none">
             <p className="text-xl leading-relaxed font-bold">
-              We are living a silent war
+              We are in the middle of a silent war
             </p>
             
             <p className="text-lg leading-relaxed">
-              Through inflation, monetary manipulation, and centralized control, the value of your time — your work — is been quietly stolen. Slowly, quietly, and systematically.
+              Through inflation, monetary manipulation, and centralized control, the value of your time — your work — is being stolen. Slowly, quietly, and systematically.
             </p>
             
-            <p className="font-semibold text-gray-900 text-2xl mb-4">Bitcoin changed the game.</p>
+            <p className="text-xl leading-relaxed font-bold">Bitcoin changed the game.</p>
             <p className="text-lg leading-relaxed">
               It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.
             </p>
@@ -33,8 +33,8 @@ export default function About() {
               But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. It's time to fix that.
             </p>
             
-            <p className="font-semibold text-gray-900 text-2xl mb-4">
-              Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.
+            <p className="text-xl leading-relaxed font-bold">
+              Reconquest was born to reclaim what's been taken — to put the world's hardest asset to work.
             </p>
             <p className="text-lg leading-relaxed">
               We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.
