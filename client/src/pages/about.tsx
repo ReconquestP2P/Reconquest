@@ -7,8 +7,8 @@ export default function About() {
     <div className="min-h-screen bg-white">
       {/* Logo */}
       <div className="pt-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
+        <div className="max-w-4xl mx-auto text-center">
+          <img src={logoImage} alt="Reconquest" className="h-48 w-auto mx-auto" />
         </div>
       </div>
 
@@ -46,10 +46,6 @@ export default function About() {
             
             <p className="text-lg leading-relaxed">
               We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.
-            </p>
-            
-            <p className="font-semibold text-gray-900 text-2xl text-center">
-              The era of passive BTC is over.
             </p>
             
             <div className="text-center mt-16">
