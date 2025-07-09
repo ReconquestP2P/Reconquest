@@ -15,7 +15,7 @@ export default function Home() {
             <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Built for Bitcoiners needing capital and investors who provide it.<br />
+            Built for Bitcoiners needing capital and for investors who provide it.<br />
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
           <div className="flex gap-4 justify-center mt-12">
