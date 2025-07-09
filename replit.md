@@ -114,6 +114,7 @@ The application uses three main entities:
 - July 8, 2025: Added "Receiving & Repaying Loans" FAQ section with payment timing expectations and dispute resolution procedures
 - July 8, 2025: Expanded "Receiving & Repaying Loans" section with 8 additional repayment questions covering loan obligations, early repayment, and default scenarios
 - July 8, 2025: Added contact section at bottom of homepage with admin email (admin.reconquest@protonmail.com) for user support
+- July 9, 2025: Created dedicated About page (/about) with manifesto content, removed About section from homepage scroll, added About link to main navigation header for separate page access
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

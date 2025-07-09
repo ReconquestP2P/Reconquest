@@ -43,12 +43,16 @@ export default function Navigation() {
               >
                 How it Works
               </a>
-              <a
-                href="#about"
-                className="text-gray-700 hover:text-primary px-3 py-2 text-sm font-medium"
+              <Link
+                href="/about"
+                className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  location === "/about"
+                    ? "text-primary"
+                    : "text-gray-700 hover:text-primary"
+                }`}
               >
                 About
-              </a>
+              </Link>
             </div>
           </div>
           <div className="flex items-center space-x-4">

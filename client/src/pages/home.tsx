@@ -183,39 +183,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">About Reconquest</h2>
-            <p className="text-lg text-gray-600">The movement to reclaim financial independence through Bitcoin</p>
-          </div>
-          
-          <div className="prose prose-lg text-gray-600 space-y-6 max-w-none">
-            <p>Reconquest was born from a simple, undeniable truth: your money is being stolen — slowly, quietly, and systematically.</p>
-            
-            <p>Inflation. Negative real rates. Bailouts. Censorship. The modern financial system has become a machine of quiet repression, eroding the value of your labor and savings.</p>
-            
-            <p className="font-semibold text-gray-900 text-xl">Bitcoin changed the game.</p>
-            
-            <p>It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.</p>
-            
-            <p>But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. We believe it's time to fix that.</p>
-            
-            <p className="font-semibold text-gray-900 text-xl">Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.</p>
-            
-            <p>We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.</p>
-            
-            <p>Only BTC-backed lending: pure, transparent, and censorship-resistant.</p>
-            
-            <p>We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.</p>
-            
-            <p className="font-semibold text-gray-900 text-xl">The era of passive BTC is over.</p>
-            
-            <p className="font-bold text-2xl text-gray-900 text-center mt-8">The Reconquest has begun</p>
-          </div>
-        </div>
-      </section>
+
 
       {/* FAQs Section */}
       <section className="py-16 bg-gray-50">
