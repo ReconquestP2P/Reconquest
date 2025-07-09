@@ -112,8 +112,16 @@ export default function SignUp() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Form submission attempted");
+    console.log("Form data:", formData);
+    console.log("Password valid:", isPasswordValid);
+    console.log("Form validation:", validateForm());
+    
     if (validateForm()) {
+      console.log("Calling registration API...");
       registrationMutation.mutate(formData);
+    } else {
+      console.log("Form validation failed, errors:", errors);
     }
   };
 
@@ -242,6 +250,14 @@ export default function SignUp() {
               {errors.confirmPassword && (
                 <p className="text-sm text-red-600">{errors.confirmPassword}</p>
               )}
+            </div>
+
+            {/* Debug info - remove this in production */}
+            <div className="text-xs text-gray-500 space-y-1 p-2 bg-gray-50 rounded">
+              <div>Email: {formData.email ? "✓" : "✗"}</div>
+              <div>Username: {formData.username ? "✓" : "✗"}</div>
+              <div>Password Valid: {isPasswordValid ? "✓" : "✗"}</div>
+              <div>Passwords Match: {formData.password === formData.confirmPassword ? "✓" : "✗"}</div>
             </div>
 
             {/* Submit Button */}
