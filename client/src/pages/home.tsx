@@ -295,6 +295,75 @@ export default function Home() {
                     <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the resolution process ultimately confirms that you never received the funds, your Bitcoin will be unlocked and returned to you.</p>
                   </div>
                 </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">How should I return the loan?</h4>
+                  <div className="text-gray-600 space-y-3">
+                    <p>The loan amount and interest (Amount due) should be repaid at the end of the loan period, no later than the maturity date to the banking account or USDC Ethereum address of the Investor.</p>
+                    <p>Due to certain complexities, we currently do not recommend partial repayments of the loan.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">When should I return the loan?</h4>
+                  <div className="text-gray-600 space-y-3">
+                    <p>Your loan should be repaid to the investor no later than the maturity date. It's advisable to initiate the transfer a few days before the maturity date to ensure timely repayment.</p>
+                    <p>For your convenience, you can download a calendar event from the 'Loan actions' menu.</p>
+                    <p>You will also receive an automated email notification 14, 7 and 2 days before the maturity, and on the day of the loan maturity.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What is the amount I should return to the Investor?</h4>
+                  <div className="text-gray-600">
+                    <p>You should return the 'Amount due'.</p>
+                    <p className="font-semibold">Amount due = Loan amount + Interest for the whole loan period.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What if I don't return the full amount due to the Investor?</h4>
+                  <div className="text-gray-600">
+                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. Part of your collateral might get liquidated to cover the full amount.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What if I don't return the loan?</h4>
+                  <div className="text-gray-600">
+                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the outcome of the procedure is deemed a 'default', your collateral will be liquidated to cover the outstanding amount.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What if I return the loan after the maturity?</h4>
+                  <div className="text-gray-600">
+                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the outcome of the procedure is deemed a 'default', your collateral will be liquidated to cover the outstanding amount.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Can I repay the loan earlier?</h4>
+                  <div className="text-gray-600 space-y-3">
+                    <p>Yes, you can repay any loan earlier.</p>
+                    <p>To do so, please select the 'Early repayment' option in the 'Loan Actions' menu.</p>
+                    <p>We will then seek confirmation from the investor that they are ready to confirm the repayment of your loan. Once they agree, you will get notified and the platform will guide you through the repayment process.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">How much should I pay back when I close my loan earlier?</h4>
+                  <div className="text-gray-600">
+                    <p>When repaying your loan earlier, you will need to repay the entire amount due for the entire period of the loan.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What if the Investor never confirms they received funds back?</h4>
+                  <div className="text-gray-600">
+                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the resolution procedure results in us receiving only the confirmation of repayment from you (the borrower), we would consider the loan closed, and your collateral would be returned.</p>
+                  </div>
+                </div>
               </div>
             </details>
           </div>
