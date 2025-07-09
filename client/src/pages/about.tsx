@@ -45,7 +45,7 @@ export default function About() {
             </p>
             
             <p className="text-lg leading-relaxed">
-              We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.
+              We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to proove it.
             </p>
             
             <div className="text-center mt-16">
