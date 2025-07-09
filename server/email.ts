@@ -42,7 +42,7 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 // Create logo data URI from PNG file with size optimization for emails
 function getLogoDataURI(): string {
   try {
-    const logoPath = join(process.cwd(), 'attached_assets', 'Reconquest logo_1751398567900.png');
+    const logoPath = join(process.cwd(), 'attached_assets', 'Reconquest logo 2_1752025456549.png');
     console.log('Loading logo from:', logoPath);
     const logoBuffer = readFileSync(logoPath);
     console.log('Logo loaded successfully, size:', logoBuffer.length, 'bytes');

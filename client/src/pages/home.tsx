@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
-import logoImage from "@assets/Reconquest logo_1751398567900.png";
+import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 
 export default function Home() {
   return (

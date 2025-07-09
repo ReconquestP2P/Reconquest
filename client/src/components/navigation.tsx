@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import logoImage from "@assets/Reconquest logo_1751398567900.png";
+import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 
 export default function Navigation() {
