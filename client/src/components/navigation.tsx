@@ -63,16 +63,19 @@ export default function Navigation() {
             <div className="hidden md:flex items-center space-x-4">
               <BitcoinPriceOracle variant="compact" />
             </div>
-            <div className="hidden md:flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-6">
               <ThemeToggle />
               <Button 
                 size="sm" 
-                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
+                className="bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-medium shadow-md"
               >
                 Log In
               </Button>
               <Link href="/signup">
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-black">
+                <Button 
+                  size="sm" 
+                  className="bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white font-medium shadow-md"
+                >
                   Sign Up
                 </Button>
               </Link>
@@ -144,10 +147,10 @@ export default function Navigation() {
               </div>
               
               {/* Mobile auth buttons */}
-              <div className="px-3 py-2 space-y-2">
+              <div className="px-3 py-2 space-y-3">
                 <Button 
                   size="sm" 
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
+                  className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-medium shadow-md"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log In
@@ -155,7 +158,7 @@ export default function Navigation() {
                 <Link href="/signup">
                   <Button 
                     size="sm" 
-                    className="w-full bg-primary hover:bg-primary/90 text-black"
+                    className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white font-medium shadow-md"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign Up
