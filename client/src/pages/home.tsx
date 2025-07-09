@@ -283,7 +283,7 @@ export default function Home() {
                   <h4 className="font-semibold text-gray-900 mb-2">When will I receive funds from the Investor?</h4>
                   <div className="text-gray-600 space-y-3">
                     <p>The time it takes for you to receive your funds depends on when the investor made the bank transfer and the speed of transaction processing. Typically, you should receive your funds no later than the loan's start date.</p>
-                    <p>For EUR SEPA and local CZK payments, the transfers usually take from intraday to 1-2 days.</p>
+                    <p>For EUR SEPA payments, the transfers usually take from intraday to 1-2 days.</p>
                     <p>SWIFT payments might take a bit longer, possibly a few more days.</p>
                     <p>Stablecoin (USDC) transactions are settled in real-time.</p>
                   </div>
