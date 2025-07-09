@@ -16,12 +16,12 @@ export default function About() {
       <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="prose prose-lg text-gray-600 space-y-6 max-w-none">
-            <p className="text-xl leading-relaxed">
-              Reconquest was born from a simple, undeniable truth: your money is being stolen — slowly, quietly, and systematically.
+            <p className="text-xl leading-relaxed font-bold">
+              We are living a silent war
             </p>
             
             <p className="text-lg leading-relaxed">
-              Inflation. Negative real rates. Bailouts. Censorship. The modern financial system has become a machine of quiet repression, eroding the value of your labor and savings.
+              Through inflation, monetary manipulation, and centralized control, the value of your time — your work — is been quietly stolen. Slowly, quietly, and systematically.
             </p>
             
             <p className="font-semibold text-gray-900 text-2xl mb-4">Bitcoin changed the game.</p>
@@ -30,7 +30,7 @@ export default function About() {
             </p>
             
             <p className="text-lg leading-relaxed">
-              But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. We believe it's time to fix that.
+              But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. It's time to fix that.
             </p>
             
             <p className="font-semibold text-gray-900 text-2xl mb-4">
@@ -49,7 +49,7 @@ export default function About() {
             </p>
             
             <div className="text-center mt-16">
-              <p className="font-bold text-4xl text-gray-900 mb-8">The Reconquest has begun</p>
+              <p className="font-bold text-4xl text-gray-900 mb-8">Join the Reconquest</p>
               
               <div className="flex gap-4 justify-center mt-8">
                 <Link href="/borrower">
