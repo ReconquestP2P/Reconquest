@@ -61,9 +61,11 @@ export default function Navigation() {
               <Button variant="ghost" size="sm" className="text-gray-700 hover:text-primary">
                 Log In
               </Button>
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-black">
-                Sign Up
-              </Button>
+              <Link href="/signup">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-black">
+                  Sign Up
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
