@@ -57,7 +57,14 @@ export default function Navigation() {
           </div>
           <div className="flex items-center space-x-4">
             <BitcoinPriceOracle variant="compact" />
-
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" size="sm" className="text-gray-700 hover:text-primary">
+                Log In
+              </Button>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-black">
+                Sign Up
+              </Button>
+            </div>
           </div>
         </div>
       </div>
