@@ -113,6 +113,7 @@ The application uses three main entities:
 - July 8, 2025: Added "Who is the Liquidator?" FAQ explaining Self-Liquidation and Reconquest Liquidation modes for investor flexibility
 - July 8, 2025: Added "Receiving & Repaying Loans" FAQ section with payment timing expectations and dispute resolution procedures
 - July 8, 2025: Expanded "Receiving & Repaying Loans" section with 8 additional repayment questions covering loan obligations, early repayment, and default scenarios
+- July 8, 2025: Added contact section at bottom of homepage with admin email (admin.reconquest@protonmail.com) for user support
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
