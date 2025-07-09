@@ -1,20 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import logoImage from "@assets/Reconquest logo_1751398567900.png";
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* About Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
-            About <span className="text-gradient-gold">Reconquest</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            The movement to reclaim financial independence through Bitcoin
-          </p>
+    <div className="min-h-screen bg-white">
+      {/* Logo */}
+      <div className="pt-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
         </div>
-      </section>
+      </div>
 
       {/* About Content */}
       <section className="py-16">
@@ -28,25 +24,21 @@ export default function About() {
               Inflation. Negative real rates. Bailouts. Censorship. The modern financial system has become a machine of quiet repression, eroding the value of your labor and savings.
             </p>
             
-            <div className="my-12 p-8 bg-white rounded-lg shadow-sm border-l-4 border-primary">
-              <p className="font-semibold text-gray-900 text-2xl mb-4">Bitcoin changed the game.</p>
-              <p className="text-lg leading-relaxed">
-                It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.
-              </p>
-            </div>
+            <p className="font-semibold text-gray-900 text-2xl mb-4">Bitcoin changed the game.</p>
+            <p className="text-lg leading-relaxed">
+              It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.
+            </p>
             
             <p className="text-lg leading-relaxed">
               But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. We believe it's time to fix that.
             </p>
             
-            <div className="my-12 p-8 bg-white rounded-lg shadow-sm border-l-4 border-blue-500">
-              <p className="font-semibold text-gray-900 text-2xl mb-4">
-                Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.
-              </p>
-              <p className="text-lg leading-relaxed">
-                We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.
-              </p>
-            </div>
+            <p className="font-semibold text-gray-900 text-2xl mb-4">
+              Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.
+            </p>
+            <p className="text-lg leading-relaxed">
+              We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.
+            </p>
             
             <p className="text-lg leading-relaxed">
               Only BTC-backed lending: pure, transparent, and censorship-resistant.
@@ -56,11 +48,9 @@ export default function About() {
               We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.
             </p>
             
-            <div className="my-12 p-8 bg-white rounded-lg shadow-sm border-l-4 border-green-500">
-              <p className="font-semibold text-gray-900 text-2xl text-center">
-                The era of passive BTC is over.
-              </p>
-            </div>
+            <p className="font-semibold text-gray-900 text-2xl text-center">
+              The era of passive BTC is over.
+            </p>
             
             <div className="text-center mt-16">
               <p className="font-bold text-4xl text-gray-900 mb-8">The Reconquest has begun</p>
@@ -83,7 +73,7 @@ export default function About() {
       </section>
 
       {/* Back to Home */}
-      <section className="py-16 bg-white">
+      <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Link href="/">
             <Button variant="outline" className="text-gray-600 hover:text-gray-900">
