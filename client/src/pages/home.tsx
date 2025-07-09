@@ -269,6 +269,34 @@ export default function Home() {
                 </div>
               </div>
             </details>
+            
+            {/* Receiving & Repaying Loans Section */}
+            <details className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 transition-colors">
+                <h3 className="text-xl font-bold text-gray-900">Receiving & Repaying Loans</h3>
+                <svg className="w-5 h-5 text-gray-600 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-6 pb-6 space-y-4">
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">When will I receive funds from the Investor?</h4>
+                  <div className="text-gray-600 space-y-3">
+                    <p>The time it takes for you to receive your funds depends on when the investor made the bank transfer and the speed of transaction processing. Typically, you should receive your funds no later than the loan's start date.</p>
+                    <p>For EUR SEPA and local CZK payments, the transfers usually take from intraday to 1-2 days.</p>
+                    <p>SWIFT payments might take a bit longer, possibly a few more days.</p>
+                    <p>Stablecoin (USDC) transactions are settled in real-time.</p>
+                  </div>
+                </div>
+                
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What if I never receive funds from the Investor?</h4>
+                  <div className="text-gray-600">
+                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the resolution process ultimately confirms that you never received the funds, your Bitcoin will be unlocked and returned to you.</p>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </section>
