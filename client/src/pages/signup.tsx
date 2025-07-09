@@ -8,7 +8,6 @@ import PasswordStrengthMeter from "@/components/password-strength-meter";
 import { Shield, Mail, User, ArrowLeft, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -27,10 +26,20 @@ export default function SignUp() {
 
   const registrationMutation = useMutation({
     mutationFn: async (userData: any) => {
-      return await apiRequest("/api/auth/register", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
-        body: userData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Registration failed");
+      }
+      
+      return response.json();
     },
     onSuccess: (data) => {
       setRegistrationSuccess(true);
