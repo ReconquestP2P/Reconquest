@@ -68,16 +68,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* Back to Home */}
-      <section className="py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Link href="/">
-            <Button variant="outline" className="text-gray-600 hover:text-gray-900">
-              ← Back to Home
-            </Button>
-          </Link>
-        </div>
-      </section>
+
     </div>
   );
 }
