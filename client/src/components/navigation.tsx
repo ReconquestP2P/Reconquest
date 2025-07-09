@@ -65,7 +65,10 @@ export default function Navigation() {
             </div>
             <div className="hidden md:flex items-center space-x-3">
               <ThemeToggle />
-              <Button variant="ghost" size="sm" className="text-gray-700 dark:text-gray-300 hover:text-primary">
+              <Button 
+                size="sm" 
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
+              >
                 Log In
               </Button>
               <Link href="/signup">
@@ -143,9 +146,8 @@ export default function Navigation() {
               {/* Mobile auth buttons */}
               <div className="px-3 py-2 space-y-2">
                 <Button 
-                  variant="ghost" 
                   size="sm" 
-                  className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-primary"
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log In
