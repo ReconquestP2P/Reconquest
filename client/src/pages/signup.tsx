@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import PasswordStrengthMeter from "@/components/password-strength-meter";
-import { Shield, Mail, User, ArrowLeft } from "lucide-react";
+import { Shield, Mail, User, ArrowLeft, CheckCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -18,6 +21,48 @@ export default function SignUp() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+
+  const registrationMutation = useMutation({
+    mutationFn: async (userData: any) => {
+      return await apiRequest("/api/auth/register", {
+        method: "POST",
+        body: userData,
+      });
+    },
+    onSuccess: (data) => {
+      setRegistrationSuccess(true);
+      toast({
+        title: "Account Created Successfully!",
+        description: "Welcome to Reconquest. Check your email for confirmation.",
+      });
+      
+      // Redirect to home page after a short delay
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
+    },
+    onError: (error: any) => {
+      console.error("Registration failed:", error);
+      
+      const errorMessage = error.message || "Registration failed. Please try again.";
+      
+      // Handle specific validation errors
+      if (errorMessage.includes("Email already registered")) {
+        setErrors({ email: "This email is already registered" });
+      } else if (errorMessage.includes("Username already taken")) {
+        setErrors({ username: "This username is already taken" });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    },
+  });
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -68,12 +113,39 @@ export default function SignUp() {
     e.preventDefault();
     
     if (validateForm()) {
-      // Here you would typically send the data to your API
-      console.log("Form submitted:", formData);
-      // For now, just show a success message
-      alert("Account created successfully! (Demo mode)");
+      registrationMutation.mutate(formData);
     }
   };
+
+  // Show success state if registration completed
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <CheckCircle className="h-12 w-12 text-green-500" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-green-700">Account Created!</CardTitle>
+            <CardDescription>
+              Welcome to Reconquest. You'll be redirected shortly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                A welcome email has been sent to your inbox with next steps.
+              </p>
+              <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span>Redirecting to homepage...</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
@@ -176,9 +248,16 @@ export default function SignUp() {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 text-black"
-              disabled={!isPasswordValid || !formData.email || !formData.username}
+              disabled={!isPasswordValid || !formData.email || !formData.username || registrationMutation.isPending}
             >
-              Create Secure Account
+              {registrationMutation.isPending ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                  <span>Creating Account...</span>
+                </div>
+              ) : (
+                "Create Secure Account"
+              )}
             </Button>
           </form>
 

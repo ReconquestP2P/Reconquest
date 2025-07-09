@@ -2,12 +2,13 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertLoanSchema, insertLoanOfferSchema } from "@shared/schema";
+import { insertLoanSchema, insertLoanOfferSchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail } from "./email";
+import bcrypt from "bcryptjs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static logo for emails
@@ -360,6 +361,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: "Internal server error while funding loan" 
+      });
+    }
+  });
+
+  // User registration
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const userData = insertUserSchema.extend({
+        confirmPassword: z.string(),
+      }).parse(req.body);
+
+      // Validate passwords match
+      if (userData.password !== userData.confirmPassword) {
+        return res.status(400).json({ 
+          message: "Passwords do not match" 
+        });
+      }
+
+      // Check if user already exists
+      const existingUserByEmail = await storage.getUserByEmail(userData.email);
+      if (existingUserByEmail) {
+        return res.status(400).json({ 
+          message: "Email already registered" 
+        });
+      }
+
+      const existingUserByUsername = await storage.getUserByUsername(userData.username);
+      if (existingUserByUsername) {
+        return res.status(400).json({ 
+          message: "Username already taken" 
+        });
+      }
+
+      // Hash password
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+      // Create user (excluding confirmPassword)
+      const userToCreate = {
+        username: userData.username,
+        email: userData.email,
+        password: hashedPassword,
+        role: userData.role || "borrower"
+      };
+
+      const newUser = await storage.createUser(userToCreate);
+
+      // Return user without password
+      const { password, ...userWithoutPassword } = newUser;
+
+      // Send welcome email
+      try {
+        await sendEmail({
+          to: newUser.email,
+          from: "jfestrada93@gmail.com",
+          subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Reconquest!</h1>
+              </div>
+              
+              <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
+                <h2 style="color: #333; margin-top: 0;">Your Bitcoin-Backed Lending Account is Ready</h2>
+                
+                <p style="color: #666; line-height: 1.6;">
+                  Hello <strong>${newUser.username}</strong>,
+                </p>
+                
+                <p style="color: #666; line-height: 1.6;">
+                  Welcome to the future of lending! Your Reconquest account has been successfully created and you're now part of the global marketplace for Bitcoin-backed loans.
+                </p>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #D4AF37; margin: 20px 0;">
+                  <h3 style="color: #D4AF37; margin-top: 0;">What's Next?</h3>
+                  <ul style="color: #666; line-height: 1.6;">
+                    <li>Explore our lending marketplace</li>
+                    <li>Set up your lending preferences</li>
+                    <li>Start earning yield or access capital with Bitcoin collateral</li>
+                  </ul>
+                </div>
+                
+                <p style="color: #666; line-height: 1.6;">
+                  If you have any questions, feel free to reach out to our team at admin.reconquest@protonmail.com
+                </p>
+                
+                <p style="color: #666; line-height: 1.6;">
+                  Welcome to the revolution,<br>
+                  The Reconquest Team
+                </p>
+              </div>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Don't fail registration if email fails
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Account created successfully",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to create account. Please try again." 
       });
     }
   });
