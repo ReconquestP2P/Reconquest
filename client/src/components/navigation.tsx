@@ -2,12 +2,13 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Navigation() {
   const [location] = useLocation();
 
   return (
-    <nav className="bg-white/95 backdrop-blur-sm shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-28">
           <div className="flex items-center">
@@ -20,7 +21,7 @@ export default function Navigation() {
                 className={`px-3 py-2 text-sm font-medium transition-colors ${
                   location === "/borrower"
                     ? "text-primary"
-                    : "text-gray-700 hover:text-primary"
+                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
                 }`}
               >
                 Borrow
@@ -30,7 +31,7 @@ export default function Navigation() {
                 className={`px-3 py-2 text-sm font-medium transition-colors ${
                   location === "/lender"
                     ? "text-primary"
-                    : "text-gray-700 hover:text-primary"
+                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
                 }`}
               >
                 Lend
@@ -39,7 +40,7 @@ export default function Navigation() {
 
               <a
                 href="#how-it-works"
-                className="text-gray-700 hover:text-primary px-3 py-2 text-sm font-medium"
+                className="text-gray-700 dark:text-gray-300 hover:text-primary px-3 py-2 text-sm font-medium"
               >
                 How it Works
               </a>
@@ -48,7 +49,7 @@ export default function Navigation() {
                 className={`px-3 py-2 text-sm font-medium transition-colors ${
                   location === "/about"
                     ? "text-primary"
-                    : "text-gray-700 hover:text-primary"
+                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
                 }`}
               >
                 About
@@ -58,7 +59,8 @@ export default function Navigation() {
           <div className="flex items-center space-x-4">
             <BitcoinPriceOracle variant="compact" />
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" className="text-gray-700 hover:text-primary">
+              <ThemeToggle />
+              <Button variant="ghost" size="sm" className="text-gray-700 dark:text-gray-300 hover:text-primary">
                 Log In
               </Button>
               <Link href="/signup">

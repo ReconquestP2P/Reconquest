@@ -4,7 +4,7 @@ import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Logo */}
       <div className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
@@ -15,8 +15,8 @@ export default function About() {
       {/* About Content */}
       <section className="py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="prose prose-lg text-gray-600 space-y-6 max-w-none">
-            <p className="text-xl leading-relaxed font-bold">
+          <div className="prose prose-lg text-gray-600 dark:text-gray-300 space-y-6 max-w-none">
+            <p className="text-xl leading-relaxed font-bold dark:text-white">
               We are in the middle of a silent war
             </p>
             
@@ -24,7 +24,7 @@ export default function About() {
               Through inflation, monetary manipulation, and centralized control, the value of your time — your work — is being stolen. Slowly, quietly, and systematically.
             </p>
             
-            <p className="text-xl leading-relaxed font-bold">Bitcoin changed the game.</p>
+            <p className="text-xl leading-relaxed font-bold dark:text-white">Bitcoin changed the game.</p>
             <p className="text-lg leading-relaxed">
               It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.
             </p>
@@ -49,7 +49,7 @@ export default function About() {
             </p>
             
             <div className="text-center mt-16">
-              <p className="font-bold text-4xl text-gray-900 mb-8">Join the Reconquest</p>
+              <p className="font-bold text-4xl text-gray-900 dark:text-white mb-8">Join the Reconquest</p>
               
               <div className="flex gap-4 justify-center mt-8">
                 <Link href="/borrower">

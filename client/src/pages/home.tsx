@@ -10,14 +10,14 @@ export default function Home() {
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <p className="text-xl text-gray-600 mb-4 font-medium">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-4 font-medium">
             The Future of Lending Is Bitcoin-Backed
           </p>
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             The Global Marketplace for<br />
             <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Built for Bitcoiners needing capital and for investors who provide it.<br />
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
@@ -33,7 +33,7 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-          <div className="mt-12 text-sm text-gray-500">
+          <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
             Trusted by <span className="font-semibold text-primary">10,000+</span> users • 
             <span className="font-semibold text-primary ml-2">1,500+ BTC</span> collateralized
           </div>
@@ -41,41 +41,41 @@ export default function Home() {
       </section>
 
       {/* Key Features */}
-      <section className="py-16 bg-white/50 backdrop-blur-sm">
+      <section className="py-16 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Reconquest?</h2>
-            <p className="text-lg text-gray-600">The most secure and efficient Bitcoin-backed lending platform</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Reconquest?</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">The most secure and efficient Bitcoin-backed lending platform</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardContent className="text-center p-0">
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
                   <Shield className="h-6 w-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Non-Custodial Security</h3>
-                <p className="text-gray-600">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
+                <h3 className="text-xl font-semibold mb-2 dark:text-white">Non-Custodial Security</h3>
+                <p className="text-gray-600 dark:text-gray-300">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
               </CardContent>
             </Card>
             
-            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardContent className="text-center p-0">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Competitive Rates</h3>
-                <p className="text-gray-600">Borrowers get low rates, lenders earn attractive yields.</p>
+                <h3 className="text-xl font-semibold mb-2 dark:text-white">Competitive Rates</h3>
+                <p className="text-gray-600 dark:text-gray-300">Borrowers get low rates, lenders earn attractive yields.</p>
               </CardContent>
             </Card>
             
-            <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardContent className="text-center p-0">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Code className="h-6 w-6 text-green-600" />
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Code className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Smart Contracts</h3>
-                <p className="text-gray-600">Automated, transparent lending with programmable escrow.</p>
+                <h3 className="text-xl font-semibold mb-2 dark:text-white">Smart Contracts</h3>
+                <p className="text-gray-600 dark:text-gray-300">Automated, transparent lending with programmable escrow.</p>
               </CardContent>
             </Card>
           </div>
@@ -86,14 +86,14 @@ export default function Home() {
       <section id="how-it-works" className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
-            <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 4 steps</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">How Reconquest Works</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure Bitcoin-backed lending in 4 steps</p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* For Borrowers */}
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <Bitcoin className="h-8 w-8 text-primary mr-3" />
                 For Borrowers
               </h3>
@@ -103,8 +103,8 @@ export default function Home() {
                     1
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Set your Loan Terms</h4>
-                    <p className="text-gray-600">Set your preferred interest rate and loan terms</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">Set your Loan Terms</h4>
+                    <p className="text-gray-600 dark:text-gray-300">Set your preferred interest rate and loan terms</p>
                   </div>
                 </div>
                 <div className="flex items-start">
