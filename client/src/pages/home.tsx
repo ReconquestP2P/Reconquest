@@ -24,12 +24,12 @@ export default function Home() {
           <div className="flex gap-4 justify-center mt-12">
             <Link href="/borrower">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
-                Get a Bitcoin-Backed Loan
+                Start Borrowing
               </Button>
             </Link>
             <Link href="/lender">
               <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-4 text-lg font-semibold">
-                Lend & Earn Yield
+                Start Lending
               </Button>
             </Link>
           </div>
@@ -407,7 +407,7 @@ export default function Home() {
           <div className="flex gap-4 justify-center">
             <Link href="/borrower">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
-                Get a Loan
+                Start Borrowing
               </Button>
             </Link>
             <Link href="/lender">

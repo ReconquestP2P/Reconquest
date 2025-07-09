@@ -115,6 +115,9 @@ The application uses three main entities:
 - July 8, 2025: Expanded "Receiving & Repaying Loans" section with 8 additional repayment questions covering loan obligations, early repayment, and default scenarios
 - July 8, 2025: Added contact section at bottom of homepage with admin email (admin.reconquest@protonmail.com) for user support
 - July 9, 2025: Created dedicated About page (/about) with manifesto content, removed About section from homepage scroll, added About link to main navigation header for separate page access
+- July 9, 2025: Updated homepage hero with new slogan "The Future of Lending Is Bitcoin-Backed" and changed main title to "The Global Marketplace for Bitcoin-Backed Loans"
+- July 9, 2025: Updated logo across entire application to new version with enhanced blue and gold coloring
+- July 9, 2025: Standardized all call-to-action buttons to consistent "Start Borrowing" and "Start Lending" text throughout homepage and About page
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
