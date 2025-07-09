@@ -2,9 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Coins, DollarSign, Bitcoin, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCalculator from "@/components/loan-calculator";
+import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 
@@ -67,88 +69,104 @@ export default function BorrowerDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Borrower Dashboard</h1>
-        <p className="text-gray-600 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Borrower Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Active Loans"
-          value={activeLoans.length.toString()}
-          icon={Coins}
-          iconColor="text-primary"
-        />
-        <StatsCard
-          title="Total Borrowed"
-          value={formatCurrency(totalBorrowed)}
-          icon={DollarSign}
-          iconColor="text-secondary"
-        />
-        <StatsCard
-          title="BTC Collateral"
-          value={formatBTC(totalCollateral)}
-          icon={Bitcoin}
-          iconColor="text-orange-500"
-        />
-        <StatsCard
-          title="Avg. LTV Ratio"
-          value={formatPercentage(avgLTV)}
-          icon={TrendingUp}
-          iconColor="text-green-600"
-          valueColor="text-green-600"
-        />
-      </div>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="loans">Loans</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
+        </TabsList>
 
-      {/* Active Loans Table */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Your Active Loans</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {borrowerLoans.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No loans found. Create your first loan request below.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Loan ID</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Collateral</TableHead>
-                    <TableHead>Interest Rate</TableHead>
-                    <TableHead>LTV</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {borrowerLoans.map((loan) => (
-                    <TableRow key={loan.id}>
-                      <TableCell className="font-medium">#{loan.id}</TableCell>
-                      <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
-                      <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
-                      <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                      <TableCell>{getLTVBadge(loan.ltvRatio)}</TableCell>
-                      <TableCell>
-                        {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(loan.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatsCard
+              title="Active Loans"
+              value={activeLoans.length.toString()}
+              icon={Coins}
+              iconColor="text-primary"
+            />
+            <StatsCard
+              title="Total Borrowed"
+              value={formatCurrency(totalBorrowed)}
+              icon={DollarSign}
+              iconColor="text-secondary"
+            />
+            <StatsCard
+              title="BTC Collateral"
+              value={formatBTC(totalCollateral)}
+              icon={Bitcoin}
+              iconColor="text-orange-500"
+            />
+            <StatsCard
+              title="Avg. LTV Ratio"
+              value={formatPercentage(avgLTV)}
+              icon={TrendingUp}
+              iconColor="text-green-600"
+              valueColor="text-green-600"
+            />
+          </div>
 
-      {/* Loan Calculator */}
-      <div className="mb-8">
-        <LoanCalculator />
-      </div>
+          {/* Loan Calculator */}
+          <div className="mt-8">
+            <LoanCalculator />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="loans" className="space-y-6">
+          {/* Active Loans Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Active Loans</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {borrowerLoans.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">No loans found. Create your first loan request in the Overview tab.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Collateral</TableHead>
+                        <TableHead>Interest Rate</TableHead>
+                        <TableHead>LTV</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {borrowerLoans.map((loan) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">#{loan.id}</TableCell>
+                          <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
+                          <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
+                          <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
+                          <TableCell>{getLTVBadge(loan.ltvRatio)}</TableCell>
+                          <TableCell>
+                            {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="achievements" className="space-y-6">
+          <AchievementsDashboard userId={userId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

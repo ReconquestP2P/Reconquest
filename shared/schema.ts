@@ -46,6 +46,17 @@ export const loanOffers = pgTable("loan_offers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  achievementId: text("achievement_id").notNull(),
+  unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+  progress: integer("progress").notNull().default(0),
+  blockchainTxHash: text("blockchain_tx_hash"),
+  blockHeight: integer("block_height"),
+  blockchainTimestamp: timestamp("blockchain_timestamp"),
+});
+
 
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -77,9 +88,16 @@ export const insertLoanOfferSchema = createInsertSchema(loanOffers).omit({
   createdAt: true,
 });
 
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  unlockedAt: true,
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Loan = typeof loans.$inferSelect;
 export type InsertLoan = z.infer<typeof insertLoanSchema>;
 export type LoanOffer = typeof loanOffers.$inferSelect;
 export type InsertLoanOffer = z.infer<typeof insertLoanOfferSchema>;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;

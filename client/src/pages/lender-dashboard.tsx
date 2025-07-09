@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
+import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatPercentage, formatDate } from "@/lib/utils";
@@ -107,158 +109,174 @@ export default function LenderDashboard() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Lender Dashboard</h1>
-        <p className="text-gray-600 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Lender Dashboard</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Active Investments"
-          value={activeInvestments.length.toString()}
-          icon={TrendingUp}
-          iconColor="text-secondary"
-        />
-        <StatsCard
-          title="Total Invested"
-          value={formatCurrency(totalInvested)}
-          icon={DollarSign}
-          iconColor="text-green-600"
-        />
-        <StatsCard
-          title="Interest Earned"
-          value={formatCurrency(interestEarned)}
-          icon={PiggyBank}
-          iconColor="text-primary"
-          valueColor="text-green-600"
-        />
-        <StatsCard
-          title="Avg. APY"
-          value={formatPercentage(avgAPY)}
-          icon={Percent}
-          iconColor="text-secondary"
-          valueColor="text-secondary"
-        />
-      </div>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="loans">Available Loans</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
+        </TabsList>
 
-      {/* Available Loan Requests */}
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <CardTitle>Available Loan Requests</CardTitle>
-              <span className="text-sm text-gray-500">
-                ({filteredLoans.length} available)
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-              <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="All Currencies" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Currencies</SelectItem>
-                  <SelectItem value="USDC">USDC</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={termFilter} onValueChange={setTermFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="All Terms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Terms</SelectItem>
-                  <SelectItem value="3">3 months</SelectItem>
-                  <SelectItem value="6">6 months</SelectItem>
-                  <SelectItem value="9">9 months</SelectItem>
-                  <SelectItem value="12">12 months</SelectItem>
-                  <SelectItem value="18">18 months</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatsCard
+              title="Active Investments"
+              value={activeInvestments.length.toString()}
+              icon={TrendingUp}
+              iconColor="text-secondary"
+            />
+            <StatsCard
+              title="Total Invested"
+              value={formatCurrency(totalInvested)}
+              icon={DollarSign}
+              iconColor="text-green-600"
+            />
+            <StatsCard
+              title="Interest Earned"
+              value={formatCurrency(interestEarned)}
+              icon={PiggyBank}
+              iconColor="text-primary"
+              valueColor="text-green-600"
+            />
+            <StatsCard
+              title="Avg. APY"
+              value={formatPercentage(avgAPY)}
+              icon={Percent}
+              iconColor="text-secondary"
+              valueColor="text-secondary"
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          {filteredLoans.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No loan requests match your filters.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredLoans.map((loan) => (
-                <LoanCard
-                  key={loan.id}
-                  loan={loan}
-                  onFund={handleFundLoan}
-                  showFundButton={true}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Your Investments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Active Investments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {lenderLoans.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No active investments. Fund a loan above to get started.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Loan ID</TableHead>
-                    <TableHead>Amount Invested</TableHead>
-                    <TableHead>Interest Rate</TableHead>
-                    <TableHead>Term</TableHead>
-                    <TableHead>Expected Return</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lenderLoans.map((loan) => {
-                    const principal = parseFloat(loan.amount);
-                    const rate = parseFloat(loan.interestRate) / 100;
-                    const expectedReturn = principal * (1 + rate * loan.termMonths / 12);
-                    
-                    return (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">#{loan.id}</TableCell>
-                        <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
-                        <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                        <TableCell>{loan.termMonths} months</TableCell>
-                        <TableCell className="font-semibold text-green-600">
-                          {formatCurrency(expectedReturn, loan.currency)}
-                        </TableCell>
-                        <TableCell>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                            Active
-                          </span>
-                        </TableCell>
+        <TabsContent value="loans" className="space-y-6">
+          {/* Available Loan Requests */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <CardTitle>Available Loan Requests</CardTitle>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    ({filteredLoans.length} available)
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                  <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="All Currencies" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Currencies</SelectItem>
+                      <SelectItem value="USDC">USDC</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={termFilter} onValueChange={setTermFilter}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="All Terms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Terms</SelectItem>
+                      <SelectItem value="3">3 months</SelectItem>
+                      <SelectItem value="6">6 months</SelectItem>
+                      <SelectItem value="9">9 months</SelectItem>
+                      <SelectItem value="12">12 months</SelectItem>
+                      <SelectItem value="18">18 months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredLoans.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">No loan requests match your filters.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredLoans.map((loan) => (
+                    <LoanCard
+                      key={loan.id}
+                      loan={loan}
+                      onFund={handleFundLoan}
+                      showFundButton={true}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Your Investments */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Active Investments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {lenderLoans.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">No active investments. Fund a loan above to get started.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan ID</TableHead>
+                        <TableHead>Amount Invested</TableHead>
+                        <TableHead>Interest Rate</TableHead>
+                        <TableHead>Term</TableHead>
+                        <TableHead>Expected Return</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {lenderLoans.map((loan) => {
+                        const principal = parseFloat(loan.amount);
+                        const rate = parseFloat(loan.interestRate) / 100;
+                        const expectedReturn = principal * (1 + rate * loan.termMonths / 12);
+                        
+                        return (
+                          <TableRow key={loan.id}>
+                            <TableCell className="font-medium">#{loan.id}</TableCell>
+                            <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
+                            <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
+                            <TableCell>{loan.termMonths} months</TableCell>
+                            <TableCell className="font-semibold text-green-600">
+                              {formatCurrency(expectedReturn, loan.currency)}
+                            </TableCell>
+                            <TableCell>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                Active
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="achievements" className="space-y-6">
+          <AchievementsDashboard userId={userId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
