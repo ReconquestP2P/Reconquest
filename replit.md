@@ -109,6 +109,7 @@ The application uses three main entities:
 - July 8, 2025: Updated step titles and fixed circle sizing consistency - replaced dollar icon with cash emoji for lenders, ensured all numbered circles have identical dimensions
 - July 8, 2025: Added comprehensive FAQs section after "How it works" with 8 essential questions covering general information and borrowing/lending specifics
 - July 8, 2025: Enhanced FAQs with "Why Reconquest?" as first question emphasizing platform security and Fixed Yield messaging for lenders
+- July 8, 2025: Redesigned FAQs into horizontal accordion layout with General and Safety sections, added recovery transaction explanation and updated LTV monitoring to 95% threshold
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com

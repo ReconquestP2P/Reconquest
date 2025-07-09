@@ -185,62 +185,69 @@ export default function Home() {
 
       {/* FAQs Section */}
       <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
             <p className="text-lg text-gray-600">Everything you need to know about Bitcoin-backed lending</p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* General Questions */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">General</h3>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">Why Reconquest?</h4>
-                <p className="text-gray-600">At Reconquest, members are in control. Unlike centralized lenders that have recently collapsed, Reconquest does not have access to Bitcoin collateral - it is never touched, traded or exchanged. Instead, it is securely locked in a smart contract built on top of the Bitcoin network, making the process secure for both Borrowers and Investors. You don't have to worry about Reconquest's solvency or reputation - we only provide the technology for secure interaction between Borrower and Investor, and we never have access to members' funds or collateral.</p>
+          <div className="space-y-4">
+            {/* General Section */}
+            <details className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 transition-colors">
+                <h3 className="text-xl font-bold text-gray-900">General</h3>
+                <svg className="w-5 h-5 text-gray-600 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-6 pb-6 space-y-4">
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Why Reconquest?</h4>
+                  <p className="text-gray-600">At Reconquest, members are in control. Unlike centralized lenders that have recently collapsed, Reconquest does not have access to Bitcoin collateral - it is never touched, traded or exchanged. Instead, it is securely locked in a smart contract built on top of the Bitcoin network, making the process secure for both Borrowers and Investors. You don't have to worry about Reconquest's solvency or reputation - we only provide the technology for secure interaction between Borrower and Investor, and we never have access to members' funds or collateral.</p>
+                </div>
+                
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What is Bitcoin-backed lending?</h4>
+                  <p className="text-gray-600">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn a Fixed Yield by funding these collateralized loans.</p>
+                </div>
+                
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What currencies can I borrow?</h4>
+                  <p className="text-gray-600">Reconquest supports loans in USDC and EUR. You can request loans in either currency using your Bitcoin as collateral.</p>
+                </div>
+                
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What are the loan terms available?</h4>
+                  <p className="text-gray-600">Loan terms range from 3 to 18 months, with options for 3, 6, 9, 12, and 18-month durations. Interest rates are competitive and set through market dynamics.</p>
+                </div>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">What is Bitcoin-backed lending?</h4>
-                <p className="text-gray-600">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn a Fixed Yield by funding these collateralized loans.</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">How secure is Reconquest?</h4>
-                <p className="text-gray-600">Reconquest uses 2-of-3 multisig escrow to secure Bitcoin collateral. Your Bitcoin is held in smart contracts that require multiple signatures for any transactions, ensuring maximum security.</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">What happens if Bitcoin's price drops?</h4>
-                <p className="text-gray-600">Loans maintain a maximum 60% loan-to-value ratio. If Bitcoin's price drops significantly, borrowers may need to add more collateral or partially repay the loan to maintain healthy ratios.</p>
-              </div>
-            </div>
+            </details>
             
-            {/* Borrowing & Lending */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Borrowing & Lending</h3>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">What currencies can I borrow?</h4>
-                <p className="text-gray-600">Reconquest supports loans in USDC and EUR. You can request loans in either currency using your Bitcoin as collateral.</p>
+            {/* Safety Section */}
+            <details className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 transition-colors">
+                <h3 className="text-xl font-bold text-gray-900">Safety</h3>
+                <svg className="w-5 h-5 text-gray-600 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="px-6 pb-6 space-y-4">
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">How secure is Reconquest?</h4>
+                  <p className="text-gray-600">Reconquest uses 2-of-3 multisig escrow to secure Bitcoin collateral. Your Bitcoin is held in smart contracts that require multiple signatures for any transactions, ensuring maximum security.</p>
+                </div>
+                
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What happens to my BTC if Reconquest disappears?</h4>
+                  <p className="text-gray-600">In a highly unlikely scenario of a complete meltdown of Reconquest infrastructure you have at your disposal a text file with a 'Recovery transaction' which gives you (the Borrower) the ability retrieve your Bitcoin from the escrow. In such a scenario, you can use the 'Broadcast transaction' feature on a standard blockchain explorer like Mempool.space, one month after the loan matures, to unlock and send your Bitcoin back to your return address. You can download this transaction during the escrow setup process, or directly from the loan card on the platform.</p>
+                </div>
+                
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">What happens if Bitcoin's price drops?</h4>
+                  <p className="text-gray-600">Reconquest monitors constantly all LTV's (loan-to-value ratio) to ensure a max of 95% LTV is reached. If Bitcoin's price drops significantly, borrowers will be requested to add more collateral or they will get liquidated to ensure Lenders ALWAYS receive back their principal+interests.</p>
+                </div>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">What are the loan terms available?</h4>
-                <p className="text-gray-600">Loan terms range from 3 to 18 months, with options for 3, 6, 9, 12, and 18-month durations. Interest rates are competitive and set through market dynamics.</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">How do I start lending on Reconquest?</h4>
-                <p className="text-gray-600">Simply browse available loan requests, select loans that match your criteria, and fund them. You'll earn interest payments secured by Bitcoin collateral throughout the loan term.</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h4 className="font-semibold text-gray-900 mb-2">When do I get my Bitcoin back?</h4>
-                <p className="text-gray-600">Your Bitcoin collateral is automatically released from escrow once you repay the loan principal plus interest at maturity. Early repayment options may also be available.</p>
-              </div>
-            </div>
+            </details>
           </div>
         </div>
       </section>
