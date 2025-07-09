@@ -147,10 +147,10 @@ export default function Navigation() {
               </div>
               
               {/* Mobile auth buttons */}
-              <div className="px-3 py-2 space-y-3">
+              <div className="px-3 py-4 space-y-6">
                 <Button 
                   size="sm" 
-                  className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-medium shadow-md"
+                  className="w-full bg-gradient-to-r from-blue-500 to-yellow-500 hover:from-blue-600 hover:to-yellow-600 text-white font-medium shadow-md py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log In
@@ -158,7 +158,7 @@ export default function Navigation() {
                 <Link href="/signup">
                   <Button 
                     size="sm" 
-                    className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white font-medium shadow-md"
+                    className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white font-medium shadow-md py-3"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign Up
