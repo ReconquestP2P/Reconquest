@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
@@ -5,6 +6,8 @@ import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "l
 import logoImage from "@assets/Reconquest logo_1751398567900.png";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState('how-it-works');
+  
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -79,36 +82,44 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About and How It Works */}
-      <section className="py-16">
+      {/* Navigation Tabs */}
+      <section className="py-8 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            {/* About Section */}
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">About Reconquest</h2>
-              <div className="prose prose-lg text-gray-600 space-y-4">
-                <p>Reconquest was born from a simple, undeniable truth: your money is being stolen — slowly, quietly, and systematically.</p>
-                <p>Inflation. Negative real rates. Bailouts. Censorship. The modern financial system has become a machine of quiet repression, eroding the value of your labor and savings.</p>
-                <p className="font-semibold text-gray-900">Bitcoin changed the game.</p>
-                <p>It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.</p>
-                <p>But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. We believe it's time to fix that.</p>
-                <p className="font-semibold text-gray-900">Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.</p>
-                <p>We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.</p>
-                <p>Only BTC-backed lending: pure, transparent, and censorship-resistant.</p>
-                <p>We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.</p>
-                <p className="font-semibold text-gray-900">The era of passive BTC is over.</p>
-                <p className="font-bold text-xl text-gray-900">The Reconquest has begun</p>
-              </div>
+          <div className="flex justify-center space-x-8 mb-8">
+            <button
+              onClick={() => setActiveTab('how-it-works')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === 'how-it-works'
+                  ? 'bg-primary text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              How It Works
+            </button>
+            <button
+              onClick={() => setActiveTab('about')}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                activeTab === 'about'
+                  ? 'bg-primary text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              About
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Content Sections */}
+      {activeTab === 'how-it-works' && (
+        <section className="py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
+              <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 4 steps</p>
             </div>
             
-            {/* How It Works Section */}
-            <div>
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">How Reconquest Works</h2>
-                <p className="text-lg text-gray-600">Simple, secure Bitcoin-backed lending in 4 steps</p>
-              </div>
-          
-              <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* For Borrowers */}
             <div>
               <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
@@ -201,10 +212,44 @@ export default function Home() {
               </div>
             </div>
           </div>
+          </div>
+        </section>
+        )}
+
+      {activeTab === 'about' && (
+        <section className="py-16">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">About Reconquest</h2>
+              <p className="text-lg text-gray-600">The movement to reclaim financial independence through Bitcoin</p>
+            </div>
+            
+            <div className="prose prose-lg text-gray-600 space-y-6 max-w-none">
+              <p>Reconquest was born from a simple, undeniable truth: your money is being stolen — slowly, quietly, and systematically.</p>
+              
+              <p>Inflation. Negative real rates. Bailouts. Censorship. The modern financial system has become a machine of quiet repression, eroding the value of your labor and savings.</p>
+              
+              <p className="font-semibold text-gray-900 text-xl">Bitcoin changed the game.</p>
+              
+              <p>It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.</p>
+              
+              <p>But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. We believe it's time to fix that.</p>
+              
+              <p className="font-semibold text-gray-900 text-xl">Reconquest exists to reclaim what's been taken — to put the world's hardest money to work.</p>
+              
+              <p>We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.</p>
+              
+              <p>Only BTC-backed lending: pure, transparent, and censorship-resistant.</p>
+              
+              <p>We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to make that belief a reality.</p>
+              
+              <p className="font-semibold text-gray-900 text-xl">The era of passive BTC is over.</p>
+              
+              <p className="font-bold text-2xl text-gray-900 text-center mt-8">The Reconquest has begun</p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+        )}
 
       {/* FAQs Section */}
       <section className="py-16 bg-gray-50">
