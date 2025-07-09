@@ -246,6 +246,27 @@ export default function Home() {
                   <h4 className="font-semibold text-gray-900 mb-2">What happens if Bitcoin's price drops?</h4>
                   <p className="text-gray-600">Reconquest monitors constantly all LTV's (loan-to-value ratio) to ensure a max of 95% LTV is reached. If Bitcoin's price drops significantly, borrowers will be requested to add more collateral or they will get liquidated to ensure Lenders ALWAYS receive back their principal+interests.</p>
                 </div>
+                
+                <div className="border-l-4 border-green-500 pl-4">
+                  <h4 className="font-semibold text-gray-900 mb-2">Who is the Liquidator?</h4>
+                  <div className="text-gray-600">
+                    <p className="mb-3">There are two modes for the liquidation:</p>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">•</span>
+                        <div>
+                          <span className="font-semibold">Self-Liquidation</span> - Investors act as their own liquidators and receive Bitcoin collateral to their designated liquidation address.
+                        </div>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-semibold mr-2">•</span>
+                        <div>
+                          <span className="font-semibold">Reconquest Liquidation</span> - Reconquest manages the collateral liquidation process, and investors receive their investment back in bank currency. This mode allows Investors not to worry about handling cryptographic material, such as private keys or about interacting with exchanges.
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </details>
           </div>

@@ -110,6 +110,7 @@ The application uses three main entities:
 - July 8, 2025: Added comprehensive FAQs section after "How it works" with 8 essential questions covering general information and borrowing/lending specifics
 - July 8, 2025: Enhanced FAQs with "Why Reconquest?" as first question emphasizing platform security and Fixed Yield messaging for lenders
 - July 8, 2025: Redesigned FAQs into horizontal accordion layout with General and Safety sections, added recovery transaction explanation and updated LTV monitoring to 95% threshold
+- July 8, 2025: Added "Who is the Liquidator?" FAQ explaining Self-Liquidation and Reconquest Liquidation modes for investor flexibility
 
 ## Admin Access
 - **Admin Email**: admin.reconquest@protonmail.com
