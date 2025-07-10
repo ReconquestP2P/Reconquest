@@ -411,7 +411,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link href="/lender">
-              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-4 text-lg font-semibold">
+              <Button size="lg" variant="outline" className="bg-gray-900 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900 px-8 py-4 text-lg font-semibold shadow-md">
                 Start Lending
               </Button>
             </Link>
