@@ -34,7 +34,7 @@ export default function About() {
             </p>
             
             <p className="text-xl leading-relaxed font-bold">
-              Reconquest was born to reclaim what's been taken — to put the world's hardest asset to work.
+              Reconquest was born to reclaim what's been taken from us. It's time to put the world's hardest asset to work.
             </p>
             <p className="text-lg leading-relaxed">
               We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.
