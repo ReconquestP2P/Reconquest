@@ -74,7 +74,7 @@ export default function Navigation() {
               <Link href="/signup">
                 <Button 
                   size="sm" 
-                  className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium shadow-md"
+                  className="bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md"
                 >
                   Sign Up
                 </Button>
@@ -158,7 +158,7 @@ export default function Navigation() {
                 <Link href="/signup">
                   <Button 
                     size="sm" 
-                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium shadow-md py-3"
+                    className="w-full bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md py-3"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign Up
