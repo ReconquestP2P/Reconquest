@@ -411,12 +411,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return user without password
       const { password, ...userWithoutPassword } = newUser;
 
-      // Send welcome email (temporarily to verified email during testing)
+      // Send welcome email to the user directly
       try {
+        // First attempt: send to user directly
         await sendEmail({
-          to: "jfestrada93@gmail.com", // Temporarily using verified email for testing
+          to: newUser.email,
           from: "onboarding@resend.dev",
-          subject: `Welcome to Reconquest - New User: ${newUser.username} (${newUser.email})`,
+          subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -455,9 +456,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             </div>
           `
         });
+        console.log(`Welcome email sent successfully to: ${newUser.email}`);
       } catch (emailError) {
-        console.error("Failed to send welcome email:", emailError);
-        // Don't fail registration if email fails
+        console.error("Failed to send welcome email to user:", emailError);
+        
+        // Fallback: Send notification to admin about the registration
+        try {
+          await sendEmail({
+            to: "jfestrada93@gmail.com",
+            from: "onboarding@resend.dev",
+            subject: `[FALLBACK] User Registration Notification - ${newUser.email}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">New User Registration</h1>
+                  <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">[Email Delivery Failed - Notification]</p>
+                </div>
+                
+                <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
+                  <h2 style="color: #333; margin-top: 0;">Registration Successful - Email Failed</h2>
+                  
+                  <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #D4AF37; margin: 20px 0;">
+                    <h3 style="color: #D4AF37; margin-top: 0;">User Details:</h3>
+                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Email:</strong> ${newUser.email}</p>
+                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Username:</strong> ${newUser.username}</p>
+                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Role:</strong> ${newUser.role}</p>
+                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Registration Date:</strong> ${new Date(newUser.createdAt).toLocaleString()}</p>
+                  </div>
+                  
+                  <p style="color: #666; line-height: 1.6;">
+                    <strong>Note:</strong> Welcome email could not be delivered to ${newUser.email} due to domain verification requirements. User registration was successful.
+                  </p>
+                </div>
+              </div>
+            `
+          });
+          console.log(`Fallback notification sent to admin about registration: ${newUser.email}`);
+        } catch (fallbackError) {
+          console.error("Failed to send fallback notification:", fallbackError);
+        }
       }
 
       res.status(201).json({
