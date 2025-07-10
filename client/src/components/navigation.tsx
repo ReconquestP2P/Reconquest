@@ -15,7 +15,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-28">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
               <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
@@ -42,7 +42,7 @@ export default function Navigation() {
 
 
               <a
-                href="#how-it-works"
+                href="/#how-it-works"
                 className="text-gray-700 dark:text-gray-300 hover:text-primary px-3 py-2 text-sm font-medium"
               >
                 How it Works
@@ -123,7 +123,7 @@ export default function Navigation() {
                 Lend
               </Link>
               <a
-                href="#how-it-works"
+                href="/#how-it-works"
                 className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                 onClick={() => setMobileMenuOpen(false)}
               >
