@@ -28,7 +28,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link href="/lender">
-              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-4 text-lg font-semibold">
+              <Button size="lg" className="bg-gradient-to-r from-green-500 to-yellow-500 hover:from-green-600 hover:to-yellow-600 text-white px-8 py-4 text-lg font-semibold shadow-md">
                 Start Lending
               </Button>
             </Link>
