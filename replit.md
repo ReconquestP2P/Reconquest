@@ -123,7 +123,7 @@ The application uses three main entities:
 - July 9, 2025: Updated navigation buttons with blue-to-yellow gradient styling and increased spacing for better visual appeal per user request
 - July 9, 2025: Fixed mobile navigation issues - logo now properly navigates to homepage and "How it Works" button correctly scrolls to homepage section
 - July 9, 2025: Updated About page manifesto text to strengthen the message about reclaiming what's been taken from us
-- July 9, 2025: Updated navigation button colors - Login now uses gold/amber gradient, Sign Up uses blue/indigo gradient for better differentiation while maintaining theme harmony
+- July 9, 2025: Updated navigation button colors - Login now uses light blue/cyan gradient, Sign Up uses deeper blue/indigo gradient for better differentiation while maintaining cohesive blue theme
 - July 9, 2025: Implemented comprehensive gamified achievement badge system with blockchain-themed rewards (Genesis Block, Chain Builder, Bitcoin Whale, etc.) and animated unlock celebrations with confetti and blockchain block animations
 
 ## Admin Access

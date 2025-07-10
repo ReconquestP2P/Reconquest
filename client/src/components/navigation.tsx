@@ -67,7 +67,7 @@ export default function Navigation() {
               <ThemeToggle />
               <Button 
                 size="sm" 
-                className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-medium shadow-md"
+                className="bg-gradient-to-r from-blue-400 to-cyan-500 hover:from-blue-500 hover:to-cyan-600 text-white font-medium shadow-md"
               >
                 Log In
               </Button>
@@ -150,7 +150,7 @@ export default function Navigation() {
               <div className="px-3 py-4 space-y-6">
                 <Button 
                   size="sm" 
-                  className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-medium shadow-md py-3"
+                  className="w-full bg-gradient-to-r from-blue-400 to-cyan-500 hover:from-blue-500 hover:to-cyan-600 text-white font-medium shadow-md py-3"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log In
