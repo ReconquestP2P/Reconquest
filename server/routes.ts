@@ -411,12 +411,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Return user without password
       const { password, ...userWithoutPassword } = newUser;
 
-      // Send welcome email
+      // Send welcome email (temporarily to verified email during testing)
       try {
         await sendEmail({
-          to: newUser.email,
-          from: "jfestrada93@gmail.com",
-          subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
+          to: "jfestrada93@gmail.com", // Temporarily using verified email for testing
+          from: "onboarding@resend.dev",
+          subject: `Welcome to Reconquest - New User: ${newUser.username} (${newUser.email})`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
