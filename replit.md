@@ -127,6 +127,7 @@ The application uses three main entities:
 - July 9, 2025: Updated "Start Lending" buttons with dark background and gold letters for elegant contrast with yellow "Start Borrowing" buttons
 - July 9, 2025: Implemented comprehensive gamified achievement badge system with blockchain-themed rewards (Genesis Block, Chain Builder, Bitcoin Whale, etc.) and animated unlock celebrations with confetti and blockchain block animations
 - July 11, 2025: Updated admin contact email from admin.reconquest@protonmail.com to admin@reconquestp2p.com throughout the application (homepage, admin dashboard, email notifications, welcome emails) to reflect new professional domain acquisition
+- July 13, 2025: Updated all email "from" addresses from onboarding@resend.dev to noreply@reconquestp2p.com across all email services for professional domain consistency
 
 ## Admin Access
 - **Admin Email**: admin@reconquestp2p.com

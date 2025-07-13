@@ -416,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // First attempt: send to user directly
         await sendEmail({
           to: newUser.email,
-          from: "onboarding@resend.dev",
+          from: "noreply@reconquestp2p.com",
           subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -464,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           await sendEmail({
             to: "jfestrada93@gmail.com",
-            from: "onboarding@resend.dev",
+            from: "noreply@reconquestp2p.com",
             subject: `[FALLBACK] User Registration Notification - ${newUser.email}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -741,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await sendEmail({
         to: "jfestrada93@gmail.com",
-        from: "onboarding@resend.dev",
+        from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin notification (sent to testing email since domain not verified)
       await sendEmail({
         to: "jfestrada93@gmail.com",
-        from: "onboarding@resend.dev",
+        from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Borrower notification
       await sendEmail({
         to: "jfestrada93@gmail.com", // Testing phase email
-        from: "onboarding@resend.dev",
+        from: "noreply@reconquestp2p.com",
         subject: `✅ Your Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -1071,7 +1071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const success = await sendEmail({
         to: "jfestrada93@gmail.com",
-        from: "onboarding@resend.dev",
+        from: "noreply@reconquestp2p.com",
         subject: "🔔 [ADMIN TEST] Email System Test",
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">

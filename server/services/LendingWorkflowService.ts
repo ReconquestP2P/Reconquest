@@ -223,7 +223,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (borrower?.email) {
         await sendEmail({
           to: borrower.email,
-          from: 'onboarding@resend.dev',
+          from: 'noreply@reconquestp2p.com',
           subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
           html: `
             <h2>Your loan has been funded! Time to deposit collateral.</h2>
@@ -270,7 +270,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquest.app",
+        from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -321,7 +321,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquest.app",
+        from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -371,7 +371,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquest.app",
+        from: "noreply@reconquestp2p.com",
         subject: `🔄 Loan Funding Alert - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -428,7 +428,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     // In production, would send to registered lenders
     await sendEmail({
       to: 'lender@example.com',
-      from: 'onboarding@resend.dev',
+      from: 'noreply@reconquestp2p.com',
       subject: 'New Bitcoin-Backed Loan Available',
       html: emailHtml
     });
@@ -453,7 +453,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
     await sendEmail({
       to: borrower.email,
-      from: 'onboarding@resend.dev',
+      from: 'noreply@reconquestp2p.com',
       subject: 'Please Confirm Receipt of Loan Funds',
       html: emailHtml
     });
@@ -481,13 +481,13 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     await Promise.all([
       sendEmail({
         to: borrower.email,
-        from: 'noreply@reconquest.com',
+        from: 'noreply@reconquestp2p.com',
         subject: 'Your Loan is Now Active',
         html: emailHtml
       }),
       sendEmail({
         to: lender.email,
-        from: 'noreply@reconquest.com',
+        from: 'noreply@reconquestp2p.com',
         subject: 'Loan Successfully Funded',
         html: emailHtml
       })
