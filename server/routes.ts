@@ -416,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // First attempt: send to user directly
         await sendEmail({
           to: newUser.email,
-          from: "noreply@reconquestp2p.com", // Using verified domain until reconquestp2p.com is verified
+          from: "noreply@reconquestp2p.com",
           subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -464,8 +464,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always send admin notification for new registrations
       try {
         await sendEmail({
-          to: "admin@reconquestp2p.com", // Temporary until reconquestp2p.com domain is verified in Resend
-          from: "noreply@reconquestp2p.com", // Using verified domain until reconquestp2p.com is verified
+          to: "admin@reconquestp2p.com",
+          from: "noreply@reconquestp2p.com",
           subject: `🔔 [ADMIN ALERT] New User Registration - ${newUser.username}`,
           html: `
             <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
