@@ -459,43 +459,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Welcome email sent successfully to: ${newUser.email}`);
       } catch (emailError) {
         console.error("Failed to send welcome email to user:", emailError);
-        
-        // Fallback: Send notification to admin about the registration
-        try {
-          await sendEmail({
-            to: "admin@reconquestp2p.com",
-            from: "noreply@reconquestp2p.com",
-            subject: `[FALLBACK] User Registration Notification - ${newUser.email}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-                  <h1 style="color: white; margin: 0; font-size: 28px;">New User Registration</h1>
-                  <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">[Email Delivery Failed - Notification]</p>
+      }
+
+      // Always send admin notification for new registrations
+      try {
+        await sendEmail({
+          to: "admin@reconquestp2p.com",
+          from: "noreply@reconquestp2p.com",
+          subject: `🔔 [ADMIN ALERT] New User Registration - ${newUser.username}`,
+          html: `
+            <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+              <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center;">New User Registration</h1>
+              </div>
+              
+              <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h2 style="color: #333; margin-top: 0;">New User Joined</h2>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #333; margin-top: 0;">User Details</h3>
+                  <p><strong>Username:</strong> ${newUser.username}</p>
+                  <p><strong>Email:</strong> ${newUser.email}</p>
+                  <p><strong>Role:</strong> ${newUser.role}</p>
+                  <p><strong>Registration Date:</strong> ${new Date(newUser.createdAt).toLocaleString()}</p>
+                  <p><strong>User ID:</strong> #${newUser.id}</p>
                 </div>
                 
-                <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
-                  <h2 style="color: #333; margin-top: 0;">Registration Successful - Email Failed</h2>
-                  
-                  <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #D4AF37; margin: 20px 0;">
-                    <h3 style="color: #D4AF37; margin-top: 0;">User Details:</h3>
-                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Email:</strong> ${newUser.email}</p>
-                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Username:</strong> ${newUser.username}</p>
-                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Role:</strong> ${newUser.role}</p>
-                    <p style="color: #666; line-height: 1.6; margin: 5px 0;"><strong>Registration Date:</strong> ${new Date(newUser.createdAt).toLocaleString()}</p>
-                  </div>
-                  
-                  <p style="color: #666; line-height: 1.6;">
-                    <strong>Note:</strong> Welcome email could not be delivered to ${newUser.email}. User registration was successful and admin has been notified.
+                <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0; color: #0c5460;">
+                    <strong>Platform Growth:</strong> A new user has successfully registered and can now access the Bitcoin lending marketplace.
                   </p>
                 </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                  <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                </div>
               </div>
-            `
-          });
-          console.log(`Admin notification sent about registration: ${newUser.email}`);
-        } catch (fallbackError) {
-          console.error("Failed to send fallback notification:", fallbackError);
-        }
+            </div>
+          `
+        });
+        console.log(`Admin notification sent for new user registration: ${newUser.email}`);
+      } catch (adminEmailError) {
+        console.error("Failed to send admin registration notification:", adminEmailError);
       }
+
+
 
       res.status(201).json({
         success: true,
