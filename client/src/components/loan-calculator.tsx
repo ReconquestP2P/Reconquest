@@ -183,10 +183,10 @@ export default function LoanCalculator() {
               <AlertDialogTrigger asChild>
                 <Button 
                   size="lg" 
-                  className="bg-primary hover:bg-primary/90 text-white px-8 py-3"
+                  className="bg-primary hover:bg-primary/90 text-black px-8 py-3"
                   disabled={!loanAmount || loanAmount <= 0}
                 >
-                  Request New Loan
+                  Publish New Loan
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
