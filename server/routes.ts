@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fallback: Send notification to admin about the registration
         try {
           await sendEmail({
-            to: "jfestrada93@gmail.com",
+            to: "admin@reconquestp2p.com",
             from: "noreply@reconquestp2p.com",
             subject: `[FALLBACK] User Registration Notification - ${newUser.email}`,
             html: `
@@ -485,13 +485,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   </div>
                   
                   <p style="color: #666; line-height: 1.6;">
-                    <strong>Note:</strong> Welcome email could not be delivered to ${newUser.email} due to domain verification requirements. User registration was successful.
+                    <strong>Note:</strong> Welcome email could not be delivered to ${newUser.email}. User registration was successful and admin has been notified.
                   </p>
                 </div>
               </div>
             `
           });
-          console.log(`Fallback notification sent to admin about registration: ${newUser.email}`);
+          console.log(`Admin notification sent about registration: ${newUser.email}`);
         } catch (fallbackError) {
           console.error("Failed to send fallback notification:", fallbackError);
         }
@@ -740,7 +740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!borrower || !lender) return;
 
       await sendEmail({
-        to: "jfestrada93@gmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
@@ -788,9 +788,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const borrower = await storage.getUser(borrowerId);
       if (!borrower) return;
 
-      // Admin notification (sent to testing email since domain not verified)
+      // Admin notification for new loan posting
       await sendEmail({
-        to: "jfestrada93@gmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquestp2p.com",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
@@ -829,9 +829,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Borrower notification
       await sendEmail({
-        to: "jfestrada93@gmail.com", // Testing phase email
+        to: "admin@reconquestp2p.com", // Admin notification for loan posting
         from: "noreply@reconquestp2p.com",
-        subject: `✅ Your Loan Request Posted - Loan #${loan.id}`,
+        subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
@@ -1070,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test-email", async (req, res) => {
     try {
       const success = await sendEmail({
-        to: "jfestrada93@gmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquestp2p.com",
         subject: "🔔 [ADMIN TEST] Email System Test",
         html: `
@@ -1088,7 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </p>
               </div>
               
-              <p>Admin notifications will be sent to this email address (jfestrada93@gmail.com) during testing phase since the reconquest.app domain is not verified with Resend.</p>
+              <p>Admin notifications are sent to admin@reconquestp2p.com for all platform activities.</p>
               
               <div style="text-align: center; margin-top: 30px;">
                 <p style="color: #666; margin: 0;">This is an automated test from Reconquest Admin System</p>
