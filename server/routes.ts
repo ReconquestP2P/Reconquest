@@ -416,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // First attempt: send to user directly
         await sendEmail({
           to: newUser.email,
-          from: "noreply@reconquestp2p.com",
+          from: "onboarding@resend.dev", // Using verified domain until reconquestp2p.com is verified
           subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -464,8 +464,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Always send admin notification for new registrations
       try {
         await sendEmail({
-          to: "admin@reconquestp2p.com",
-          from: "noreply@reconquestp2p.com",
+          to: "jfestrada93@gmail.com", // Temporary until reconquestp2p.com domain is verified in Resend
+          from: "onboarding@resend.dev", // Using verified domain until reconquestp2p.com is verified
           subject: `🔔 [ADMIN ALERT] New User Registration - ${newUser.username}`,
           html: `
             <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -748,8 +748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!borrower || !lender) return;
 
       await sendEmail({
-        to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        to: "jfestrada93@gmail.com" // Temporary until reconquestp2p.com domain is verified in Resend,
+        from: "onboarding@resend.dev" // Using verified domain until reconquestp2p.com is verified,
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -798,8 +798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Admin notification for new loan posting
       await sendEmail({
-        to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        to: "jfestrada93@gmail.com" // Temporary until reconquestp2p.com domain is verified in Resend,
+        from: "onboarding@resend.dev" // Using verified domain until reconquestp2p.com is verified,
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -837,8 +837,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Borrower notification
       await sendEmail({
-        to: "admin@reconquestp2p.com", // Admin notification for loan posting
-        from: "noreply@reconquestp2p.com",
+        to: "jfestrada93@gmail.com" // Temporary until reconquestp2p.com domain is verified in Resend, // Admin notification for loan posting
+        from: "onboarding@resend.dev" // Using verified domain until reconquestp2p.com is verified,
         subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -1078,8 +1078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test-email", async (req, res) => {
     try {
       const success = await sendEmail({
-        to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        to: "jfestrada93@gmail.com" // Temporary until reconquestp2p.com domain is verified in Resend,
+        from: "onboarding@resend.dev" // Using verified domain until reconquestp2p.com is verified,
         subject: "🔔 [ADMIN TEST] Email System Test",
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
