@@ -126,19 +126,20 @@ The application uses three main entities:
 - July 9, 2025: Updated navigation button colors - Login uses blue to yellow gradient, Sign Up uses black to yellow gradient for striking visual differentiation and premium appeal
 - July 9, 2025: Updated "Start Lending" buttons with dark background and gold letters for elegant contrast with yellow "Start Borrowing" buttons
 - July 9, 2025: Implemented comprehensive gamified achievement badge system with blockchain-themed rewards (Genesis Block, Chain Builder, Bitcoin Whale, etc.) and animated unlock celebrations with confetti and blockchain block animations
+- July 11, 2025: Updated admin contact email from admin.reconquest@protonmail.com to admin@reconquestp2p.com throughout the application (homepage, admin dashboard, email notifications, welcome emails) to reflect new professional domain acquisition
 
 ## Admin Access
-- **Admin Email**: admin.reconquest@protonmail.com
+- **Admin Email**: admin@reconquestp2p.com
 - **Admin Password**: admin123
 - **Dashboard Access**: /admin or /admin-dashboard routes with email + password authentication
-- **Notifications**: Email alerts sent to jfestrada93@gmail.com (testing phase due to Resend verification limits)
+- **Notifications**: Email alerts sent to admin@reconquestp2p.com
 - **Email Types**: [ADMIN ALERT] for admin notifications, standard subject for borrower notifications
 - **Security**: Two-factor authentication (email + password), hidden from main navigation
 
 ## Email System Status
-- **Current Setup**: Resend API with free tier limitations
-- **Testing Email**: jfestrada93@gmail.com (verified address)
-- **Production Note**: Verify domain or add admin.reconquest@protonmail.com to Resend for direct admin emails
+- **Current Setup**: Resend API with custom domain reconquestp2p.com
+- **Admin Email**: admin@reconquestp2p.com (professional domain)
+- **Production Note**: Domain verification setup for direct email delivery to users
 
 ## User Preferences
 

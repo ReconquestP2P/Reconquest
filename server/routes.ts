@@ -445,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </div>
                 
                 <p style="color: #666; line-height: 1.6;">
-                  If you have any questions, feel free to reach out to our team at admin.reconquest@protonmail.com
+                  If you have any questions, feel free to reach out to our team at admin@reconquestp2p.com
                 </p>
                 
                 <p style="color: #666; line-height: 1.6;">

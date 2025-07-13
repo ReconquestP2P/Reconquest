@@ -85,7 +85,7 @@ export default function AdminDashboard() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // Check if both email and password are correct
-    if (adminEmail === "admin.reconquest@protonmail.com" && adminPassword === "admin123") {
+    if (adminEmail === "admin@reconquestp2p.com" && adminPassword === "admin123") {
       setIsAuthenticated(true);
       setAuthError("");
     } else {

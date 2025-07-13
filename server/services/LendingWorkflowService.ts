@@ -269,7 +269,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (!user) return;
 
       await sendEmail({
-        to: "admin.reconquest@protonmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquest.app",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
@@ -320,7 +320,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (!borrower || !lender) return;
 
       await sendEmail({
-        to: "admin.reconquest@protonmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquest.app",
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
@@ -370,7 +370,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (!user) return;
 
       await sendEmail({
-        to: "admin.reconquest@protonmail.com",
+        to: "admin@reconquestp2p.com",
         from: "noreply@reconquest.app",
         subject: `🔄 Loan Funding Alert - Loan #${loan.id}`,
         html: `
