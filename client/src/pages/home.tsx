@@ -19,11 +19,11 @@ export default function Home() {
             The Global Marketplace for<br />
             <span className="text-gradient-gold">
               <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
-                <svg viewBox="0 0 100 100" className="w-12 h-12" style={{ transform: 'rotate(15deg)' }}>
+                <svg viewBox="0 0 100 100" className="w-14 h-14" style={{ transform: 'rotate(15deg)' }}>
                   <path d="M35.5 20 L35.5 15 L40 15 L40 20 L45 20 L45 15 L49.5 15 L49.5 20 L60 20 C66.5 20 72 25.5 72 32 C72 36 70 39.5 66.5 41.5 C70.5 43.5 73 47.5 73 52 C73 58.5 67.5 64 61 64 L49.5 64 L49.5 69 L45 69 L45 64 L40 64 L40 69 L35.5 69 L35.5 64 L30 64 L30 20 L35.5 20 Z M40 28 L40 36 L58 36 C60.5 36 62.5 34 62.5 31.5 C62.5 29 60.5 28 58 28 L40 28 Z M40 44 L40 56 L59 56 C61.5 56 63.5 54 63.5 51.5 C63.5 49 61.5 44 59 44 L40 44 Z" 
                         fill="white" 
                         stroke="white" 
-                        strokeWidth="1"/>
+                        strokeWidth="2"/>
                 </svg>
               </span>
               itcoin-Backed Loans
