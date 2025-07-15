@@ -19,7 +19,7 @@ export default function Home() {
             The Global Marketplace for<br />
             <span className="text-gradient-gold">
               <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
-                <span style={{ color: 'white', fontWeight: '900', fontSize: '2.5rem', fontFamily: 'Arial, sans-serif', lineHeight: '1' }}>B</span>
+                <span className="bitcoin-b" style={{ fontWeight: '900', fontSize: '2.5rem', fontFamily: 'Arial, sans-serif', lineHeight: '1', textShadow: '0 0 1px rgba(0,0,0,0.5)' }}>B</span>
               </span>
               itcoin-Backed Loans
             </span>
