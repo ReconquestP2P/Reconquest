@@ -656,6 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         borrowerId,
         collateralBtc: requiredBtc,
         ltvRatio: "50.00",
+        status: "posted",
         dueDate: new Date(Date.now() + requestData.termMonths * 30 * 24 * 60 * 60 * 1000),
       };
       
