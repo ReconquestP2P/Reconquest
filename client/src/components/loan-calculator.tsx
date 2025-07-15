@@ -25,16 +25,11 @@ export default function LoanCalculator() {
 
   const createLoanMutation = useMutation({
     mutationFn: async () => {
-      const ltvRatio = (loanAmount / (requiredCollateral * currentBtcPrice)) * 100;
       return await apiRequest("/api/loans", "POST", {
-        borrowerId: 1, // Mock user ID
         amount: loanAmount.toString(),
         currency,
         termMonths: parseInt(term),
-        interestRate: interestRate,
-        collateralBtc: requiredCollateral.toString(),
-        ltvRatio: ltvRatio.toString(),
-        status: "pending"
+        interestRate: interestRate.toString()
       });
     },
     onSuccess: () => {
