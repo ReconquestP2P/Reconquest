@@ -18,12 +18,12 @@ export default function Home() {
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             The Global Marketplace for<br />
             <span className="text-gradient-gold">
-              <span className="inline-flex items-center justify-center w-20 h-20 bg-orange-500 rounded-full shadow-lg mr-2 relative">
-                <svg viewBox="0 0 100 100" className="w-18 h-18" style={{ transform: 'rotate(15deg)' }}>
-                  <path d="M35.5 20 L35.5 15 L40 15 L40 20 L45 20 L45 15 L49.5 15 L49.5 20 L60 20 C66.5 20 72 25.5 72 32 C72 36 70 39.5 66.5 41.5 C70.5 43.5 73 47.5 73 52 C73 58.5 67.5 64 61 64 L49.5 64 L49.5 69 L45 69 L45 64 L40 64 L40 69 L35.5 69 L35.5 64 L30 64 L30 20 L35.5 20 Z M40 28 L40 36 L58 36 C60.5 36 62.5 34 62.5 31.5 C62.5 29 60.5 28 58 28 L40 28 Z M40 44 L40 56 L59 56 C61.5 56 63.5 54 63.5 51.5 C63.5 49 61.5 44 59 44 L40 44 Z" 
+              <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
+                <svg viewBox="0 0 80 80" className="w-14 h-14" style={{ transform: 'rotate(15deg)' }}>
+                  <path d="M25 10 L25 5 L30 5 L30 10 L35 10 L35 5 L40 5 L40 10 L50 10 C56.5 10 62 15.5 62 22 C62 26 60 29.5 56.5 31.5 C60.5 33.5 63 37.5 63 42 C63 48.5 57.5 54 51 54 L40 54 L40 59 L35 59 L35 54 L30 54 L30 59 L25 59 L25 54 L20 54 L20 10 L25 10 Z M30 18 L30 26 L48 26 C50.5 26 52.5 24 52.5 21.5 C52.5 19 50.5 18 48 18 L30 18 Z M30 34 L30 46 L49 46 C51.5 46 53.5 44 53.5 41.5 C53.5 39 51.5 34 49 34 L30 34 Z" 
                         fill="white" 
                         stroke="white" 
-                        strokeWidth="3"/>
+                        strokeWidth="2"/>
                 </svg>
               </span>
               itcoin-Backed Loans
