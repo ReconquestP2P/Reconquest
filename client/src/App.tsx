@@ -10,7 +10,8 @@ import Home from "@/pages/home";
 import About from "@/pages/about";
 import SignUp from "@/pages/signup";
 import Login from "@/pages/login";
-import UserDashboard from "@/pages/user-dashboard";
+import BorrowerDashboard from "@/pages/borrower-dashboard";
+import LenderDashboard from "@/pages/lender-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Navigation from "@/components/navigation";
 
@@ -23,9 +24,8 @@ function Router() {
         <Route path="/about" component={About} />
         <Route path="/signup" component={SignUp} />
         <Route path="/login" component={Login} />
-        <Route path="/dashboard" component={UserDashboard} />
-        <Route path="/borrower" component={UserDashboard} />
-        <Route path="/lender" component={UserDashboard} />
+        <Route path="/borrower" component={BorrowerDashboard} />
+        <Route path="/lender" component={LenderDashboard} />
 
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin-dashboard" component={AdminDashboard} />
