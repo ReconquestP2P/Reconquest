@@ -19,7 +19,7 @@ export default function Home() {
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             <div className="mb-2">The Global Marketplace for</div>
             <div className="flex items-center justify-center gap-4">
-              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16" />
+              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16 rounded-full object-cover" />
               <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
             </div>
           </h1>
