@@ -405,12 +405,12 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-gray-600 mb-8">Join thousands of users leveraging Bitcoin for financial freedom</p>
           <div className="flex gap-4 justify-center">
-            <Link href="/borrower">
+            <Link href="/login">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
                 Start Borrowing
               </Button>
             </Link>
-            <Link href="/lender">
+            <Link href="/login">
               <Button size="lg" variant="outline" className="bg-gray-900 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900 px-8 py-4 text-lg font-semibold shadow-md">
                 Start Lending
               </Button>
