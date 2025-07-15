@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
+import bitcoinIcon from "@assets/image_1752547022307.png";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
@@ -16,17 +17,11 @@ export default function Home() {
             The Future of Lending Is Bitcoin-Backed
           </p>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-            The Global Marketplace for<br />
-            <span className="text-gradient-gold">
-              <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
-                <svg viewBox="0 0 24 24" className="w-12 h-12" style={{ transform: 'rotate(15deg)' }}>
-                  <path d="M12.8 12.2c.4-2.6-1.6-4-4.3-4.9l.9-3.5-2.1-.5-.8 3.4c-.6-.1-1.1-.3-1.7-.4l.8-3.4-2.1-.5-.9 3.5c-.5-.1-.9-.2-1.4-.3l-2.8-.7-.5 2.3s1.6.4 1.5.4c.9.2 1 .8 1 1.2l-1 4c.1 0 .2 0 .2.1-.1 0-.2 0-.2-.1L1.4 19c-.1.3-.4.6-1 .5.1 0-1.5-.4-1.5-.4l-1.1 2.4 2.2.6c.4.1.8.2 1.2.3l-.9 3.5 2.1.5.9-3.5c.6.2 1.1.3 1.7.4l-.9 3.5 2.1.5.9-3.5c3.7.7 6.5.4 7.7-2.9.9-2.7 0-4.2-2-5.2 1.4-.3 2.5-1.2 2.8-3.2zm-5 7c-.7 2.7-5.2 1.2-6.7.9l1.2-4.8c1.5.4 6.2 1.1 5.5 3.9zm.7-7c-.6 2.4-4.4 1.2-5.6.9l1.1-4.3c1.2.3 5.2.9 4.5 3.4z" 
-                        fill="white" 
-                        stroke="none"/>
-                </svg>
-              </span>
-              itcoin-Backed Loans
-            </span>
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16" />
+              <span>The Global Marketplace for</span>
+            </div>
+            <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Built for Bitcoiners needing capital and for investors who provide it.<br />
