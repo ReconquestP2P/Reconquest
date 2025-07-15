@@ -55,10 +55,9 @@ export default function LenderDashboard() {
       return await response.json();
     },
     onSuccess: (data) => {
-      const escrowAddr = data?.escrowAddress || 'Not available';
       toast({
         title: "Loan Funding Initiated",
-        description: `Bitcoin escrow address generated: ${escrowAddr}. Borrower will be notified to deposit collateral.`,
+        description: "Borrower will be notified of your interest in this loan.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });

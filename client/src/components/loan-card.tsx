@@ -86,6 +86,14 @@ export default function LoanCard({ loan, onFund, showFundButton = true }: LoanCa
               <Shield className="h-3 w-3 mr-1" />
               {isNewBorrower ? "New Borrower" : "Verified Borrower"}
             </Badge>
+            <Badge variant="outline" className="capitalize">
+              {loan.status === "pending" ? "Pending" : 
+               loan.status === "posted" ? "Available" :
+               loan.status === "initiated" ? "Funded" :
+               loan.status === "funding" ? "Funding" :
+               loan.status === "escrow_pending" ? "Escrow Pending" :
+               loan.status === "active" ? "Active" : loan.status}
+            </Badge>
           </div>
           {showFundButton && (loan.status === "pending" || loan.status === "posted" || loan.status === "initiated" || loan.status === "funding") && (
             <Button
@@ -94,6 +102,15 @@ export default function LoanCard({ loan, onFund, showFundButton = true }: LoanCa
               size="sm"
             >
               Fund Loan
+            </Button>
+          )}
+          {showFundButton && (loan.status === "escrow_pending" || loan.status === "active") && (
+            <Button
+              disabled
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              size="sm"
+            >
+              Loan Being Funded
             </Button>
           )}
         </div>
