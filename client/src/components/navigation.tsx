@@ -5,10 +5,12 @@ import { Menu, X } from "lucide-react";
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -19,26 +21,30 @@ export default function Navigation() {
               <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
-              <Link
-                href="/borrower"
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  location === "/borrower"
-                    ? "text-primary"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
-                }`}
-              >
-                Borrow
-              </Link>
-              <Link
-                href="/lender"
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  location === "/lender"
-                    ? "text-primary"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
-                }`}
-              >
-                Lend
-              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link
+                    href="/borrower"
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${
+                      location === "/borrower"
+                        ? "text-primary"
+                        : "text-gray-700 dark:text-gray-300 hover:text-primary"
+                    }`}
+                  >
+                    Borrow
+                  </Link>
+                  <Link
+                    href="/lender"
+                    className={`px-3 py-2 text-sm font-medium transition-colors ${
+                      location === "/lender"
+                        ? "text-primary"
+                        : "text-gray-700 dark:text-gray-300 hover:text-primary"
+                    }`}
+                  >
+                    Lend
+                  </Link>
+                </>
+              )}
 
 
               <a
@@ -100,28 +106,32 @@ export default function Navigation() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link
-                href="/borrower"
-                className={`block px-3 py-2 text-base font-medium transition-colors ${
-                  location === "/borrower"
-                    ? "text-primary bg-primary/10"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Borrow
-              </Link>
-              <Link
-                href="/lender"
-                className={`block px-3 py-2 text-base font-medium transition-colors ${
-                  location === "/lender"
-                    ? "text-primary bg-primary/10"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Lend
-              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link
+                    href="/borrower"
+                    className={`block px-3 py-2 text-base font-medium transition-colors ${
+                      location === "/borrower"
+                        ? "text-primary bg-primary/10"
+                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Borrow
+                  </Link>
+                  <Link
+                    href="/lender"
+                    className={`block px-3 py-2 text-base font-medium transition-colors ${
+                      location === "/lender"
+                        ? "text-primary bg-primary/10"
+                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Lend
+                  </Link>
+                </>
+              )}
               <a
                 href="/#how-it-works"
                 className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
