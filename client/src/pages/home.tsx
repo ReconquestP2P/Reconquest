@@ -18,8 +18,8 @@ export default function Home() {
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             The Global Marketplace for<br />
             <span className="text-gradient-gold">
-              <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 text-white font-bold rounded-full shadow-lg mr-2 relative">
-                <span className="text-white font-black text-4xl leading-none" style={{ fontFamily: 'serif' }}>B</span>
+              <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
+                <span style={{ color: 'white', fontWeight: '900', fontSize: '2.5rem', fontFamily: 'Arial, sans-serif', lineHeight: '1' }}>B</span>
               </span>
               itcoin-Backed Loans
             </span>
