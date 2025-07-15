@@ -101,7 +101,7 @@ export default function Navigation() {
                     <Link href="/login">
                       <Button 
                         size="sm" 
-                        className="bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md"
+                        className="bg-gradient-to-r from-blue-700 to-yellow-400 hover:from-blue-800 hover:to-yellow-500 text-white font-medium shadow-md"
                       >
                         Log In
                       </Button>
