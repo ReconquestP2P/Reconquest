@@ -1,4 +1,4 @@
-import { Link, useLocation, useRouter } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -8,10 +8,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
-  const router = useRouter();
 
   return (
     <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -58,7 +57,7 @@ export default function Navigation() {
                     }
                   } else {
                     // If on different page, navigate to homepage first then scroll
-                    router.push('/');
+                    setLocation('/');
                     setTimeout(() => {
                       const element = document.getElementById('how-it-works');
                       if (element) {
@@ -176,7 +175,7 @@ export default function Navigation() {
                     }
                   } else {
                     // If on different page, navigate to homepage first then scroll
-                    router.push('/');
+                    setLocation('/');
                     setTimeout(() => {
                       const element = document.getElementById('how-it-works');
                       if (element) {
