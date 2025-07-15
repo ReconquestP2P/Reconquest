@@ -439,6 +439,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User logout
+  app.post("/api/auth/logout", (req, res) => {
+    // For now, we'll just return success since we're using stateless authentication
+    // In a production system with sessions, you would destroy the session here
+    res.json({ 
+      success: true, 
+      message: "Logged out successfully" 
+    });
+  });
+
   // User registration
   app.post("/api/auth/register", async (req, res) => {
     try {

@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -71,22 +71,35 @@ export default function Navigation() {
             </div>
             <div className="hidden md:flex items-center space-x-6">
               <ThemeToggle />
-              <Link href="/login">
+              {isAuthenticated ? (
                 <Button 
-                  size="sm" 
-                  className="bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md"
+                  onClick={logout}
+                  variant="outline"
+                  className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
                 >
-                  Log In
+                  Logout
                 </Button>
-              </Link>
-              <Link href="/signup">
-                <Button 
-                  size="sm" 
-                  className="bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md"
-                >
-                  Sign Up
-                </Button>
-              </Link>
+              ) : (
+                <>
+                    <Link href="/login">
+                      <Button 
+                        size="sm" 
+                        className="bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md"
+                      >
+                        Log In
+                      </Button>
+                    </Link>
+                    <Link href="/signup">
+                      <Button 
+                        size="sm" 
+                        className="bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md"
+                      >
+                        Sign Up
+                      </Button>
+                    </Link>
+                  </>
+                )
+              }
             </div>
             
             {/* Mobile menu button */}
@@ -153,31 +166,40 @@ export default function Navigation() {
                 About
               </Link>
               
-              {/* Mobile Bitcoin price */}
-              <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
-                <BitcoinPriceOracle variant="compact" />
-              </div>
               
-              {/* Mobile auth buttons */}
-              <div className="px-3 py-4 space-y-6">
-                <Link href="/login">
-                  <Button 
-                    size="sm" 
-                    className="w-full bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md py-3"
+              {/* Mobile Auth Buttons */}
+              {isAuthenticated ? (
+                <button
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                >
+                  Logout
+                </button>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Log In
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button 
-                    size="sm" 
-                    className="w-full bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md py-3"
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign Up
-                  </Button>
-                </Link>
+                  </Link>
+                </>
+              )}
+
+              {/* Mobile Bitcoin price */}
+              <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                <BitcoinPriceOracle variant="compact" />
               </div>
             </div>
           </div>

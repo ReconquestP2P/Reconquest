@@ -3,8 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -22,12 +24,12 @@ export default function Home() {
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
           <div className="flex gap-4 justify-center mt-12">
-            <Link href="/login">
+            <Link href={isAuthenticated ? "/borrower" : "/login"}>
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
                 Start Borrowing
               </Button>
             </Link>
-            <Link href="/login">
+            <Link href={isAuthenticated ? "/lender" : "/login"}>
               <Button size="lg" variant="outline" className="bg-gray-900 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-gray-900 px-8 py-4 text-lg font-semibold shadow-md">
                 Start Lending
               </Button>
