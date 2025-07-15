@@ -19,11 +19,10 @@ export default function Home() {
             The Global Marketplace for<br />
             <span className="text-gradient-gold">
               <span className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full shadow-lg mr-2 relative">
-                <svg viewBox="0 0 80 80" className="w-14 h-14" style={{ transform: 'rotate(15deg)' }}>
-                  <path d="M25 10 L25 5 L30 5 L30 10 L35 10 L35 5 L40 5 L40 10 L50 10 C56.5 10 62 15.5 62 22 C62 26 60 29.5 56.5 31.5 C60.5 33.5 63 37.5 63 42 C63 48.5 57.5 54 51 54 L40 54 L40 59 L35 59 L35 54 L30 54 L30 59 L25 59 L25 54 L20 54 L20 10 L25 10 Z M30 18 L30 26 L48 26 C50.5 26 52.5 24 52.5 21.5 C52.5 19 50.5 18 48 18 L30 18 Z M30 34 L30 46 L49 46 C51.5 46 53.5 44 53.5 41.5 C53.5 39 51.5 34 49 34 L30 34 Z" 
+                <svg viewBox="0 0 24 24" className="w-12 h-12" style={{ transform: 'rotate(15deg)' }}>
+                  <path d="M12.8 12.2c.4-2.6-1.6-4-4.3-4.9l.9-3.5-2.1-.5-.8 3.4c-.6-.1-1.1-.3-1.7-.4l.8-3.4-2.1-.5-.9 3.5c-.5-.1-.9-.2-1.4-.3l-2.8-.7-.5 2.3s1.6.4 1.5.4c.9.2 1 .8 1 1.2l-1 4c.1 0 .2 0 .2.1-.1 0-.2 0-.2-.1L1.4 19c-.1.3-.4.6-1 .5.1 0-1.5-.4-1.5-.4l-1.1 2.4 2.2.6c.4.1.8.2 1.2.3l-.9 3.5 2.1.5.9-3.5c.6.2 1.1.3 1.7.4l-.9 3.5 2.1.5.9-3.5c3.7.7 6.5.4 7.7-2.9.9-2.7 0-4.2-2-5.2 1.4-.3 2.5-1.2 2.8-3.2zm-5 7c-.7 2.7-5.2 1.2-6.7.9l1.2-4.8c1.5.4 6.2 1.1 5.5 3.9zm.7-7c-.6 2.4-4.4 1.2-5.6.9l1.1-4.3c1.2.3 5.2.9 4.5 3.4z" 
                         fill="white" 
-                        stroke="white" 
-                        strokeWidth="2"/>
+                        stroke="none"/>
                 </svg>
               </span>
               itcoin-Backed Loans
