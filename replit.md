@@ -136,6 +136,7 @@ The application uses three main entities:
 - July 15, 2025: Implemented secure authentication flow - Start Borrowing/Start Lending buttons now redirect to login/signup instead of direct dashboard access, created comprehensive login page with form validation and password visibility toggle, updated navigation to hide Borrow/Lend menus for non-authenticated users showing only How it Works and About for visitors
 - July 15, 2025: Enhanced admin dashboard with user management tracking - added dedicated Users Management tab alongside Loans Management, implemented /api/admin/users endpoint, admin can now monitor user registrations with detailed table showing usernames, emails, roles, and registration dates, expanded stats cards to include total registered users count
 - July 15, 2025: Replaced interest rate text inputs with interactive sliders - implemented 0-25% range with 0.5% increments to prevent user input errors from decimal point confusion, updated both loan calculator and loan request form with real-time percentage display and visual slider controls
+- July 15, 2025: Completed authentication flow with smart navigation - implemented full logout functionality, added `/api/auth/logout` endpoint, "Start Borrowing/Lending" buttons now route authenticated users directly to dashboards instead of login page, fixed "How it Works" navigation to prevent unintended logout by using smooth scroll on homepage and controlled navigation for other pages
 
 ## Admin Access
 - **Admin Email**: admin@reconquestp2p.com

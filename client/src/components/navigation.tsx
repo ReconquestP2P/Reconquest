@@ -47,12 +47,23 @@ export default function Navigation() {
               )}
 
 
-              <a
-                href="/#how-it-works"
+              <button
+                onClick={() => {
+                  if (window.location.pathname === '/') {
+                    // If already on homepage, just scroll to section
+                    const element = document.getElementById('how-it-works');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  } else {
+                    // If on different page, navigate to homepage with hash
+                    window.location.href = '/#how-it-works';
+                  }
+                }}
                 className="text-gray-700 dark:text-gray-300 hover:text-primary px-3 py-2 text-sm font-medium"
               >
                 How it Works
-              </a>
+              </button>
               <Link
                 href="/about"
                 className={`px-3 py-2 text-sm font-medium transition-colors ${
@@ -147,13 +158,24 @@ export default function Navigation() {
                   </Link>
                 </>
               )}
-              <a
-                href="/#how-it-works"
-                className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                onClick={() => setMobileMenuOpen(false)}
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (window.location.pathname === '/') {
+                    // If already on homepage, just scroll to section
+                    const element = document.getElementById('how-it-works');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  } else {
+                    // If on different page, navigate to homepage with hash
+                    window.location.href = '/#how-it-works';
+                  }
+                }}
+                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 How it Works
-              </a>
+              </button>
               <Link
                 href="/about"
                 className={`block px-3 py-2 text-base font-medium transition-colors ${
