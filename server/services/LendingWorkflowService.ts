@@ -233,7 +233,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="color: #d4af37;">Next Step: Deposit Bitcoin Collateral</h3>
               <p><strong>Bitcoin Address:</strong></p>
-              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">[Address will be provided shortly]</code>
+              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">BTC address generating system is still under testing, thank you for your comprehension</code>
               <p><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
               <p><strong>Network:</strong> Bitcoin Testnet</p>
             </div>
