@@ -17,7 +17,14 @@ export default function Home() {
           </p>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             The Global Marketplace for<br />
-            <span className="text-gradient-gold"><span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-b from-yellow-400 to-orange-500 text-white font-bold rounded-full text-2xl border-2 border-yellow-500 shadow-md mx-2">₿</span>itcoin-Backed Loans</span>
+            <span className="text-gradient-gold">
+              <span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-b from-orange-400 to-orange-600 text-white font-bold rounded-full text-2xl border-2 border-orange-500 shadow-md mx-2 relative">
+                <svg viewBox="0 0 100 100" className="w-8 h-8 fill-white">
+                  <path d="M50,5 C25.147,5 5,25.147 5,50 C5,74.853 25.147,95 50,95 C74.853,95 95,74.853 95,50 C95,25.147 74.853,5 50,5 Z M59.726,38.285 C60.434,34.132 57.866,31.731 54.047,30.466 L55.267,25.817 L52.276,25.097 L51.103,29.568 C50.347,29.377 49.567,29.201 48.794,29.028 L49.979,24.505 L46.988,23.785 L45.768,28.434 C45.147,28.299 44.542,28.167 43.955,28.026 L43.961,28.003 L39.896,27.027 L39.113,30.246 C39.113,30.246 41.294,30.766 41.252,30.799 C42.469,31.087 42.705,31.905 42.671,32.545 L41.282,37.813 C41.370,37.836 41.484,37.870 41.613,37.919 C41.511,37.896 41.403,37.871 41.290,37.846 L39.378,45.208 C39.235,45.545 38.868,46.114 38.046,45.914 C38.077,45.952 35.908,45.434 35.908,45.434 L34.434,48.917 L38.244,49.831 C38.946,50.004 39.635,50.185 40.315,50.356 L39.078,55.073 L42.068,55.793 L43.288,51.144 C44.081,51.363 44.849,51.567 45.596,51.760 L44.381,56.384 L47.372,57.104 L48.609,52.394 C53.563,53.337 57.182,52.950 58.716,48.572 C59.905,45.205 58.735,43.263 56.381,41.948 C58.089,41.542 59.336,40.391 59.726,38.285 Z M53.846,47.237 C53.111,50.301 47.729,48.631 45.921,48.175 L47.671,41.285 C49.479,41.745 54.631,43.974 53.846,47.237 Z M54.581,38.195 C53.922,40.907 49.516,39.524 47.996,39.146 L49.577,32.972 C51.096,33.350 55.282,35.295 54.581,38.195 Z"/>
+                </svg>
+              </span>
+              itcoin-Backed Loans
+            </span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Built for Bitcoiners needing capital and for investors who provide it.<br />
