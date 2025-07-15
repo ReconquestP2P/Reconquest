@@ -72,14 +72,12 @@ export default function LenderDashboard() {
     },
   });
 
-  // Filter all available loans
-  const filteredLoans = availableLoans.filter(loan => {
-    if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
-    if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
-    return true;
-  });
+  const handleFundLoan = (loanId: number) => {
+    fundLoan.mutate(loanId);
+  };
 
   const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     queryClient.invalidateQueries({ queryKey: ["/api/loans", "available"] });
     toast({
       title: "Refreshed",
@@ -87,9 +85,12 @@ export default function LenderDashboard() {
     });
   };
 
-  const handleFundLoan = (loanId: number) => {
-    fundLoan.mutate(loanId);
-  };
+  // Filter all available loans
+  const filteredLoans = availableLoans.filter(loan => {
+    if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
+    if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
+    return true;
+  });
 
   if (loansLoading || availableLoading) {
     return (
