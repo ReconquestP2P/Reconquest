@@ -71,12 +71,14 @@ export default function Navigation() {
             </div>
             <div className="hidden md:flex items-center space-x-6">
               <ThemeToggle />
-              <Button 
-                size="sm" 
-                className="bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md"
-              >
-                Log In
-              </Button>
+              <Link href="/login">
+                <Button 
+                  size="sm" 
+                  className="bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md"
+                >
+                  Log In
+                </Button>
+              </Link>
               <Link href="/signup">
                 <Button 
                   size="sm" 
@@ -158,13 +160,15 @@ export default function Navigation() {
               
               {/* Mobile auth buttons */}
               <div className="px-3 py-4 space-y-6">
-                <Button 
-                  size="sm" 
-                  className="w-full bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md py-3"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log In
-                </Button>
+                <Link href="/login">
+                  <Button 
+                    size="sm" 
+                    className="w-full bg-gradient-to-r from-blue-400 to-yellow-400 hover:from-blue-500 hover:to-yellow-500 text-white font-medium shadow-md py-3"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Log In
+                  </Button>
+                </Link>
                 <Link href="/signup">
                   <Button 
                     size="sm" 
