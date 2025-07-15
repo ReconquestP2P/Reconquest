@@ -62,8 +62,8 @@ export class MemStorage implements IStorage {
       {
         id: 2,
         username: "investor1",
-        email: "jorge.frdzestrada@gmail.com",
-        password: "hashed_password",
+        email: "jfestrada93@gmail.com",
+        password: "$2b$12$B4yjVm/9HRCQ.ezSQsX.feiCaL/usvsjMUeFLTDr8Rr/l6GZY.jGm", // test123
         role: "lender",
         reputation: 98,
         completedLoans: 15,
