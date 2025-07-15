@@ -84,11 +84,27 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Debug logging
+    console.log("Login attempt:", {
+      enteredEmail: adminEmail,
+      enteredPassword: adminPassword,
+      expectedEmail: "admin@reconquestp2p.com",
+      expectedPassword: "admin123",
+      emailMatch: adminEmail === "admin@reconquestp2p.com",
+      passwordMatch: adminPassword === "admin123"
+    });
+    
     // Check if both email and password are correct
     if (adminEmail === "admin@reconquestp2p.com" && adminPassword === "admin123") {
       setIsAuthenticated(true);
       setAuthError("");
+      console.log("Login successful");
     } else {
+      console.log("Login failed:", {
+        emailEntered: adminEmail,
+        passwordEntered: adminPassword
+      });
       setAuthError("Invalid admin credentials. Please check your email and password.");
     }
   };
