@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +15,7 @@ export default function LoanCalculator() {
   const [amount, setAmount] = useState("25000");
   const [currency, setCurrency] = useState("USDC");
   const [term, setTerm] = useState("6");
-  const [interestRate, setInterestRate] = useState("8.5");
+  const [interestRate, setInterestRate] = useState(8.5);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -62,7 +63,7 @@ export default function LoanCalculator() {
   
   // Simple interest calculation: Interest = Principal × Rate × Time
   // Time is in years, so divide term (months) by 12
-  const annualRate = parseFloat(interestRate || "0") / 100;
+  const annualRate = interestRate / 100;
   const timeInYears = parseInt(term) / 12;
   const totalInterest = loanAmount * annualRate * timeInYears;
   const totalRepayment = loanAmount + totalInterest;
@@ -124,17 +125,23 @@ export default function LoanCalculator() {
 
           <div>
             <Label htmlFor="interest" className="text-sm font-medium text-gray-700">
-              Interest Rate (% p.a.)
+              Interest Rate: {interestRate}% p.a.
             </Label>
-            <Input
-              id="interest"
-              type="number"
-              step="0.1"
-              value={interestRate}
-              onChange={(e) => setInterestRate(e.target.value)}
-              placeholder="8.0"
-              className="mt-1"
-            />
+            <div className="mt-3 px-3">
+              <Slider
+                value={[interestRate]}
+                onValueChange={(value) => setInterestRate(value[0])}
+                min={0}
+                max={25}
+                step={0.5}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0%</span>
+                <span>12.5%</span>
+                <span>25%</span>
+              </div>
+            </div>
           </div>
 
           <div>

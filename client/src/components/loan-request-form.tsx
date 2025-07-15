@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 const loanRequestSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
   currency: z.string().min(1, "Currency is required"),
-  interestRate: z.string().min(1, "Interest rate is required"),
+  interestRate: z.number().min(0).max(25),
   termMonths: z.number().min(3).max(18),
   purpose: z.string().optional(),
 });
@@ -32,7 +33,7 @@ export default function LoanRequestForm() {
     defaultValues: {
       amount: "",
       currency: "USDC",
-      interestRate: "",
+      interestRate: 8.5,
       termMonths: 6,
       purpose: "",
     },
@@ -142,14 +143,23 @@ export default function LoanRequestForm() {
                 name="interestRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Interest Rate Preference (% p.a.)</FormLabel>
+                    <FormLabel>Interest Rate: {field.value}% p.a.</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        placeholder="8.0"
-                        {...field}
-                      />
+                      <div className="px-3">
+                        <Slider
+                          value={[field.value]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          min={0}
+                          max={25}
+                          step={0.5}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>0%</span>
+                          <span>12.5%</span>
+                          <span>25%</span>
+                        </div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

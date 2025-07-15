@@ -135,6 +135,7 @@ The application uses three main entities:
 - July 13, 2025: Resolved SSL certificate issue for www.reconquestp2p.com by implementing URL redirect from www to root domain via Namecheap, providing seamless HTTPS coverage and following industry standard practices
 - July 15, 2025: Implemented secure authentication flow - Start Borrowing/Start Lending buttons now redirect to login/signup instead of direct dashboard access, created comprehensive login page with form validation and password visibility toggle, updated navigation to hide Borrow/Lend menus for non-authenticated users showing only How it Works and About for visitors
 - July 15, 2025: Enhanced admin dashboard with user management tracking - added dedicated Users Management tab alongside Loans Management, implemented /api/admin/users endpoint, admin can now monitor user registrations with detailed table showing usernames, emails, roles, and registration dates, expanded stats cards to include total registered users count
+- July 15, 2025: Replaced interest rate text inputs with interactive sliders - implemented 0-25% range with 0.5% increments to prevent user input errors from decimal point confusion, updated both loan calculator and loan request form with real-time percentage display and visual slider controls
 
 ## Admin Access
 - **Admin Email**: admin@reconquestp2p.com
