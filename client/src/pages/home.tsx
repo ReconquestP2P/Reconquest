@@ -13,11 +13,11 @@ export default function Home() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-4 font-medium">
-            The Future of Lending Is <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-b from-yellow-400 to-orange-500 text-white font-bold rounded-full text-sm border-2 border-yellow-500 shadow-md mx-1">₿</span>itcoin-Backed
+            The Future of Lending Is Bitcoin-Backed
           </p>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             The Global Marketplace for<br />
-            <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
+            <span className="text-gradient-gold"><span className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-b from-yellow-400 to-orange-500 text-white font-bold rounded-full text-2xl border-2 border-yellow-500 shadow-md mx-2">₿</span>itcoin-Backed Loans</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Built for Bitcoiners needing capital and for investors who provide it.<br />
