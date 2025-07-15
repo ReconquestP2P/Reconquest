@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useRouter } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -11,6 +11,7 @@ export default function Navigation() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const router = useRouter();
 
   return (
     <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -49,15 +50,21 @@ export default function Navigation() {
 
               <button
                 onClick={() => {
-                  if (window.location.pathname === '/') {
+                  if (location === '/') {
                     // If already on homepage, just scroll to section
                     const element = document.getElementById('how-it-works');
                     if (element) {
                       element.scrollIntoView({ behavior: 'smooth' });
                     }
                   } else {
-                    // If on different page, navigate to homepage with hash
-                    window.location.href = '/#how-it-works';
+                    // If on different page, navigate to homepage first then scroll
+                    router.push('/');
+                    setTimeout(() => {
+                      const element = document.getElementById('how-it-works');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 100);
                   }
                 }}
                 className="text-gray-700 dark:text-gray-300 hover:text-primary px-3 py-2 text-sm font-medium"
@@ -161,15 +168,21 @@ export default function Navigation() {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  if (window.location.pathname === '/') {
+                  if (location === '/') {
                     // If already on homepage, just scroll to section
                     const element = document.getElementById('how-it-works');
                     if (element) {
                       element.scrollIntoView({ behavior: 'smooth' });
                     }
                   } else {
-                    // If on different page, navigate to homepage with hash
-                    window.location.href = '/#how-it-works';
+                    // If on different page, navigate to homepage first then scroll
+                    router.push('/');
+                    setTimeout(() => {
+                      const element = document.getElementById('how-it-works');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }, 100);
                   }
                 }}
                 className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
