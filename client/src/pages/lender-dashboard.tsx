@@ -1,10 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
 import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
@@ -19,6 +24,14 @@ export default function LenderDashboard() {
   const queryClient = useQueryClient();
   const [currencyFilter, setCurrencyFilter] = useState("all");
   const [termFilter, setTermFilter] = useState("all");
+  
+  // Advanced filter states
+  const [minAmount, setMinAmount] = useState("");
+  const [maxAmount, setMaxAmount] = useState("");
+  const [amountRange, setAmountRange] = useState([0]);
+  const [statusFilter, setStatusFilter] = useState("available"); // "available" or "matched"
+  const [selectedTerms, setSelectedTerms] = useState<number[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState("all");
 
   // Mock user ID - in real app, get from authentication
   const userId = 2;
@@ -27,8 +40,8 @@ export default function LenderDashboard() {
     queryKey: ["/api/users", userId, "loans"],
   });
 
-  const { data: availableLoans = [], isLoading: availableLoading } = useQuery<Loan[]>({
-    queryKey: ["/api/loans", "available"],
+  const { data: allLoans = [], isLoading: availableLoading } = useQuery<Loan[]>({
+    queryKey: ["/api/loans"],
   });
 
   const lenderLoans = userLoans.filter(loan => loan.lenderId === userId);
@@ -46,6 +59,65 @@ export default function LenderDashboard() {
     const months = loan.termMonths;
     return sum + (principal * rate * months / 12);
   }, 0);
+
+  // Filter and search logic
+  const filteredLoans = useMemo(() => {
+    let filtered = allLoans;
+
+    // Filter by status
+    if (statusFilter === "available") {
+      filtered = filtered.filter(loan => 
+        loan.status === "pending" || 
+        loan.status === "posted" || 
+        loan.status === "initiated" || 
+        loan.status === "funding"
+      );
+    } else if (statusFilter === "matched") {
+      filtered = filtered.filter(loan => 
+        loan.status === "escrow_pending" || 
+        loan.status === "active" || 
+        loan.status === "completed"
+      );
+    }
+
+    // Filter by amount range
+    if (minAmount) {
+      filtered = filtered.filter(loan => parseFloat(loan.amount) >= parseFloat(minAmount));
+    }
+    if (maxAmount) {
+      filtered = filtered.filter(loan => parseFloat(loan.amount) <= parseFloat(maxAmount));
+    }
+
+    // Filter by currency
+    if (selectedCurrency !== "all") {
+      filtered = filtered.filter(loan => loan.currency === selectedCurrency);
+    }
+
+    // Filter by terms
+    if (selectedTerms.length > 0) {
+      filtered = filtered.filter(loan => selectedTerms.includes(loan.termMonths));
+    }
+
+    return filtered;
+  }, [allLoans, statusFilter, minAmount, maxAmount, selectedCurrency, selectedTerms]);
+
+  // Helper functions for filter controls
+  const handleTermToggle = (term: number) => {
+    setSelectedTerms(prev => 
+      prev.includes(term) 
+        ? prev.filter(t => t !== term)
+        : [...prev, term]
+    );
+  };
+
+  const resetFilters = () => {
+    setMinAmount("");
+    setMaxAmount("");
+    setAmountRange([0]);
+    setStatusFilter("available");
+    setSelectedTerms([]);
+    setSelectedCurrency("all");
+  };
 
   const fundLoan = useMutation({
     mutationFn: async (loanId: number) => {
@@ -84,12 +156,7 @@ export default function LenderDashboard() {
     });
   };
 
-  // Filter all available loans
-  const filteredLoans = availableLoans.filter(loan => {
-    if (currencyFilter !== "all" && loan.currency !== currencyFilter) return false;
-    if (termFilter !== "all" && loan.termMonths !== parseInt(termFilter)) return false;
-    return true;
-  });
+
 
   if (loansLoading || availableLoading) {
     return (
@@ -153,124 +220,174 @@ export default function LenderDashboard() {
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">
-          {/* Available Loan Requests */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <CardTitle>Available Loan Requests</CardTitle>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    ({filteredLoans.length} available)
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefresh}
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh
-                  </Button>
-                  <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="All Currencies" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Currencies</SelectItem>
-                      <SelectItem value="USDC">USDC</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={termFilter} onValueChange={setTermFilter}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="All Terms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Terms</SelectItem>
-                      <SelectItem value="3">3 months</SelectItem>
-                      <SelectItem value="6">6 months</SelectItem>
-                      <SelectItem value="9">9 months</SelectItem>
-                      <SelectItem value="12">12 months</SelectItem>
-                      <SelectItem value="18">18 months</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {filteredLoans.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">No loan requests match your filters.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredLoans.map((loan) => (
-                    <LoanCard
-                      key={loan.id}
-                      loan={loan}
-                      onFund={handleFundLoan}
-                      showFundButton={true}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Filter Panel */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Filters</CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={resetFilters}
+                      className="text-xs"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Period Filter */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Period</Label>
+                    <div className="space-y-2 mt-2">
+                      {[3, 6, 9, 12, 18].map((term) => (
+                        <div key={term} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`term-${term}`}
+                            checked={selectedTerms.includes(term)}
+                            onCheckedChange={() => handleTermToggle(term)}
+                          />
+                          <Label 
+                            htmlFor={`term-${term}`}
+                            className="text-sm font-normal"
+                          >
+                            {term} months
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* Your Investments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Active Investments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {lenderLoans.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">No active investments. Fund a loan above to get started.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Loan ID</TableHead>
-                        <TableHead>Amount Invested</TableHead>
-                        <TableHead>Interest Rate</TableHead>
-                        <TableHead>Term</TableHead>
-                        <TableHead>Expected Return</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {lenderLoans.map((loan) => {
-                        const principal = parseFloat(loan.amount);
-                        const rate = parseFloat(loan.interestRate) / 100;
-                        const expectedReturn = principal * (1 + rate * loan.termMonths / 12);
-                        
-                        return (
-                          <TableRow key={loan.id}>
-                            <TableCell className="font-medium">#{loan.id}</TableCell>
-                            <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
-                            <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                            <TableCell>{loan.termMonths} months</TableCell>
-                            <TableCell className="font-semibold text-green-600">
-                              {formatCurrency(expectedReturn, loan.currency)}
-                            </TableCell>
-                            <TableCell>
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                Active
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  {/* Currency Filter */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Currency</Label>
+                    <RadioGroup 
+                      value={selectedCurrency} 
+                      onValueChange={setSelectedCurrency}
+                      className="mt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="all" id="curr-all" />
+                        <Label htmlFor="curr-all" className="text-sm">All</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="EUR" id="curr-eur" />
+                        <Label htmlFor="curr-eur" className="text-sm">EUR</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="USDC" id="curr-usdc" />
+                        <Label htmlFor="curr-usdc" className="text-sm">USDC</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Loan Amount Filter */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Loan amount (from - to)</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <Input
+                        type="number"
+                        placeholder="5000"
+                        value={minAmount}
+                        onChange={(e) => setMinAmount(e.target.value)}
+                        className="text-center"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="50000"
+                        value={maxAmount}
+                        onChange={(e) => setMaxAmount(e.target.value)}
+                        className="text-center"
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>1000</span>
+                        <span>100000</span>
+                      </div>
+                      <Slider
+                        value={amountRange}
+                        onValueChange={setAmountRange}
+                        max={100000}
+                        min={1000}
+                        step={1000}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-600">Status</Label>
+                    <RadioGroup 
+                      value={statusFilter} 
+                      onValueChange={setStatusFilter}
+                      className="mt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="available" id="status-available" />
+                        <Label htmlFor="status-available" className="text-sm">Available</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="matched" id="status-matched" />
+                        <Label htmlFor="status-matched" className="text-sm">Matched</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Loans List */}
+            <div className="lg:col-span-3">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <CardTitle>
+                        {statusFilter === "available" ? "Available Loan Requests" : "Matched Loans"}
+                      </CardTitle>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        ({filteredLoans.length} {statusFilter})
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefresh}
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {filteredLoans.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No loan requests match your filters.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredLoans.map((loan) => (
+                        <LoanCard
+                          key={loan.id}
+                          loan={loan}
+                          onFund={handleFundLoan}
+                          showFundButton={statusFilter === "available"}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-6">
