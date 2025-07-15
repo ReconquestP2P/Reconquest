@@ -17,11 +17,11 @@ export default function Home() {
             The Future of Lending Is Bitcoin-Backed
           </p>
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-            <div className="flex items-center justify-center gap-4 mb-2">
+            <div className="mb-2">The Global Marketplace for</div>
+            <div className="flex items-center justify-center gap-4">
               <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16" />
-              <span>The Global Marketplace for</span>
+              <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
             </div>
-            <span className="text-gradient-gold">Bitcoin-Backed Loans</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
             Built for Bitcoiners needing capital and for investors who provide it.<br />
