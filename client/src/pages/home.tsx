@@ -89,7 +89,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">How Reconquest Works</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure <span className="text-primary font-bold">B</span>itcoin-backed lending in 4 steps</p>
+            <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure <span className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-b from-yellow-400 to-orange-500 text-white font-bold rounded-full text-sm border-2 border-yellow-500 shadow-md">₿</span>itcoin-backed lending in 4 steps</p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-12 items-center">

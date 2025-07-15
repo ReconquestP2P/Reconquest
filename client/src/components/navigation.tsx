@@ -103,7 +103,7 @@ export default function Navigation() {
                         size="sm" 
                         className="bg-gradient-to-r from-blue-700 to-yellow-400 hover:from-blue-800 hover:to-yellow-500 text-white font-medium shadow-md"
                       >
-                        Log In
+                        LOG IN
                       </Button>
                     </Link>
                     <Link href="/signup">
@@ -111,7 +111,7 @@ export default function Navigation() {
                         size="sm" 
                         className="bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md"
                       >
-                        Sign Up
+                        SIGN UP
                       </Button>
                     </Link>
                   </>
@@ -219,14 +219,14 @@ export default function Navigation() {
                     className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Log In
+                    LOG IN
                   </Link>
                   <Link
                     href="/signup"
                     className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Sign Up
+                    SIGN UP
                   </Link>
                 </>
               )}
