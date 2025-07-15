@@ -368,6 +368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User login
   app.post("/api/auth/login", async (req, res) => {
     try {
+      console.log("Login attempt:", req.body);
+      
       const loginSchema = z.object({
         username: z.string().optional(),
         email: z.string().email().optional(),
@@ -377,24 +379,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const { username, email, password } = loginSchema.parse(req.body);
+      console.log("Parsed login data:", { username, email, password: "***" });
 
       // Find user by email or username
       let user;
       if (email) {
+        console.log("Looking up user by email:", email);
         user = await storage.getUserByEmail(email);
       } else if (username) {
+        console.log("Looking up user by username:", username);
         user = await storage.getUserByUsername(username);
       }
 
+      console.log("User found:", user ? `Yes (id: ${user.id})` : "No");
+
       if (!user) {
+        console.log("User not found, returning 401");
         return res.status(401).json({ 
           message: "Invalid credentials" 
         });
       }
 
       // Verify password
+      console.log("Verifying password...");
       const passwordMatch = await bcrypt.compare(password, user.password);
+      console.log("Password match:", passwordMatch);
+      
       if (!passwordMatch) {
+        console.log("Password mismatch, returning 401");
         return res.status(401).json({ 
           message: "Invalid credentials" 
         });
@@ -402,6 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
+      console.log("Login successful for user:", userWithoutPassword.email);
       
       res.json({
         success: true,
@@ -413,6 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Login error:", error);
       
       if (error instanceof z.ZodError) {
+        console.log("Validation error:", error.errors);
         return res.status(400).json({ 
           message: "Validation error", 
           errors: error.errors 

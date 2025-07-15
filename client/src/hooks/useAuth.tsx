@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (usernameOrEmail: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -42,21 +42,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuthStatus();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (usernameOrEmail: string, password: string): Promise<boolean> => {
     try {
+      // Determine if input is email or username
+      const isEmail = usernameOrEmail.includes('@');
+      const loginData = isEmail 
+        ? { email: usernameOrEmail, password }
+        : { username: usernameOrEmail, password };
+
+      console.log('Login data being sent:', loginData);
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(loginData),
       });
 
       if (response.ok) {
         const userData = await response.json();
-        setUser(userData);
+        console.log('Login response:', userData);
+        setUser(userData.user); // The API returns { success, message, user }
         return true;
       }
+      console.error('Login failed with status:', response.status);
       return false;
     } catch (error) {
       console.error('Login failed:', error);
