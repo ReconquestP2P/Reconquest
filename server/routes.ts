@@ -365,6 +365,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User login
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const loginSchema = z.object({
+        username: z.string().optional(),
+        email: z.string().email().optional(),
+        password: z.string().min(1, "Password is required"),
+      }).refine(data => data.username || data.email, {
+        message: "Either username or email is required",
+      });
+
+      const { username, email, password } = loginSchema.parse(req.body);
+
+      // Find user by email or username
+      let user;
+      if (email) {
+        user = await storage.getUserByEmail(email);
+      } else if (username) {
+        user = await storage.getUserByUsername(username);
+      }
+
+      if (!user) {
+        return res.status(401).json({ 
+          message: "Invalid credentials" 
+        });
+      }
+
+      // Verify password
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ 
+          message: "Invalid credentials" 
+        });
+      }
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json({
+        success: true,
+        message: "Login successful",
+        user: userWithoutPassword
+      });
+
+    } catch (error) {
+      console.error("Login error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Login failed. Please try again." 
+      });
+    }
+  });
+
   // User registration
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -403,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: userData.username,
         email: userData.email,
         password: hashedPassword,
-        role: userData.role || "borrower"
+        role: userData.role || "user"
       };
 
       const newUser = await storage.createUser(userToCreate);

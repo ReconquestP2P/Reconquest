@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("borrower"), // borrower, lender
+  role: text("role").notNull().default("user"), // user (can both borrow and lend)
   reputation: integer("reputation").notNull().default(0),
   completedLoans: integer("completed_loans").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
