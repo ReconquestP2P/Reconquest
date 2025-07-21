@@ -8,6 +8,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
 
   // Loan operations
@@ -57,6 +59,9 @@ export class MemStorage implements IStorage {
         role: "borrower",
         reputation: 95,
         completedLoans: 3,
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
         createdAt: new Date("2024-01-15"),
       },
       {
@@ -67,6 +72,9 @@ export class MemStorage implements IStorage {
         role: "lender",
         reputation: 98,
         completedLoans: 15,
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
         createdAt: new Date("2023-11-20"),
       },
       {
@@ -77,6 +85,9 @@ export class MemStorage implements IStorage {
         role: "borrower",
         reputation: 87,
         completedLoans: 1,
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
         createdAt: new Date("2024-03-10"),
       },
     ];
@@ -184,10 +195,26 @@ export class MemStorage implements IStorage {
       role: insertUser.role || "borrower",
       reputation: 0,
       completedLoans: 0,
+      emailVerified: false,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
       createdAt: new Date(),
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, ...updates };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.emailVerificationToken === token);
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -290,6 +317,20 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
+    return user || undefined;
   }
 
   async getAllUsers(): Promise<User[]> {

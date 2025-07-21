@@ -10,6 +10,9 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"), // user (can both borrow and lend)
   reputation: integer("reputation").notNull().default(0),
   completedLoans: integer("completed_loans").notNull().default(0),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

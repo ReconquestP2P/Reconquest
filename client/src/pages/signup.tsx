@@ -45,13 +45,8 @@ export default function SignUp() {
       setRegistrationSuccess(true);
       toast({
         title: "Account Created Successfully!",
-        description: "Welcome to Reconquest. Check your email for confirmation.",
+        description: data.message || "Please check your email to verify your account before logging in.",
       });
-      
-      // Redirect to home page after a short delay
-      setTimeout(() => {
-        navigate("/");
-      }, 3000);
     },
     onError: (error: any) => {
       console.error("Registration failed:", error);
@@ -141,22 +136,46 @@ export default function SignUp() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <CheckCircle className="h-12 w-12 text-green-500" />
+              <Mail className="h-12 w-12 text-blue-500" />
             </div>
-            <CardTitle className="text-2xl font-bold text-green-700">Account Created!</CardTitle>
+            <CardTitle className="text-2xl font-bold text-green-700">Check Your Email!</CardTitle>
             <CardDescription>
-              Welcome to Reconquest. You'll be redirected shortly.
+              Account created successfully - email verification required
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                A welcome email has been sent to your inbox with next steps.
+          <CardContent className="text-center space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                📧 We've sent a verification email to <strong>{formData.email}</strong>
               </p>
-              <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <span>Redirecting to homepage...</span>
-              </div>
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-2">
+                Click the verification link in the email to activate your account
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                You must verify your email before you can log in to the platform
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                Check your spam folder if you don't see the email within a few minutes
+              </p>
+            </div>
+
+            <div className="flex flex-col space-y-2">
+              <Button 
+                onClick={() => navigate("/login")}
+                className="bg-primary hover:bg-primary/90 text-black"
+              >
+                Go to Login Page
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/")}
+                className="text-gray-600 dark:text-gray-300"
+              >
+                Return to Homepage
+              </Button>
             </div>
           </CardContent>
         </Card>

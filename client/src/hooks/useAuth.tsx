@@ -66,11 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData.user); // The API returns { success, message, user }
         return true;
       }
-      console.error('Login failed with status:', response.status);
-      return false;
+      
+      // Handle specific error responses
+      const errorData = await response.json();
+      console.error('Login failed with status:', response.status, errorData);
+      
+      // Throw specific error for email verification
+      if (response.status === 403 && errorData.emailVerificationRequired) {
+        throw new Error(`EMAIL_VERIFICATION_REQUIRED: ${errorData.message}`);
+      }
+      
+      // Throw generic error for other cases
+      throw new Error(errorData.message || 'Login failed');
     } catch (error) {
       console.error('Login failed:', error);
-      return false;
+      throw error; // Re-throw to be handled by the calling component
     }
   };
 

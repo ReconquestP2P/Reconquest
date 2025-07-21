@@ -9,8 +9,12 @@ import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail } from "./email";
 import bcrypt from "bcryptjs";
+import { EmailVerificationService } from "./services/EmailVerificationService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize email verification service
+  const emailVerificationService = new EmailVerificationService(storage);
+
   // Serve static logo for emails
   app.use('/public', express.static('client/public'));
 
@@ -412,6 +416,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Check email verification
+      if (!user.emailVerified) {
+        console.log("Email not verified, returning 403");
+        return res.status(403).json({ 
+          message: "Please verify your email address before logging in. Check your inbox for the verification link.",
+          emailVerificationRequired: true
+        });
+      }
+
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       console.log("Login successful for user:", userWithoutPassword.email);
@@ -482,67 +495,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
 
-      // Create user (excluding confirmPassword)
+      // Create user (excluding confirmPassword) with email verification fields
       const userToCreate = {
         username: userData.username,
         email: userData.email,
         password: hashedPassword,
-        role: userData.role || "user"
+        role: userData.role || "user",
+        emailVerified: false,
+        emailVerificationToken: null,
+        emailVerificationExpires: null
       };
 
       const newUser = await storage.createUser(userToCreate);
 
-      // Return user without password
-      const { password, ...userWithoutPassword } = newUser;
-
-      // Send welcome email to the user directly
+      // Generate verification token and send verification email
       try {
-        // First attempt: send to user directly
-        await sendEmail({
-          to: newUser.email,
-          from: "noreply@reconquestp2p.com",
-          subject: "Welcome to Reconquest - Your Bitcoin-Backed Lending Account",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Reconquest!</h1>
-              </div>
-              
-              <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
-                <h2 style="color: #333; margin-top: 0;">Your Bitcoin-Backed Lending Account is Ready</h2>
-                
-                <p style="color: #666; line-height: 1.6;">
-                  Hello <strong>${newUser.username}</strong>,
-                </p>
-                
-                <p style="color: #666; line-height: 1.6;">
-                  Welcome to the future of lending! Your Reconquest account has been successfully created and you're now part of the global marketplace for Bitcoin-backed loans.
-                </p>
-                
-                <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #D4AF37; margin: 20px 0;">
-                  <h3 style="color: #D4AF37; margin-top: 0;">What's Next?</h3>
-                  <ul style="color: #666; line-height: 1.6;">
-                    <li>Explore our lending marketplace</li>
-                    <li>Set up your lending preferences</li>
-                    <li>Start earning yield or access capital with Bitcoin collateral</li>
-                  </ul>
-                </div>
-                
-                <p style="color: #666; line-height: 1.6;">
-                  If you have any questions, feel free to reach out to our team at admin@reconquestp2p.com
-                </p>
-                
-                <p style="color: #666; line-height: 1.6;">
-                  Welcome to the revolution,<br>
-                  The Reconquest Team
-                </p>
-              </div>
-            </div>
-          `
-        });
-        console.log(`Welcome email sent successfully to: ${newUser.email}`);
+        const verificationToken = await emailVerificationService.generateVerificationToken(newUser.id);
+        await emailVerificationService.sendVerificationEmail(newUser.email, newUser.username, verificationToken);
+        console.log(`Verification email sent successfully to: ${newUser.email}`);
       } catch (emailError) {
-        console.error("Failed to send welcome email to user:", emailError);
+        console.error("Failed to send verification email:", emailError);
+        // Don't fail the registration if email sending fails
       }
 
       // Always send admin notification for new registrations
@@ -567,11 +540,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   <p><strong>Role:</strong> ${newUser.role}</p>
                   <p><strong>Registration Date:</strong> ${new Date(newUser.createdAt).toLocaleString()}</p>
                   <p><strong>User ID:</strong> #${newUser.id}</p>
+                  <p><strong>Email Verification:</strong> Pending</p>
                 </div>
                 
                 <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 0; color: #0c5460;">
-                    <strong>Platform Growth:</strong> A new user has successfully registered and can now access the Bitcoin lending marketplace.
+                    <strong>Registration Complete:</strong> A new user has registered and will need to verify their email before accessing platform features.
                   </p>
                 </div>
                 
@@ -591,8 +565,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({
         success: true,
-        message: "Account created successfully",
-        user: userWithoutPassword
+        message: "Account created successfully! Please check your email to verify your account before logging in.",
+        emailSent: true
       });
 
     } catch (error) {
@@ -607,6 +581,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(500).json({ 
         message: "Failed to create account. Please try again." 
+      });
+    }
+  });
+
+  // Email verification endpoint
+  app.get("/verify-email", async (req, res) => {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invalid Verification Link - Reconquest</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+            .error { color: #dc3545; background: #f8d7da; padding: 20px; border-radius: 8px; border: 1px solid #f5c6cb; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h2>Invalid Verification Link</h2>
+            <p>The verification link you clicked is invalid or malformed.</p>
+            <a href="/" class="btn">Return to Homepage</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    try {
+      const result = await emailVerificationService.verifyEmail(token);
+      
+      if (result.success) {
+        return res.send(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email Verified - Reconquest</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .success { color: #155724; background: #d4edda; padding: 30px; border-radius: 8px; border: 1px solid #c3e6cb; }
+              .btn { display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+              .gold { color: #D4AF37; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <div class="success">
+              <h2>✅ Email Verified Successfully!</h2>
+              <p>Your email has been verified and your <span class="gold">Reconquest</span> account is now fully activated.</p>
+              <p>You can now log in and start using the platform to borrow or lend with Bitcoin collateral.</p>
+              <a href="/login" class="btn">Log In to Your Account</a>
+            </div>
+          </body>
+          </html>
+        `);
+      } else {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Verification Failed - Reconquest</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .error { color: #dc3545; background: #f8d7da; padding: 30px; border-radius: 8px; border: 1px solid #f5c6cb; }
+              .btn { display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h2>❌ Verification Failed</h2>
+              <p>${result.message}</p>
+              <p>You may need to register again or request a new verification email.</p>
+              <a href="/signup" class="btn">Register Again</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verification Error - Reconquest</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+            .error { color: #dc3545; background: #f8d7da; padding: 30px; border-radius: 8px; border: 1px solid #f5c6cb; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h2>❌ Verification Error</h2>
+            <p>An error occurred while verifying your email. Please try again later.</p>
+            <a href="/" class="btn">Return to Homepage</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+  });
+
+  // API endpoint for email verification status check
+  app.post("/api/auth/verify-email", async (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Verification token is required"
+      });
+    }
+
+    try {
+      const result = await emailVerificationService.verifyEmail(token);
+      return res.json(result);
+    } catch (error) {
+      console.error("API email verification error:", error);
+      return res.status(500).json({ 
+        success: false,
+        message: "An error occurred during email verification"
       });
     }
   });

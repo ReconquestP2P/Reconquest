@@ -35,12 +35,20 @@ export default function Login() {
       });
       navigate("/");
     },
-    onError: () => {
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error: Error) => {
+      if (error.message.startsWith('EMAIL_VERIFICATION_REQUIRED:')) {
+        toast({
+          title: "Email Verification Required",
+          description: error.message.replace('EMAIL_VERIFICATION_REQUIRED: ', ''),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: error.message || "Invalid email or password. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
