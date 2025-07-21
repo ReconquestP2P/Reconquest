@@ -733,6 +733,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(user);
   });
 
+  // Delete user by email (for testing purposes)
+  app.delete("/api/users/email/:email", async (req, res) => {
+    const email = decodeURIComponent(req.params.email);
+    const deleted = await storage.deleteUserByEmail(email);
+    if (deleted) {
+      res.json({ success: true, message: `User with email ${email} deleted successfully` });
+    } else {
+      res.status(404).json({ success: false, message: `User with email ${email} not found` });
+    }
+  });
+
   // Get all loans
   app.get("/api/loans", async (req, res) => {
     const loans = await storage.getAllLoans();

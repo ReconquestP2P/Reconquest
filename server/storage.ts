@@ -10,6 +10,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
+  deleteUserByEmail(email: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
 
   // Loan operations
@@ -217,6 +218,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(user => user.emailVerificationToken === token);
   }
 
+  async deleteUserByEmail(email: string): Promise<boolean> {
+    const user = Array.from(this.users.values()).find(user => user.email === email);
+    if (user) {
+      this.users.delete(user.id);
+      return true;
+    }
+    return false;
+  }
+
   async getAllUsers(): Promise<User[]> {
     return Array.from(this.users.values());
   }
@@ -331,6 +341,11 @@ export class DatabaseStorage implements IStorage {
   async getUserByVerificationToken(token: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
     return user || undefined;
+  }
+
+  async deleteUserByEmail(email: string): Promise<boolean> {
+    const deletedUsers = await db.delete(users).where(eq(users.email, email)).returning();
+    return deletedUsers.length > 0;
   }
 
   async getAllUsers(): Promise<User[]> {
