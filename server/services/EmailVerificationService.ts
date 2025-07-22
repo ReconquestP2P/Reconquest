@@ -124,6 +124,72 @@ export class EmailVerificationService implements IEmailVerificationService {
       emailVerificationExpires: null,
     });
 
+    // Send welcome email to user after successful verification
+    try {
+      await sendEmail({
+        to: user.email,
+        from: "noreply@reconquestp2p.com",
+        subject: "🎉 Welcome to Reconquest - Your Account is Verified!",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Welcome to Reconquest!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e5e5;">
+              <h2 style="color: #333; margin-top: 0;">Your Account is Verified, ${user.username}!</h2>
+              
+              <p style="color: #666; line-height: 1.6;">
+                Congratulations! Your email has been successfully verified and your Reconquest account is now fully activated. You can now access all platform features to start your Bitcoin-backed lending journey.
+              </p>
+              
+              <div style="background: #d4edda; padding: 20px; border-left: 4px solid #28a745; margin: 20px 0; border-radius: 4px;">
+                <h3 style="color: #155724; margin-top: 0;">✅ What you can do now:</h3>
+                <ul style="color: #155724; line-height: 1.6; margin: 0; padding-left: 20px;">
+                  <li><strong>Borrow:</strong> Request loans using your Bitcoin as collateral</li>
+                  <li><strong>Lend:</strong> Earn fixed returns by funding loan requests</li>
+                  <li><strong>Manage:</strong> Track your loan portfolio and activity</li>
+                  <li><strong>Secure:</strong> Full access to all security features</li>
+                </ul>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.NODE_ENV === 'production' ? 'https://reconquestp2p.com' : 'http://localhost:5000'}/login" 
+                   style="display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; text-align: center; font-size: 16px;">
+                  Log In to Your Account
+                </a>
+              </div>
+              
+              <div style="background: #f0f9ff; padding: 20px; border-radius: 6px; margin: 20px 0;">
+                <h4 style="color: #0369a1; margin: 0 0 15px 0;">🔰 Getting Started Tips:</h4>
+                <p style="color: #0369a1; margin: 0; line-height: 1.6;">
+                  • <strong>Borrowers:</strong> Calculate your collateral needs with our loan calculator<br>
+                  • <strong>Lenders:</strong> Browse available loan requests and choose your terms<br>
+                  • <strong>Security:</strong> All transactions are secured with Bitcoin smart contracts
+                </p>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+              
+              <p style="color: #666; font-size: 14px; line-height: 1.4;">
+                <strong>Need help?</strong> Contact our support team at 
+                <a href="mailto:admin@reconquestp2p.com" style="color: #4A90E2;">admin@reconquestp2p.com</a>
+              </p>
+              
+              <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                Welcome to the future of Bitcoin-backed lending,<br>
+                The Reconquest Team<br>
+                <a href="mailto:admin@reconquestp2p.com" style="color: #4A90E2;">admin@reconquestp2p.com</a>
+              </p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`Welcome email sent successfully to verified user: ${user.email}`);
+    } catch (emailError) {
+      console.error("Failed to send welcome email to user:", emailError);
+    }
+
     // Send admin notification about new verified user
     try {
       await sendEmail({
