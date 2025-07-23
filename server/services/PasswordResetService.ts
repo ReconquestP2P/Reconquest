@@ -29,7 +29,16 @@ export class PasswordResetService {
 
     // Send password reset email
     try {
-      const resetUrl = `${process.env.NODE_ENV === 'production' ? 'https://reconquestp2p.com' : `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}`}/reset-password?token=${resetToken}`;
+      // Use the current request host or Replit domain
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://reconquestp2p.com' 
+        : process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+          : 'http://localhost:5000';
+      
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+      
+      console.log(`Generated reset URL: ${resetUrl}`);
       
       await sendEmail({
         to: user.email,
