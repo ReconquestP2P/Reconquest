@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar } from "lucide-react";
+import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Loan, User } from "@shared/schema";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -219,6 +219,23 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{users?.length || 0}</div>
             <p className="text-xs text-muted-foreground">Registered users</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email Verified
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {users?.filter(user => user.emailVerified).length || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {users?.filter(user => !user.emailVerified).length || 0} pending
+            </p>
           </CardContent>
         </Card>
 
@@ -367,6 +384,7 @@ export default function AdminDashboard() {
                       <TableHead>User ID</TableHead>
                       <TableHead>Username</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Email Status</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Registered</TableHead>
                       <TableHead>Last Updated</TableHead>
@@ -378,6 +396,14 @@ export default function AdminDashboard() {
                         <TableCell className="font-medium">#{user.id}</TableCell>
                         <TableCell>{user.username}</TableCell>
                         <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge className={user.emailVerified 
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          }>
+                            {user.emailVerified ? "✅ Verified" : "❌ Pending"}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge className={user.role === "lender" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"}>
                             {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
