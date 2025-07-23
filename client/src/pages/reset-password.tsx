@@ -7,6 +7,7 @@ import { Link, useLocation } from "wouter";
 import { Shield, ArrowLeft, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
+import PasswordStrengthMeter from "@/components/password-strength-meter";
 
 export default function ResetPassword() {
   const [formData, setFormData] = useState({
@@ -15,6 +16,8 @@ export default function ResetPassword() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [resetComplete, setResetComplete] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -71,13 +74,18 @@ export default function ResetPassword() {
     },
   });
 
+  const handlePasswordStrengthChange = (strength: number, isValid: boolean) => {
+    setPasswordStrength(strength);
+    setIsPasswordValid(isValid);
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters long";
+    } else if (!isPasswordValid) {
+      newErrors.password = "Password does not meet security requirements";
     }
 
     if (!formData.confirmPassword) {
@@ -181,6 +189,12 @@ export default function ResetPassword() {
               {errors.password && (
                 <p className="text-sm text-red-600">{errors.password}</p>
               )}
+              
+              {/* Password Strength Meter */}
+              <PasswordStrengthMeter
+                password={formData.password}
+                onStrengthChange={handlePasswordStrengthChange}
+              />
             </div>
 
             <div className="space-y-2">
