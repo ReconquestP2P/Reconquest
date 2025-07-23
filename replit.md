@@ -143,6 +143,7 @@ The application uses three main entities:
 - July 15, 2025: Modified email notification system - replaced generated BTC addresses with placeholder message "BTC address generating system is still under testing, thank you for your comprehension" for borrower funding emails pending address generation system updates
 - July 22, 2025: Enhanced email verification system with user welcome emails - users now receive both verification confirmation browser page and welcome email after successful email verification, includes account activation details and login instructions
 - July 23, 2025: Added email verification status tracking to admin dashboard - admin can now see which users have verified their emails vs pending verification, includes new "Email Verified" stats card showing verified count and pending count, plus verification status badges in user management table
+- July 23, 2025: Implemented complete password reset system - users can now reset forgotten passwords via secure email links with 1-hour token expiration, includes professional email templates with Reconquest branding and proper URL generation for development/production environments
 
 ## Admin Access
 - **Admin Email**: admin@reconquestp2p.com
