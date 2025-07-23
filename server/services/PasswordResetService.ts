@@ -69,7 +69,7 @@ export class PasswordResetService {
                 <h3 style="color: #856404; margin-top: 0;">⚠️ Security Notice</h3>
                 <ul style="color: #856404; line-height: 1.6; margin: 0; padding-left: 20px;">
                   <li>This reset link will expire in 1 hour</li>
-                  <li>If you didn't request this reset, you can safely ignore this email</li>
+                  <li>If you didn't request this reset, please contact us at admin@reconquestp2p.com</li>
                   <li>Your password won't change unless you click the link above</li>
                   <li>Never share this reset link with anyone</li>
                 </ul>
