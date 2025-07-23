@@ -125,6 +125,7 @@ export class EmailVerificationService implements IEmailVerificationService {
     });
 
     // Send welcome email to user after successful verification
+    console.log(`Attempting to send welcome email to verified user: ${user.email}`);
     try {
       await sendEmail({
         to: user.email,
