@@ -10,10 +10,12 @@ import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail } from "./email";
 import bcrypt from "bcryptjs";
 import { EmailVerificationService } from "./services/EmailVerificationService";
+import { PasswordResetService } from "./services/PasswordResetService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize email verification service
+  // Initialize services
   const emailVerificationService = new EmailVerificationService(storage);
+  const passwordResetService = new PasswordResetService(storage);
 
   // Serve static logo for emails
   app.use('/public', express.static('client/public'));
@@ -713,6 +715,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ 
         success: false,
         message: "An error occurred during email verification"
+      });
+    }
+  });
+
+  // Password reset request endpoint
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = z.object({ email: z.string().email() }).parse(req.body);
+      
+      const result = await passwordResetService.requestPasswordReset(email);
+      
+      res.json({
+        success: result.success,
+        message: result.message
+      });
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Please provide a valid email address"
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "An error occurred while processing your request"
+      });
+    }
+  });
+
+  // Password reset endpoint
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = z.object({ 
+        token: z.string(),
+        password: z.string().min(8, "Password must be at least 8 characters long")
+      }).parse(req.body);
+      
+      const result = await passwordResetService.resetPassword(token, password);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.message
+        });
+      }
+    } catch (error) {
+      console.error("Password reset error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Please provide a valid token and password (minimum 8 characters)"
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "An error occurred while resetting your password"
       });
     }
   });

@@ -10,6 +10,8 @@ import Home from "@/pages/home";
 import About from "@/pages/about";
 import SignUp from "@/pages/signup";
 import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -24,6 +26,8 @@ function Router() {
         <Route path="/about" component={About} />
         <Route path="/signup" component={SignUp} />
         <Route path="/login" component={Login} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
 

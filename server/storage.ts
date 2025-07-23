@@ -10,6 +10,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   getUserByVerificationToken(token: string): Promise<User | undefined>;
+  getUserByPasswordResetToken(token: string): Promise<User | undefined>;
   deleteUserByEmail(email: string): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
 
@@ -63,6 +64,8 @@ export class MemStorage implements IStorage {
         emailVerified: true,
         emailVerificationToken: null,
         emailVerificationExpires: null,
+        passwordResetToken: null,
+        passwordResetExpires: null,
         createdAt: new Date("2024-01-15"),
       },
       {
@@ -76,6 +79,8 @@ export class MemStorage implements IStorage {
         emailVerified: true,
         emailVerificationToken: null,
         emailVerificationExpires: null,
+        passwordResetToken: null,
+        passwordResetExpires: null,
         createdAt: new Date("2023-11-20"),
       },
       {
@@ -89,6 +94,8 @@ export class MemStorage implements IStorage {
         emailVerified: true,
         emailVerificationToken: null,
         emailVerificationExpires: null,
+        passwordResetToken: null,
+        passwordResetExpires: null,
         createdAt: new Date("2024-03-10"),
       },
     ];
@@ -199,6 +206,8 @@ export class MemStorage implements IStorage {
       emailVerified: false,
       emailVerificationToken: null,
       emailVerificationExpires: null,
+      passwordResetToken: null,
+      passwordResetExpires: null,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -216,6 +225,10 @@ export class MemStorage implements IStorage {
 
   async getUserByVerificationToken(token: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(user => user.emailVerificationToken === token);
+  }
+
+  async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.passwordResetToken === token);
   }
 
   async deleteUserByEmail(email: string): Promise<boolean> {
@@ -340,6 +353,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByVerificationToken(token: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
+    return user || undefined;
+  }
+
+  async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.passwordResetToken, token));
     return user || undefined;
   }
 
