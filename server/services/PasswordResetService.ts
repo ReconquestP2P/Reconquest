@@ -29,12 +29,13 @@ export class PasswordResetService {
 
     // Send password reset email
     try {
-      // Use the current request host or Replit domain
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://reconquestp2p.com' 
-        : process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-          : 'http://localhost:5000';
+      console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+      console.log(`REPLIT_DEV_DOMAIN: ${process.env.REPLIT_DEV_DOMAIN}`);
+      
+      // Use production domain if deployed, otherwise use Replit dev domain
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'https://reconquestp2p.com';
       
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
       
