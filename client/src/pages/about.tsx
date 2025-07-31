@@ -26,7 +26,7 @@ export default function About() {
               Through inflation, monetary manipulation, and centralized control, the value of your time — your work — is being stolen. Slowly, quietly, and systematically.
             </p>
             
-            <p className="text-xl leading-relaxed font-bold dark:text-white">Bitcoin changed the game.</p>
+            <p className="text-xl leading-relaxed font-bold dark:text-white mb-2">Bitcoin changed the game.</p>
             <p className="text-lg leading-relaxed">
               It emerged not just as a new form of money, but as a movement — a declaration of independence from the old guard. A system built on transparency, scarcity, and incorruptibility.
             </p>
@@ -35,14 +35,14 @@ export default function About() {
               But for all its promise, Bitcoin remains underutilized in the financial system it was meant to disrupt. It's time to fix that.
             </p>
             
-            <p className="text-xl leading-relaxed font-bold">
+            <p className="text-xl leading-relaxed font-bold mb-2">
               Reconquest was born to reclaim what's been taken from us.
             </p>
             <p className="text-lg leading-relaxed">
               It's time to put the world's hardest asset to work. We're building an open, transparent marketplace where savers and borrowers meet on equal ground — no middlemen, no gatekeepers, no censorship. Just like Bitcoin is meant to be.
             </p>
             
-            <p className="text-lg leading-relaxed font-bold">
+            <p className="text-lg leading-relaxed font-bold mb-2">
               We believe Bitcoin is the highest quality collateral the world has ever known.
             </p>
             
