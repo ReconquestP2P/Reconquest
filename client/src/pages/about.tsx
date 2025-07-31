@@ -39,15 +39,15 @@ export default function About() {
               Reconquest was born to reclaim what's been taken from us.
             </p>
             <p className="text-lg leading-relaxed">
-              It's time to put the world's hardest asset to work. We're building a free, open marketplace where savers and borrowers meet on equal ground. No banks. No middlemen. No gatekeepers.
+              It's time to put the world's hardest asset to work. We're building an open, transparent marketplace where savers and borrowers meet on equal ground — no middlemen, no gatekeepers, no censorship. Just like Bitcoin is meant to be.
+            </p>
+            
+            <p className="text-lg leading-relaxed font-bold">
+              We believe Bitcoin is the highest quality collateral the world has ever known.
             </p>
             
             <p className="text-lg leading-relaxed">
-              Only BTC-backed lending: pure, transparent, and censorship-resistant.
-            </p>
-            
-            <p className="text-lg leading-relaxed">
-              We believe Bitcoin is the highest quality collateral the world has ever known. And we're here to proove it.
+              And we're here to prove it.
             </p>
             
             <div className="text-center mt-16">
