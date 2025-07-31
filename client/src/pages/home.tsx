@@ -40,8 +40,8 @@ export default function Home() {
             </Link>
           </div>
           <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
-            Trusted by <span className="font-semibold text-primary">10,000+</span> users • 
-            <span className="font-semibold text-primary ml-2">1,500+ BTC</span> collateralized
+            Trusted by <span className="font-semibold text-primary">1,000+</span> users • 
+            <span className="font-semibold text-primary ml-2">500+ BTC</span> collateralized
           </div>
         </div>
       </section>
@@ -390,7 +390,7 @@ export default function Home() {
               <div className="text-gray-600 dark:text-gray-300">Total Volume</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-primary mb-2">1,500+</div>
+              <div className="text-3xl font-bold text-primary mb-2">500+</div>
               <div className="text-gray-600 dark:text-gray-300">BTC Collateralized</div>
             </div>
             <div>
@@ -398,7 +398,7 @@ export default function Home() {
               <div className="text-gray-600 dark:text-gray-300">Uptime</div>
             </div>
             <div>
-              <div className="text-3xl font-bold text-primary mb-2">10,000+</div>
+              <div className="text-3xl font-bold text-primary mb-2">1,000+</div>
               <div className="text-gray-600 dark:text-gray-300">Active Users</div>
             </div>
           </div>
