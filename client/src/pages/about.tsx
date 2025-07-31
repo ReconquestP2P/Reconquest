@@ -42,7 +42,7 @@ export default function About() {
               It's time to put the world's hardest asset to work. We're building an open, transparent marketplace where savers and borrowers meet on equal ground — no middlemen, no gatekeepers, no censorship. Just like Bitcoin is meant to be.
             </p>
             
-            <p className="text-lg leading-relaxed font-bold mb-2">
+            <p className="text-xl leading-relaxed font-bold mb-2">
               We believe Bitcoin is the highest quality collateral the world has ever known.
             </p>
             
