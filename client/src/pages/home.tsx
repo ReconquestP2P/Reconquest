@@ -41,7 +41,7 @@ export default function Home() {
           </div>
           <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
             Trusted by <span className="font-semibold text-primary">1,000+</span> users • 
-            <span className="font-semibold ml-2">500+ <span className="text-black dark:text-white">BTC</span></span> collateralized
+            <span className="font-semibold text-primary ml-2">500+</span> BTC collateralized
           </div>
         </div>
       </section>
