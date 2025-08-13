@@ -32,10 +32,8 @@ export class PasswordResetService {
       console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
       console.log(`REPLIT_DEV_DOMAIN: ${process.env.REPLIT_DEV_DOMAIN}`);
       
-      // Use production domain if deployed, otherwise use Replit dev domain
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'https://reconquestp2p.com';
+      // Always use production domain for password reset links
+      const baseUrl = 'https://reconquestp2p.com';
       
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
       
@@ -170,9 +168,7 @@ export class PasswordResetService {
   }
 
   private async sendPasswordResetConfirmationEmail(user: any): Promise<void> {
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : 'https://reconquestp2p.com';
+    const baseUrl = 'https://reconquestp2p.com';
     
     const loginUrl = `${baseUrl}/login`;
 
