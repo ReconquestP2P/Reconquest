@@ -84,7 +84,7 @@ export default function LoanRequestForm() {
                     <FormLabel>Loan Amount</FormLabel>
                     <div className="relative">
                       <FormControl>
-                        <Input placeholder="25000" {...field} className="pr-20" />
+                        <Input placeholder="25000" {...field} className="pr-24" />
                       </FormControl>
                       <FormField
                         control={form.control}

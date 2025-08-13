@@ -86,10 +86,10 @@ export default function LoanCalculator() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="25000"
-                className="pr-20"
+                className="pr-24"
               />
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="absolute right-1 top-1 w-16 h-8 border-0 bg-transparent">
+                <SelectTrigger className="absolute right-1 top-1 w-20 h-8 border-0 bg-transparent">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
