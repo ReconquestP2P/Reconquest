@@ -1,0 +1,9 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "base58>=2.1.1",
+    "bitcoinlib>=0.7.5",
+]
