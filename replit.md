@@ -32,7 +32,7 @@ Preferred communication style: Simple, everyday language.
 - **Bitcoin Price Integration**: Real-time BTC price data (USD/EUR) via CoinGecko API for collateral calculations.
 - **User & Loan Management**: CRUD operations for users, loans, and loan offers.
 - **Financial Tools**: Loan calculator, interactive interest rate sliders (0-25%), and financial metrics display.
-- **Authentication**: Secure login/signup, password strength meter, email verification, and password reset.
+- **Authentication**: Secure login/signup with JWT tokens, 7-day persistent sessions, password strength meter, email verification, and password reset.
 - **Admin Dashboard**: User and loan management, email notification status, and user registration tracking.
 - **Email System**: Comprehensive email notifications for users and admin, including welcome emails, loan status updates, and password resets.
 - **UI/UX**: Responsive design, dedicated borrower/lender dashboards, "How it works" section, FAQs, About page, and consistent branding with Reconquest logo.
@@ -57,3 +57,10 @@ Preferred communication style: Simple, everyday language.
 - **Database Integration**: Escrow addresses, redeem scripts, and public keys stored in loan records
 - **Testing**: Comprehensive test workflow validates the entire loan matching with Bitcoin escrow generation
 - **Example Output**: Generated address `2NCEzPMdSL9us5583kbcuYR7pqYCcpyn55r` with working redeem script for secure collateral handling
+
+### Persistent JWT Authentication - COMPLETE ✅
+- **JWT Implementation**: 7-day token expiration with localStorage persistence 
+- **Auto-Verification**: Frontend automatically verifies stored tokens on app startup via `/api/auth/me` endpoint
+- **Server Restart Resilience**: Users stay logged in through server restarts and code changes
+- **Security**: Tokens validated on protected routes, graceful invalid token handling
+- **User Experience**: Login once, stay authenticated for 7 days without repeated login prompts

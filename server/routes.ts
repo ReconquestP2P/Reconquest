@@ -9,8 +9,35 @@ import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail } from "./email";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { EmailVerificationService } from "./services/EmailVerificationService";
 import { PasswordResetService } from "./services/PasswordResetService";
+
+// JWT secret - in production this should be an environment variable
+const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
+
+// JWT Authentication middleware
+const authenticateToken = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    // Get fresh user data
+    const user = await storage.getUser(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: 'Invalid or expired token' });
+  }
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
@@ -427,14 +454,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Return user without password
+      // Generate JWT token with 7 days expiration
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      // Return user without password and include token
       const { password: _, ...userWithoutPassword } = user;
       console.log("Login successful for user:", userWithoutPassword.email);
       
       res.json({
         success: true,
         message: "Login successful",
-        user: userWithoutPassword
+        user: userWithoutPassword,
+        token: token
       });
 
     } catch (error) {
@@ -461,6 +496,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ 
       success: true, 
       message: "Logged out successfully" 
+    });
+  });
+
+  // Get current user endpoint (protected)
+  app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
+    const { password: _, ...userWithoutPassword } = req.user;
+    res.json({
+      success: true,
+      user: userWithoutPassword
     });
   });
 
