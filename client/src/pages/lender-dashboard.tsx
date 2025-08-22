@@ -121,8 +121,9 @@ export default function LenderDashboard() {
 
   const fundLoan = useMutation({
     mutationFn: async (loanId: number) => {
+      // Use the current logged-in user as the lender
       const response = await apiRequest(`/api/loans/${loanId}/fund`, "POST", {
-        lenderId: 3 // Jorge's lender ID
+        lenderId: userId
       });
       return await response.json();
     },
