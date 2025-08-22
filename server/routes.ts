@@ -384,12 +384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Wait a bit to ensure escrow instructions have been sent and avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 2000));
           console.log(`📧 Sending funding notification to borrower for loan ${loanId}`);
-          const notificationSent = await sendLoanFundedNotification(updatedLoan, lender);
-          if (notificationSent) {
-            console.log(`✅ Funding notification sent successfully for loan ${loanId}`);
-          } else {
-            console.log(`❌ Failed to send funding notification for loan ${loanId}`);
-          }
+          await sendLoanFundedNotification(updatedLoan, lender);
+          console.log(`✅ Funding notification process completed for loan ${loanId}`)
         } else {
           console.log(`❌ Could not find lender with ID ${lenderId}, notification not sent`);
         }
@@ -1262,7 +1258,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Admin notification for new loan posting
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        from: "onboarding@resend.dev",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -1301,7 +1297,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Borrower notification
       await sendEmail({
         to: borrower.email, // Send to borrower, not admin
-        from: "noreply@reconquestp2p.com",
+        from: "onboarding@resend.dev",
         subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
