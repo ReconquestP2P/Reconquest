@@ -843,6 +843,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test email endpoint 
+  app.post("/api/test-email", async (req, res) => {
+    try {
+      const { to, subject, message } = req.body;
+      const success = await sendEmail({
+        to: to || "jfestrada93@gmail.com",
+        from: "onboarding@resend.dev",
+        subject: subject || "🧪 Test Email from Reconquest",
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #D4AF37;">📧 Email Delivery Test</h2>
+            <p>This is a test email to verify that notifications are working correctly.</p>
+            <p><strong>Message:</strong> ${message || "If you receive this, email delivery is working!"}</p>
+            <p style="color: #666; font-size: 14px;">Sent from Reconquest notification system</p>
+          </div>
+        `
+      });
+      
+      if (success) {
+        res.json({ success: true, message: "Test email sent successfully" });
+      } else {
+        res.status(500).json({ success: false, message: "Failed to send test email" });
+      }
+    } catch (error) {
+      console.error("Test email error:", error);
+      res.status(500).json({ success: false, message: "Email service error" });
+    }
+  });
+
   // Get all users
   app.get("/api/users", async (req, res) => {
     const users = await storage.getAllUsers();
@@ -1126,7 +1155,7 @@ async function sendLoanFundedNotification(loan: any, lender: any) {
 
     await sendEmail({
       to: borrower.email,
-      from: "noreply@reconquestp2p.com", 
+      from: "onboarding@resend.dev", 
       subject: `🎉 Your Loan Has Been Funded! - Loan #${loan.id}`,
       html: `
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
