@@ -376,6 +376,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           escrowAddress: result.escrowAddress
         });
 
+        // Send loan funding notification to borrower
+        const lender = await storage.getUser(lenderId);
+        if (lender) {
+          await sendLoanFundedNotification(updatedLoan, lender);
+        }
+
         res.json({
           success: true,
           message: "Loan funding initiated successfully",
@@ -1100,12 +1106,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Email notification helper for funding attempts
-  async function sendFundingNotification(loan: any, lenderId: number) {
+  // Send notification to borrower when their loan gets funded
+async function sendLoanFundedNotification(loan: any, lender: any) {
+  try {
+    const borrower = await storage.getUser(loan.borrowerId);
+    if (!borrower) return;
+
+    await sendEmail({
+      to: borrower.email,
+      from: "noreply@reconquestp2p.com", 
+      subject: `🎉 Your Loan Has Been Funded! - Loan #${loan.id}`,
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0; text-align: center;">🎉 Loan Funded Successfully!</h1>
+          </div>
+          
+          <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h2 style="color: #333; margin-top: 0;">Great News, ${borrower.firstName || borrower.username}!</h2>
+            
+            <p style="color: #666; font-size: 16px; line-height: 1.5;">
+              Your loan request has been funded by a lender. The collateral deposit process has begun.
+            </p>
+            
+            <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #0c5460; margin-top: 0;">Loan Details</h3>
+              <p><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</p>
+              <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+              <p><strong>Term:</strong> ${loan.termMonths} months</p>
+              <p><strong>Lender:</strong> ${lender.username}</p>
+            </div>
+            
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #856404; margin-top: 0;">Next Steps</h3>
+              <p style="margin: 0; color: #856404;">
+                🔐 You will receive a separate email with your Bitcoin escrow address for collateral deposit.<br/>
+                📧 Check your email for escrow instructions within the next few minutes.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <p style="color: #666; margin: 0;">Thank you for using Reconquest!</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
+
+    console.log(`Loan funded notification sent to borrower: ${borrower.email}`);
+  } catch (error) {
+    console.error(`Failed to send loan funded notification:`, error);
+  }
+}
+
+async function sendFundingNotification(loan: any, lenderId: number) {
     try {
       const borrower = await storage.getUser(loan.borrowerId);
       const lender = await storage.getUser(lenderId);
       if (!borrower || !lender) return;
 
+      // Send notification to borrower that their loan has been funded
+      await sendLoanFundedNotification(loan, lender);
+
+      // Send admin notification
       await sendEmail({
         to: "admin@reconquestp2p.com",
         from: "noreply@reconquestp2p.com",
@@ -1196,7 +1259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Borrower notification
       await sendEmail({
-        to: "admin@reconquestp2p.com", // Admin notification for loan posting
+        to: borrower.email, // Send to borrower, not admin
         from: "noreply@reconquestp2p.com",
         subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
