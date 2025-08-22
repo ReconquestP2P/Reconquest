@@ -15,6 +15,9 @@ interface EmailParams {
   html: string;
 }
 
+// Helper function to add delay between emails to respect rate limits
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function sendEmail(params: EmailParams): Promise<boolean> {
   try {
     console.log(`Attempting to send email to: ${params.to}, subject: ${params.subject}`);
@@ -28,10 +31,32 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 
     if (error) {
       console.error('Resend email error:', error);
+      // If rate limited, wait and retry once
+      if (error.name === 'rate_limit_exceeded') {
+        console.log('Rate limited, waiting 3 seconds and retrying...');
+        await delay(3000);
+        
+        const { data: retryData, error: retryError } = await resend.emails.send({
+          from: params.from,
+          to: [params.to],
+          subject: params.subject,
+          html: params.html,
+        });
+        
+        if (retryError) {
+          console.error('Resend email retry failed:', retryError);
+          return false;
+        }
+        
+        console.log('Email sent successfully on retry:', retryData?.id);
+        return true;
+      }
       return false;
     }
 
     console.log('Email sent successfully:', data?.id);
+    // Add small delay after successful send to prevent rate limiting
+    await delay(600); // 600ms delay = ~1.6 requests per second, under the 2/sec limit
     return true;
   } catch (error) {
     console.error('Resend email error:', error);

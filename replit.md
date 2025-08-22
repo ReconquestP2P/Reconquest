@@ -70,4 +70,6 @@ Preferred communication style: Simple, everyday language.
 - **Loan Funding Notifications**: Beautiful email notifications to borrowers when lenders fund their loans
 - **Escrow Instructions**: Separate detailed emails with Bitcoin escrow addresses and deposit instructions
 - **Professional Design**: Gradient headers, styled content, comprehensive loan details, and clear next steps
+- **Rate Limiting Protection**: Smart delays and retry mechanisms prevent email delivery failures
 - **Complete Workflow Coverage**: Notifications at every step from loan creation to funding and collateral deposit
+- **Aug 22, 2025**: Fixed rate limiting issues causing funding notification failures - now working reliably

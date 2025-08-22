@@ -376,10 +376,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           escrowAddress: result.escrowAddress
         });
 
-        // Send loan funding notification to borrower
+        // Send loan funding notification to borrower with delay to prevent rate limiting
+        console.log(`🔔 Attempting to send funding notification for loan ${loanId}, lenderId: ${lenderId}`);
         const lender = await storage.getUser(lenderId);
+        console.log(`📋 Lender found:`, lender ? `${lender.username} (${lender.email})` : 'null');
         if (lender) {
-          await sendLoanFundedNotification(updatedLoan, lender);
+          // Wait a bit to ensure escrow instructions have been sent and avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(`📧 Sending funding notification to borrower for loan ${loanId}`);
+          const notificationSent = await sendLoanFundedNotification(updatedLoan, lender);
+          if (notificationSent) {
+            console.log(`✅ Funding notification sent successfully for loan ${loanId}`);
+          } else {
+            console.log(`❌ Failed to send funding notification for loan ${loanId}`);
+          }
+        } else {
+          console.log(`❌ Could not find lender with ID ${lenderId}, notification not sent`);
         }
 
         res.json({
