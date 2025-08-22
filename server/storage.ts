@@ -26,6 +26,15 @@ export interface IStorage {
   createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer>;
   getLoanOffers(loanId: number): Promise<LoanOffer[]>;
   getUserOffers(userId: number): Promise<LoanOffer[]>;
+  getLoanOffer(offerId: number): Promise<LoanOffer | undefined>;
+  acceptLoanOffer(offerId: number): Promise<LoanOffer>;
+  updateLoanWithEscrow(loanId: number, escrowData: {
+    escrowAddress: string;
+    escrowRedeemScript: string;
+    borrowerPubkey: string;
+    lenderPubkey: string;
+    platformPubkey: string;
+  }): Promise<Loan>;
 
 
 }
@@ -442,6 +451,45 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loanOffers)
       .where(eq(loanOffers.lenderId, userId));
+  }
+
+  async getLoanOffer(offerId: number): Promise<LoanOffer | undefined> {
+    const [loanOffer] = await db
+      .select()
+      .from(loanOffers)
+      .where(eq(loanOffers.id, offerId));
+    return loanOffer;
+  }
+
+  async acceptLoanOffer(offerId: number): Promise<LoanOffer> {
+    const [acceptedOffer] = await db
+      .update(loanOffers)
+      .set({ status: 'accepted' })
+      .where(eq(loanOffers.id, offerId))
+      .returning();
+    return acceptedOffer;
+  }
+
+  async updateLoanWithEscrow(loanId: number, escrowData: {
+    escrowAddress: string;
+    escrowRedeemScript: string;
+    borrowerPubkey: string;
+    lenderPubkey: string;
+    platformPubkey: string;
+  }): Promise<Loan> {
+    const [updatedLoan] = await db
+      .update(loans)
+      .set({
+        escrowAddress: escrowData.escrowAddress,
+        escrowRedeemScript: escrowData.escrowRedeemScript,
+        borrowerPubkey: escrowData.borrowerPubkey,
+        lenderPubkey: escrowData.lenderPubkey,
+        platformPubkey: escrowData.platformPubkey,
+        status: 'funding'
+      })
+      .where(eq(loans.id, loanId))
+      .returning();
+    return updatedLoan;
   }
 
 

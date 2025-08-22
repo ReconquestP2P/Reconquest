@@ -1,30 +1,147 @@
 import crypto from 'crypto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { writeFileSync, unlinkSync } from 'fs';
+
+const execAsync = promisify(exec);
+
+export interface MultisigEscrowResult {
+  address: string;
+  redeemScript: string;
+  scriptHash: string;
+  publicKeys: string[];
+  signaturesRequired: number;
+  totalKeys: number;
+  network: string;
+  addressType: string;
+}
 
 export interface IBitcoinEscrowService {
-  generateEscrowAddress(): Promise<string>;
+  generateMultisigEscrowAddress(
+    borrowerPubkey: string, 
+    lenderPubkey: string, 
+    platformPubkey: string
+  ): Promise<MultisigEscrowResult>;
   verifyTransaction(address: string, expectedAmount: number): Promise<{ verified: boolean; txHash?: string }>;
   getTransactionUrl(txHash: string): string;
 }
 
 /**
- * Bitcoin Escrow Service for handling testnet Bitcoin transactions
- * In production, this would integrate with a real Bitcoin wallet/node
- * For POC, we'll simulate testnet addresses and transaction verification
+ * Bitcoin Escrow Service for handling testnet Bitcoin multisig transactions
+ * Creates 2-of-3 multisig addresses using borrower, lender, and platform public keys
  */
 export class BitcoinEscrowService implements IBitcoinEscrowService {
-  private readonly testnetPrefix = 'tb1'; // Testnet Bech32 prefix
+  // Platform's public key for multisig escrow (in production, this would be from secure key management)
+  private readonly platformPubkey = "02abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
 
   /**
-   * Generates a valid testnet Bitcoin address for escrow
-   * In production: Would integrate with HD wallet or multisig setup
-   * For POC: Generates real testnet addresses that can be verified on block explorers
+   * Generates a 2-of-3 multisig escrow address using the Python Bitcoin library
+   * Requires public keys from borrower, lender, and platform
    */
-  async generateEscrowAddress(): Promise<string> {
-    // Generate a proper testnet Bech32 address
-    const address = this.generateValidTestnetAddress();
+  async generateMultisigEscrowAddress(
+    borrowerPubkey: string, 
+    lenderPubkey: string, 
+    platformPubkey?: string
+  ): Promise<MultisigEscrowResult> {
+    try {
+      // Use platform's default pubkey if not provided
+      const actualPlatformPubkey = platformPubkey || this.platformPubkey;
+      
+      // Validate public key format (compressed, 66 hex chars)
+      this.validatePublicKey(borrowerPubkey, 'borrower');
+      this.validatePublicKey(lenderPubkey, 'lender');
+      this.validatePublicKey(actualPlatformPubkey, 'platform');
+      
+      console.log('Creating multisig escrow address for loan matching...');
+      console.log(`Borrower: ${borrowerPubkey}`);
+      console.log(`Lender: ${lenderPubkey}`);
+      console.log(`Platform: ${actualPlatformPubkey}`);
+      
+      // Create temporary Python script file to avoid shell escaping issues
+      const tempScriptPath = `/tmp/create_escrow_${Date.now()}.py`;
+      const pythonScript = `import sys
+import json
+sys.path.append('.')
+from bitcoin_escrow import create_multisig_escrow
+
+borrower_key = "${borrowerPubkey}"
+lender_key = "${lenderPubkey}"
+platform_key = "${actualPlatformPubkey}"
+
+try:
+    result = create_multisig_escrow(borrower_key, lender_key, platform_key)
+    print(json.dumps(result))
+except Exception as e:
+    print(f"ERROR: {str(e)}")
+    sys.exit(1)
+`;
+      
+      try {
+        // Write Python script to temporary file
+        writeFileSync(tempScriptPath, pythonScript);
+        
+        // Execute the Python script
+        const { stdout, stderr } = await execAsync(`python3 ${tempScriptPath}`);
+        
+        // Clean up temporary file
+        unlinkSync(tempScriptPath);
+        
+        if (stderr) {
+          console.error('Python stderr:', stderr);
+        }
+        
+        // Parse the JSON result
+        const result = JSON.parse(stdout.trim());
+        
+        console.log(`Generated multisig address: ${result.address}`);
+        console.log(`Redeem script: ${result.redeem_script}`);
+        
+        return {
+          address: result.address,
+          redeemScript: result.redeem_script,
+          scriptHash: result.script_hash,
+          publicKeys: result.public_keys,
+          signaturesRequired: result.signatures_required,
+          totalKeys: result.total_keys,
+          network: result.network,
+          addressType: result.address_type
+        };
+        
+      } catch (execError: any) {
+        // Clean up file if it exists
+        try {
+          unlinkSync(tempScriptPath);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
+        throw execError;
+      }
+      
+    } catch (error: any) {
+      console.error('Error generating multisig escrow address:', error);
+      throw new Error(`Failed to generate multisig escrow address: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Validates that a public key is in the correct compressed format
+   */
+  private validatePublicKey(pubkey: string, type: string): void {
+    if (!pubkey || typeof pubkey !== 'string') {
+      throw new Error(`${type} public key must be a string`);
+    }
     
-    console.log(`Generated testnet escrow address: ${address}`);
-    return address;
+    if (pubkey.length !== 66) {
+      throw new Error(`${type} public key must be 66 characters (33 bytes compressed)`);
+    }
+    
+    if (!pubkey.match(/^[0-9a-fA-F]{66}$/)) {
+      throw new Error(`${type} public key must be valid hexadecimal`);
+    }
+    
+    if (!pubkey.startsWith('02') && !pubkey.startsWith('03')) {
+      throw new Error(`${type} public key must be compressed (start with 02 or 03)`);
+    }
   }
 
   /**
@@ -90,7 +207,8 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
     let acc = 0;
     let bits = 0;
     
-    for (const byte of data) {
+    for (let i = 0; i < data.length; i++) {
+      const byte = data[i];
       acc = (acc << 8) | byte;
       bits += 8;
       

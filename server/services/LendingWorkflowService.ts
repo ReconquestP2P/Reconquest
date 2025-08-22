@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { IBitcoinEscrowService } from './BitcoinEscrowService';
 import { ILtvValidationService, LtvValidationResult } from './LtvValidationService';
 import { IStorage } from '../storage';
@@ -6,6 +7,7 @@ import { sendEmail } from '../email';
 
 export interface ILendingWorkflowService {
   initiateLoan(borrowerId: number, collateralBtc: number, loanAmount: number): Promise<LoanInitiationResult>;
+  acceptLoanOffer(offerId: number, borrowerPubkey: string, lenderPubkey: string): Promise<LoanMatchingResult>;
   processEscrowDeposit(loanId: number): Promise<EscrowProcessResult>;
   confirmFiatTransfer(loanId: number, lenderId: number): Promise<void>;
   confirmBorrowerReceipt(loanId: number): Promise<void>;
@@ -24,6 +26,17 @@ export interface EscrowProcessResult {
   success: boolean;
   txHash?: string;
   transactionUrl?: string;
+  errorMessage?: string;
+}
+
+export interface LoanMatchingResult {
+  success: boolean;
+  loanId?: number;
+  escrowAddress?: string;
+  redeemScript?: string;
+  borrowerPubkey?: string;
+  lenderPubkey?: string;
+  platformPubkey?: string;
   errorMessage?: string;
 }
 
@@ -63,8 +76,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         };
       }
 
-      // Generate escrow address
-      const escrowAddress = await this.bitcoinEscrow.generateEscrowAddress();
+      // Generate a simple escrow address for loan posting (before matching)
+      // Real multisig address will be generated when a lender accepts the offer
+      const escrowAddress = `tb1q${crypto.randomBytes(20).toString('hex')}`;
 
       // Create loan record
       const loan = await this.storage.createLoan({
@@ -104,6 +118,86 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         success: false,
         ltvValidation: { isValid: false, ltvRatio: 0, maxAllowedLtv: 0.6 },
         errorMessage: 'Failed to initiate loan request'
+      };
+    }
+  }
+
+  /**
+   * Step 1.5: Accept a loan offer and create multisig escrow address
+   * This is where the magic happens - when borrower and lender match!
+   */
+  async acceptLoanOffer(offerId: number, borrowerPubkey: string, lenderPubkey: string): Promise<LoanMatchingResult> {
+    try {
+      console.log(`Processing loan offer acceptance: ${offerId}`);
+      console.log(`Borrower pubkey: ${borrowerPubkey}`);
+      console.log(`Lender pubkey: ${lenderPubkey}`);
+
+      // Get the loan offer
+      const offer = await this.storage.getLoanOffer(offerId);
+      if (!offer) {
+        return {
+          success: false,
+          errorMessage: 'Loan offer not found'
+        };
+      }
+
+      // Get the associated loan
+      const loan = await this.storage.getLoan(offer.loanId);
+      if (!loan) {
+        return {
+          success: false,
+          errorMessage: 'Associated loan not found'
+        };
+      }
+
+      // Generate 2-of-3 multisig escrow address
+      const escrowResult = await this.bitcoinEscrow.generateMultisigEscrowAddress(
+        borrowerPubkey,
+        lenderPubkey
+      );
+
+      console.log(`Generated multisig escrow: ${escrowResult.address}`);
+
+      // Accept the offer (marks it as accepted)
+      await this.storage.acceptLoanOffer(offerId);
+
+      // Update loan with escrow details and set lender
+      const updatedLoan = await this.storage.updateLoanWithEscrow(loan.id, {
+        escrowAddress: escrowResult.address,
+        escrowRedeemScript: escrowResult.redeemScript,
+        borrowerPubkey,
+        lenderPubkey,
+        platformPubkey: 'platform_key_here' // This comes from the service
+      });
+
+      // Also set the lender ID on the loan
+      await this.storage.updateLoan(loan.id, { 
+        lenderId: offer.lenderId,
+        status: 'funding'
+      });
+
+      console.log(`Loan ${loan.id} matched! Escrow address: ${escrowResult.address}`);
+
+      // Send notification emails
+      await this.notifyBorrowerOfLoanMatching(loan, escrowResult.address);
+      await this.notifyLenderOfLoanMatching(loan, escrowResult.address);
+      await this.notifyAdminOfLoanMatching(loan);
+
+      return {
+        success: true,
+        loanId: loan.id,
+        escrowAddress: escrowResult.address,
+        redeemScript: escrowResult.redeemScript,
+        borrowerPubkey,
+        lenderPubkey,
+        platformPubkey: 'platform_key_here'
+      };
+
+    } catch (error: any) {
+      console.error('Error accepting loan offer:', error);
+      return {
+        success: false,
+        errorMessage: error?.message || 'Failed to accept loan offer'
       };
     }
   }
@@ -492,5 +586,149 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         html: emailHtml
       })
     ]);
+  }
+
+  /**
+   * Email notification for borrower when loan is matched
+   */
+  private async notifyBorrowerOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
+    try {
+      const borrower = await this.storage.getUser(loan.borrowerId);
+      if (!borrower) return;
+
+      await sendEmail({
+        to: borrower.email,
+        from: 'noreply@reconquestp2p.com',
+        subject: '🎉 Your Loan Has Been Matched!',
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Matched!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Great News, ${borrower.username}!</h2>
+              
+              <p style="color: #666; line-height: 1.6;">Your loan request has been matched with a lender. A secure 2-of-3 multisig Bitcoin escrow address has been generated.</p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Next Steps</h3>
+                <p><strong>Escrow Address:</strong> <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">${escrowAddress}</code></p>
+                <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
+                <p>Please deposit your Bitcoin collateral to the escrow address above. Once confirmed, your loan will be funded.</p>
+              </div>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #155724;">
+                  <strong>Loan Amount:</strong> ${loan.amount} ${loan.currency} at ${loan.interestRate}% for ${loan.termMonths} months
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send borrower loan matching notification:", error);
+    }
+  }
+
+  /**
+   * Email notification for lender when loan is matched
+   */
+  private async notifyLenderOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
+    try {
+      if (!loan.lenderId) return;
+      const lender = await this.storage.getUser(loan.lenderId);
+      if (!lender) return;
+
+      await sendEmail({
+        to: lender.email,
+        from: 'noreply@reconquestp2p.com',
+        subject: '🎯 Loan Offer Accepted!',
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Offer Accepted!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Congratulations, ${lender.username}!</h2>
+              
+              <p style="color: #666; line-height: 1.6;">Your loan offer has been accepted. A secure multisig escrow has been created and the borrower is preparing to deposit collateral.</p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
+                <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+                <p><strong>Escrow:</strong> <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">${escrowAddress}</code></p>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #0c5460;">
+                  <strong>Next Step:</strong> Once the borrower deposits Bitcoin to escrow, you can proceed with fiat transfer.
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send lender loan matching notification:", error);
+    }
+  }
+
+  /**
+   * Email notification for admin when loan is matched
+   */
+  private async notifyAdminOfLoanMatching(loan: Loan): Promise<void> {
+    try {
+      const borrower = await this.storage.getUser(loan.borrowerId);
+      if (!borrower || !loan.lenderId) return;
+      const lender = await this.storage.getUser(loan.lenderId);
+      if (!lender) return;
+
+      await sendEmail({
+        to: "admin@reconquestp2p.com",
+        from: "noreply@reconquestp2p.com",
+        subject: `🎯 [ADMIN ALERT] Loan Matched - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Loan Successfully Matched</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Loan Matching Success</h2>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Match Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
+                <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
+                <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+                <p><strong>Status:</strong> ${loan.status}</p>
+              </div>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #155724;">
+                  <strong>Multisig Created:</strong> A 2-of-3 multisig escrow address has been generated. Awaiting borrower collateral deposit.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    } catch (error) {
+      console.error("Failed to send admin loan matching notification:", error);
+    }
   }
 }

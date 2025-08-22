@@ -35,6 +35,10 @@ export const loans = pgTable("loans", {
   dueDate: timestamp("due_date"),
   repaidAt: timestamp("repaid_at"),
   escrowAddress: text("escrow_address"),
+  escrowRedeemScript: text("escrow_redeem_script"),
+  borrowerPubkey: text("borrower_pubkey"),
+  lenderPubkey: text("lender_pubkey"),
+  platformPubkey: text("platform_pubkey"),
   escrowTxHash: text("escrow_tx_hash"),
   fiatTransferConfirmed: boolean("fiat_transfer_confirmed").default(false),
   borrowerConfirmedReceipt: boolean("borrower_confirmed_receipt").default(false),
@@ -81,6 +85,10 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   ltvRatio: true,
   dueDate: true,
   escrowAddress: true,
+  escrowRedeemScript: true,
+  borrowerPubkey: true,
+  lenderPubkey: true,
+  platformPubkey: true,
   escrowTxHash: true,
   fiatTransferConfirmed: true,
   borrowerConfirmedReceipt: true,
@@ -89,6 +97,7 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
 
 export const insertLoanOfferSchema = createInsertSchema(loanOffers).omit({
   id: true,
+  lenderId: true,
   status: true,
   createdAt: true,
 });

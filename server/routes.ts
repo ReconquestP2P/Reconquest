@@ -906,10 +906,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create loan offer
   app.post("/api/loan-offers", async (req, res) => {
     try {
-      const validatedData = insertLoanOfferSchema.parse(req.body);
+      console.log("Loan offer request body:", req.body);
       
       // Mock lender ID (in real app, get from authentication)
       const lenderId = 2;
+      
+      const validatedData = insertLoanOfferSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
       
       const offer = await storage.createLoanOffer({
         ...validatedData,
@@ -948,7 +951,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(offers);
   });
 
+  // Accept loan offer and create multisig escrow address
+  app.post("/api/loan-offers/:offerId/accept", async (req, res) => {
+    try {
+      const offerId = parseInt(req.params.offerId);
+      const { borrowerPubkey, lenderPubkey } = req.body;
 
+      console.log(`Accepting loan offer ${offerId} with pubkeys:`);
+      console.log(`Borrower: ${borrowerPubkey}`);
+      console.log(`Lender: ${lenderPubkey}`);
+
+      if (!offerId || !borrowerPubkey || !lenderPubkey) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Offer ID, borrower pubkey, and lender pubkey are required" 
+        });
+      }
+
+      // Accept the loan offer and create multisig escrow
+      const result = await lendingWorkflow.acceptLoanOffer(offerId, borrowerPubkey, lenderPubkey);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: "Loan offer accepted successfully! Multisig escrow created.",
+          loanId: result.loanId,
+          escrowAddress: result.escrowAddress,
+          redeemScript: result.redeemScript,
+          borrowerPubkey: result.borrowerPubkey,
+          lenderPubkey: result.lenderPubkey,
+          platformPubkey: result.platformPubkey,
+          instructions: `Borrower should now deposit Bitcoin to escrow address: ${result.escrowAddress}`
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: result.errorMessage || "Failed to accept loan offer"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error accepting loan offer:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Internal server error while accepting loan offer",
+        error: error?.message 
+      });
+    }
+  });
 
   // Initialize Bitcoin lending workflow services
   const bitcoinEscrow = new BitcoinEscrowService();
