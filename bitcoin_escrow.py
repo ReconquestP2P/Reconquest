@@ -20,9 +20,72 @@ import hashlib
 import base58
 
 
+def bech32_polymod(values):
+    """Internal function for bech32 checksum."""
+    GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3]
+    chk = 1
+    for value in values:
+        top = chk >> 25
+        chk = (chk & 0x1ffffff) << 5 ^ value
+        for i in range(5):
+            chk ^= GEN[i] if ((top >> i) & 1) else 0
+    return chk
+
+
+def bech32_hrp_expand(hrp):
+    """Expand the HRP into values for checksum computation."""
+    return [ord(x) >> 5 for x in hrp] + [0] + [ord(x) & 31 for x in hrp]
+
+
+def bech32_verify_checksum(hrp, data):
+    """Verify a checksum given HRP and converted data characters."""
+    return bech32_polymod(bech32_hrp_expand(hrp) + data) == 1
+
+
+def bech32_create_checksum(hrp, data):
+    """Compute the checksum values given HRP and data."""
+    values = bech32_hrp_expand(hrp) + data
+    polymod = bech32_polymod(values + [0, 0, 0, 0, 0, 0]) ^ 1
+    return [(polymod >> 5 * (5 - i)) & 31 for i in range(6)]
+
+
+def convertbits(data, frombits, tobits, pad=True):
+    """General power-of-2 base conversion."""
+    acc = 0
+    bits = 0
+    ret = []
+    maxv = (1 << tobits) - 1
+    max_acc = (1 << (frombits + tobits - 1)) - 1
+    for value in data:
+        if value < 0 or (value >> frombits):
+            return None
+        acc = ((acc << frombits) | value) & max_acc
+        bits += frombits
+        while bits >= tobits:
+            bits -= tobits
+            ret.append((acc >> bits) & maxv)
+    if pad:
+        if bits:
+            ret.append((acc << (tobits - bits)) & maxv)
+    elif bits >= frombits or ((acc << (tobits - bits)) & maxv):
+        return None
+    return ret
+
+
+def encode_bech32_address(hrp, witver, witprog):
+    """Encode a witness program as a bech32 address."""
+    ret = hrp + '1'
+    data = [witver] + convertbits(witprog, 8, 5)
+    if data is None:
+        return None
+    data += bech32_create_checksum(hrp, data)
+    ret += ''.join([chr(ord('0') + d) if d < 10 else chr(ord('a') + d - 10) for d in data])
+    return ret
+
+
 def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
     """
-    Create a Bitcoin 2-of-3 multisig P2SH address for testnet.
+    Create a Bitcoin 2-of-3 multisig P2WSH address for testnet (Native SegWit).
     
     Args:
         pubkey1 (str): First compressed public key in hex format (66 chars)
@@ -30,7 +93,7 @@ def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
         pubkey3 (str): Third compressed public key in hex format (66 chars)
         
     Returns:
-        dict: Contains address (P2SH starting with "2"), redeem_script (hex), 
+        dict: Contains address (P2WSH starting with "tb1"), witness_script (hex), 
               script_pubkey, public_keys, and other metadata
         
     Raises:
@@ -46,7 +109,7 @@ def create_multisig_escrow(
     platform_pubkey_hex: str
 ) -> Dict[str, Any]:
     """
-    Create a 2-of-3 multisig Bitcoin testnet escrow address.
+    Create a 2-of-3 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
     
     Args:
         borrower_pubkey_hex (str): Borrower's compressed public key in hex format
@@ -55,9 +118,10 @@ def create_multisig_escrow(
         
     Returns:
         Dict containing:
-        - address (str): The P2SH multisig address for Bitcoin testnet
-        - redeem_script (str): The redeem script in hex format
-        - script_hash (str): The script hash
+        - address (str): The P2WSH multisig address for Bitcoin testnet (starts with "tb1")
+        - witness_script (str): The witness script in hex format
+        - script_pubkey (str): The ScriptPubKey for P2WSH
+        - script_hash (str): The SHA-256 script hash (32 bytes)
         - public_keys (list): List of public keys used
         - signatures_required (int): Number of signatures required (2)
         - total_keys (int): Total number of keys (3)
@@ -122,34 +186,29 @@ def create_multisig_escrow(
         script_bytes.append(0x53)  # OP_3
         script_bytes.append(0xae)  # OP_CHECKMULTISIG
         
-        redeem_script_bytes = bytes(script_bytes)
+        witness_script_bytes = bytes(script_bytes)
         
-        # Get script hash for P2SH address
-        script_hash = hashlib.sha256(redeem_script_bytes).digest()
-        ripemd_hash = hashlib.new('ripemd160', script_hash).digest()
+        # Get script hash for P2WSH (Native SegWit) - SHA-256 only, no RIPEMD160
+        script_hash = hashlib.sha256(witness_script_bytes).digest()
         
-        # Create P2SH address on testnet
-        # Create final address using Base58Check encoding
-        # Testnet P2SH addresses use version byte 196 (0xc4)
-        payload = bytes([196]) + ripemd_hash
-        checksum = hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4]
-        address_bytes = payload + checksum
-        address = base58.b58encode(address_bytes).decode('utf-8')
+        # Create P2WSH address on testnet using bech32 encoding
+        # Native SegWit addresses use bech32 with witness version 0
+        address = encode_bech32_address('tb', 0, script_hash)
         
-        # Create ScriptPubKey for P2SH (OP_HASH160 <script_hash> OP_EQUAL)
+        # Create ScriptPubKey for P2WSH (OP_0 <32-byte-script-hash>)
         script_pubkey_bytes = bytearray()
-        script_pubkey_bytes.append(0xa9)  # OP_HASH160
-        script_pubkey_bytes.append(0x14)  # Push 20 bytes (RIPEMD160 hash length)
-        script_pubkey_bytes.extend(ripemd_hash)
-        script_pubkey_bytes.append(0x87)  # OP_EQUAL
+        script_pubkey_bytes.append(0x00)  # OP_0 (witness version 0)
+        script_pubkey_bytes.append(0x20)  # Push 32 bytes (SHA-256 hash length)
+        script_pubkey_bytes.extend(script_hash)
         script_pubkey = bytes(script_pubkey_bytes).hex()
 
         # Prepare result
         result = {
             'address': address,
-            'redeem_script': redeem_script_bytes.hex(),
+            'witness_script': witness_script_bytes.hex(),  # P2WSH uses witness_script instead of redeem_script
+            'redeem_script': witness_script_bytes.hex(),   # Keep for backward compatibility
             'script_pubkey': script_pubkey,
-            'script_hash': ripemd_hash.hex(),
+            'script_hash': script_hash.hex(),              # P2WSH uses SHA-256 hash (32 bytes)
             'public_keys': [key.public_hex for key in sorted_keys],
             'public_keys_original_order': {
                 'borrower': borrower_pubkey_hex,
@@ -159,7 +218,7 @@ def create_multisig_escrow(
             'signatures_required': 2,
             'total_keys': 3,
             'network': 'testnet',
-            'address_type': 'P2SH'
+            'address_type': 'P2WSH'                       # Updated to P2WSH (Native SegWit)
         }
         
         return result
@@ -170,30 +229,26 @@ def create_multisig_escrow(
         raise Exception(f"Failed to create multisig escrow address: {str(e)}")
 
 
-def verify_multisig_address(address: str, redeem_script_hex: str) -> bool:
+def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
     """
-    Verify that a given address matches the provided redeem script.
+    Verify that a given P2WSH address matches the provided witness script.
     
     Args:
-        address (str): The P2SH address to verify
-        redeem_script_hex (str): The redeem script in hex format
+        address (str): The P2WSH address to verify (starts with "tb1")
+        witness_script_hex (str): The witness script in hex format
         
     Returns:
-        bool: True if the address matches the redeem script, False otherwise
+        bool: True if the address matches the witness script, False otherwise
     """
     try:
         # Convert hex to bytes
-        redeem_script_bytes = bytes.fromhex(redeem_script_hex)
+        witness_script_bytes = bytes.fromhex(witness_script_hex)
         
-        # Calculate script hash
-        script_hash = hashlib.sha256(redeem_script_bytes).digest()
-        ripemd_hash = hashlib.new('ripemd160', script_hash).digest()
+        # Calculate script hash using SHA-256 only (P2WSH)
+        script_hash = hashlib.sha256(witness_script_bytes).digest()
         
-        # Generate address from script hash
-        payload = bytes([196]) + ripemd_hash
-        checksum = hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4]
-        address_bytes = payload + checksum
-        calculated_address = base58.b58encode(address_bytes).decode('utf-8')
+        # Generate P2WSH address from script hash
+        calculated_address = encode_bech32_address('tb', 0, script_hash)
         
         return address == calculated_address
         
