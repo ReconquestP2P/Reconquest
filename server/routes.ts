@@ -363,29 +363,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to update loan" });
       }
 
-      // Use the existing lending workflow service
-      const result = await lendingWorkflow.initiateLoan(
-        updatedLoan.borrowerId,
-        parseFloat(updatedLoan.collateralBtc),
-        parseFloat(updatedLoan.amount)
-      );
+      // Generate escrow address for the existing loan (mock pubkeys for now)
+      const mockBorrowerPubkey = "03" + "a".repeat(64); // Mock compressed pubkey
+      const mockLenderPubkey = "03" + "b".repeat(64);   // Mock compressed pubkey
+      
+      try {
+        const escrowResult = await bitcoinEscrow.generateMultisigEscrowAddress(
+          mockBorrowerPubkey,
+          mockLenderPubkey,
+          undefined // Use platform's default pubkey
+        );
 
-      if (result.success) {
-        // Update loan with escrow address
-        await storage.updateLoan(loanId, {
-          escrowAddress: result.escrowAddress
+        // Update loan with escrow details
+        await storage.updateLoanWithEscrow(loanId, {
+          escrowAddress: escrowResult.address,
+          escrowRedeemScript: escrowResult.redeemScript,
+          borrowerPubkey: mockBorrowerPubkey,
+          lenderPubkey: mockLenderPubkey,
+          platformPubkey: escrowResult.platformPubkey
         });
+
+        console.log(`Generated escrow address for loan ${loanId}: ${escrowResult.address}`);
 
         // Send loan funding notification to borrower with delay to prevent rate limiting
         console.log(`🔔 Attempting to send funding notification for loan ${loanId}, lenderId: ${lenderId}`);
         const lender = await storage.getUser(lenderId);
         console.log(`📋 Lender found:`, lender ? `${lender.username} (${lender.email})` : 'null');
         if (lender) {
-          // Wait a bit to ensure escrow instructions have been sent and avoid rate limiting
+          // Wait a bit to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 2000));
           console.log(`📧 Sending funding notification to borrower for loan ${loanId}`);
           await sendLoanFundedNotification(updatedLoan, lender);
-          console.log(`✅ Funding notification process completed for loan ${loanId}`)
+          console.log(`✅ Funding notification process completed for loan ${loanId}`);
         } else {
           console.log(`❌ Could not find lender with ID ${lenderId}, notification not sent`);
         }
@@ -393,14 +402,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           success: true,
           message: "Loan funding initiated successfully",
-          escrowAddress: result.escrowAddress,
+          escrowAddress: escrowResult.address,
           loanId: loanId,
-          instructions: `Borrower will be notified to send ${updatedLoan.collateralBtc} BTC to escrow address: ${result.escrowAddress}`
+          instructions: `Borrower will be notified to send ${updatedLoan.collateralBtc} BTC to escrow address: ${escrowResult.address}`
         });
-      } else {
-        res.status(400).json({
+      } catch (escrowError) {
+        console.error('Error generating escrow address:', escrowError);
+        res.status(500).json({
           success: false,
-          message: result.errorMessage || "Failed to initiate loan"
+          message: "Failed to generate escrow address"
         });
       }
     } catch (error) {
