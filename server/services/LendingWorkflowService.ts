@@ -329,7 +329,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowAddress}</code>
               <p><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
               <p><strong>Network:</strong> Bitcoin Testnet</p>
-              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet address starting with "2". Do not send mainnet Bitcoin to this address.</p>
+              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address starting with "tb1". Lower fees, enhanced security. Do not send mainnet Bitcoin to this address.</p>
             </div>
             
             <p><strong>Loan Details:</strong></p>

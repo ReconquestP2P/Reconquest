@@ -75,9 +75,10 @@ def convertbits(data, frombits, tobits, pad=True):
 def encode_bech32_address(hrp, witver, witprog):
     """Encode a witness program as a bech32 address."""
     ret = hrp + '1'
-    data = [witver] + convertbits(witprog, 8, 5)
-    if data is None:
+    converted_bits = convertbits(witprog, 8, 5)
+    if converted_bits is None:
         return None
+    data = [witver] + converted_bits
     data += bech32_create_checksum(hrp, data)
     ret += ''.join([chr(ord('0') + d) if d < 10 else chr(ord('a') + d - 10) for d in data])
     return ret
