@@ -20,6 +20,26 @@ import hashlib
 import base58
 
 
+def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
+    """
+    Create a Bitcoin 2-of-3 multisig P2SH address for testnet.
+    
+    Args:
+        pubkey1 (str): First compressed public key in hex format (66 chars)
+        pubkey2 (str): Second compressed public key in hex format (66 chars)  
+        pubkey3 (str): Third compressed public key in hex format (66 chars)
+        
+    Returns:
+        dict: Contains address (P2SH starting with "2"), redeem_script (hex), 
+              script_pubkey, public_keys, and other metadata
+        
+    Raises:
+        ValueError: If any public key is invalid or not compressed
+        Exception: If address generation fails
+    """
+    return create_multisig_escrow(pubkey1, pubkey2, pubkey3)
+
+
 def create_multisig_escrow(
     borrower_pubkey_hex: str,
     lender_pubkey_hex: str,
@@ -116,10 +136,19 @@ def create_multisig_escrow(
         address_bytes = payload + checksum
         address = base58.b58encode(address_bytes).decode('utf-8')
         
+        # Create ScriptPubKey for P2SH (OP_HASH160 <script_hash> OP_EQUAL)
+        script_pubkey_bytes = bytearray()
+        script_pubkey_bytes.append(0xa9)  # OP_HASH160
+        script_pubkey_bytes.append(0x14)  # Push 20 bytes (RIPEMD160 hash length)
+        script_pubkey_bytes.extend(ripemd_hash)
+        script_pubkey_bytes.append(0x87)  # OP_EQUAL
+        script_pubkey = bytes(script_pubkey_bytes).hex()
+
         # Prepare result
         result = {
             'address': address,
             'redeem_script': redeem_script_bytes.hex(),
+            'script_pubkey': script_pubkey,
             'script_hash': ripemd_hash.hex(),
             'public_keys': [key.public_hex for key in sorted_keys],
             'public_keys_original_order': {
@@ -174,37 +203,43 @@ def verify_multisig_address(address: str, redeem_script_hex: str) -> bool:
 
 # Example usage and testing
 if __name__ == "__main__":
-    # Example compressed public keys for testing (these are dummy keys)
+    # Example compressed public keys for testing (these are valid testnet keys)
     # In production, these would come from the actual parties
     
-    print("Bitcoin Testnet 2-of-3 Multisig Escrow Generator")
-    print("=" * 50)
+    print("Bitcoin Testnet 2-of-3 Multisig Address Generator")
+    print("=" * 55)
+    print("Requirements: pip install bitcoinlib")
+    print("=" * 55)
     
-    # Example public keys (compressed, 33 bytes each = 66 hex chars)
-    example_borrower_pubkey = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    example_lender_pubkey = "031234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-    example_platform_pubkey = "02abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+    # Example valid compressed public keys (33 bytes each = 66 hex chars)
+    # These are actual valid Bitcoin compressed public keys for testing
+    pubkey1 = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    pubkey2 = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    pubkey3 = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
     
     try:
-        result = create_multisig_escrow(
-            example_borrower_pubkey,
-            example_lender_pubkey, 
-            example_platform_pubkey
-        )
+        # Call the requested function signature
+        result = create_multisig_address(pubkey1, pubkey2, pubkey3)
         
-        print(f"Multisig Address: {result['address']}")
-        print(f"Redeem Script: {result['redeem_script']}")
-        print(f"Script Hash: {result['script_hash']}")
-        print(f"Signatures Required: {result['signatures_required']} of {result['total_keys']}")
-        print(f"Network: {result['network']}")
+        print(f"\n✓ Generated Bitcoin Testnet 2-of-3 Multisig Address:")
+        print(f"Address:        {result['address']}")
+        print(f"Redeem Script:  {result['redeem_script']}")
+        print(f"ScriptPubKey:   {result['script_pubkey']}")
+        print(f"Script Hash:    {result['script_hash']}")
+        print(f"Requirements:   {result['signatures_required']} of {result['total_keys']} signatures")
+        print(f"Network:        {result['network']}")
+        print(f"Address Type:   {result['address_type']}")
         
         # Verify the address
         is_valid = verify_multisig_address(result['address'], result['redeem_script'])
-        print(f"Address Verification: {'✓ Valid' if is_valid else '✗ Invalid'}")
+        print(f"Verification:   {'✓ Valid' if is_valid else '✗ Invalid'}")
         
-        print("\nPublic Keys (sorted):")
+        print(f"\nPublic Keys (sorted for deterministic script):")
         for i, pubkey in enumerate(result['public_keys'], 1):
             print(f"  {i}. {pubkey}")
             
+        print(f"\n💡 This address can be used for Bitcoin testnet P2P lending escrow.")
+        print(f"   Funds sent to this address require 2-of-3 signatures to release.")
+            
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
