@@ -67,9 +67,7 @@ export default function LenderDashboard() {
     // Filter by status
     if (statusFilter === "available") {
       filtered = filtered.filter(loan => 
-        loan.status === "posted" || 
-        loan.status === "initiated" || 
-        loan.status === "funding"
+        loan.status === "posted"
       );
     } else if (statusFilter === "matched") {
       filtered = filtered.filter(loan => 

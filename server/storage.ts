@@ -424,11 +424,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(loans)
-      .where(or(
-        eq(loans.status, "posted"), 
-        eq(loans.status, "initiated"), 
-        eq(loans.status, "funding")
-      ));
+      .where(eq(loans.status, "posted"));
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
