@@ -73,14 +73,17 @@ def convertbits(data, frombits, tobits, pad=True):
 
 
 def encode_bech32_address(hrp, witver, witprog):
-    """Encode a witness program as a bech32 address."""
+    """Encode a witness program as a bech32 address using correct bech32 charset."""
+    # Standard bech32 character set (BIP-173)
+    CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+    
     ret = hrp + '1'
     converted_bits = convertbits(witprog, 8, 5)
     if converted_bits is None:
         return None
     data = [witver] + converted_bits
     data += bech32_create_checksum(hrp, data)
-    ret += ''.join([chr(ord('0') + d) if d < 10 else chr(ord('a') + d - 10) for d in data])
+    ret += ''.join([CHARSET[d] for d in data])
     return ret
 
 

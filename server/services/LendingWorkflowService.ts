@@ -166,7 +166,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         escrowRedeemScript: escrowResult.redeemScript,
         borrowerPubkey,
         lenderPubkey,
-        platformPubkey: 'platform_key_here' // This comes from the service
+        platformPubkey: escrowResult.platformPubkey // Use correct platform pubkey from escrow result
       });
 
       // Also set the lender ID on the loan
@@ -189,7 +189,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         redeemScript: escrowResult.redeemScript,
         borrowerPubkey,
         lenderPubkey,
-        platformPubkey: 'platform_key_here'
+        platformPubkey: escrowResult.platformPubkey // Return correct platform pubkey
       };
 
     } catch (error: any) {

@@ -8,8 +8,10 @@ const execAsync = promisify(exec);
 export interface MultisigEscrowResult {
   address: string;
   redeemScript: string;
+  witnessScript: string;
   scriptHash: string;
   publicKeys: string[];
+  platformPubkey: string; // Explicit platform public key
   signaturesRequired: number;
   totalKeys: number;
   network: string;
@@ -31,8 +33,8 @@ export interface IBitcoinEscrowService {
  * Creates 2-of-3 multisig addresses using borrower, lender, and platform public keys
  */
 export class BitcoinEscrowService implements IBitcoinEscrowService {
-  // Platform's public key for multisig escrow (in production, this would be from secure key management)
-  private readonly platformPubkey = "02abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+  // Platform's public key for multisig escrow (real compressed public key for testnet)
+  private readonly platformPubkey = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
 
   /**
    * Generates a 2-of-3 multisig escrow address using the Python Bitcoin library
@@ -98,9 +100,11 @@ except Exception as e:
         
         return {
           address: result.address,
-          redeemScript: result.redeem_script,
+          redeemScript: result.witness_script || result.redeem_script,
+          witnessScript: result.witness_script, // Explicit witness script for P2WSH
           scriptHash: result.script_hash,
           publicKeys: result.public_keys,
+          platformPubkey: result.public_keys_original_order.platform, // Correct platform key
           signaturesRequired: result.signatures_required,
           totalKeys: result.total_keys,
           network: result.network,
