@@ -317,7 +317,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (borrower?.email) {
         await sendEmail({
           to: borrower.email,
-          from: 'noreply@reconquestp2p.com',
+          from: 'onboarding@resend.dev',
           subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
           html: `
             <h2>Your loan has been funded! Time to deposit collateral.</h2>
@@ -326,10 +326,11 @@ export class LendingWorkflowService implements ILendingWorkflowService {
             
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="color: #d4af37;">Next Step: Deposit Bitcoin Collateral</h3>
-              <p><strong>Bitcoin Address:</strong></p>
-              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">BTC address generating system is still under testing, thank you for your comprehension</code>
+              <p><strong>Bitcoin Testnet Escrow Address:</strong></p>
+              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowAddress}</code>
               <p><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
               <p><strong>Network:</strong> Bitcoin Testnet</p>
+              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet address starting with "2". Do not send mainnet Bitcoin to this address.</p>
             </div>
             
             <p><strong>Loan Details:</strong></p>
