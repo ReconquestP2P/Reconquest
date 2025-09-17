@@ -76,39 +76,37 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         };
       }
 
-      // Generate a simple escrow address for loan posting (before matching)
-      // Real multisig address will be generated when a lender accepts the offer
-      const escrowAddress = `tb1q${crypto.randomBytes(20).toString('hex')}`;
-
-      // Create loan record
+      // Create loan record without escrow address initially
+      // Real 2-of-3 multisig escrow address will be generated when lender matches
       const loan = await this.storage.createLoan({
         borrowerId,
         amount: loanAmount.toString(),
         currency: 'USDC',
         interestRate: '12.00', // Default interest rate for POC
         termMonths: 12, // Default term for POC
+        purpose: 'Bitcoin-backed loan'
+      });
+
+      // Update with collateral details using updateLoan since createLoan uses restricted schema
+      await this.storage.updateLoan(loan.id, {
         collateralBtc: collateralBtc.toString(),
-        ltvRatio: ltvValidation.ltvRatio.toString(),
-        purpose: 'Bitcoin-backed loan',
-        escrowAddress,
-        fiatTransferConfirmed: false,
-        borrowerConfirmedReceipt: false
+        ltvRatio: ltvValidation.ltvRatio.toString()
       });
 
       console.log(`Loan ${loan.id} initiated for borrower ${borrowerId}`);
-      console.log(`Escrow address: ${escrowAddress}`);
       console.log(`LTV ratio: ${(ltvValidation.ltvRatio * 100).toFixed(1)}%`);
+      console.log(`Status: Awaiting lender match for escrow generation`);
 
       // Notify admin about new loan posting
       await this.notifyAdminOfNewLoan(loan);
 
-      // Send email notification to borrower with escrow instructions
-      await this.notifyBorrowerOfEscrowGeneration(loan, escrowAddress, collateralBtc);
+      // NOTE: No escrow email sent here - will be sent when loan is funded
+      // and real 2-of-3 multisig P2SH address is generated
 
       return {
         success: true,
         loanId: loan.id,
-        escrowAddress,
+        escrowAddress: undefined, // Will be generated when matched
         ltvValidation
       };
 
@@ -153,7 +151,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       // Generate 2-of-3 multisig escrow address
       const escrowResult = await this.bitcoinEscrow.generateMultisigEscrowAddress(
         borrowerPubkey,
-        lenderPubkey
+        lenderPubkey,
+        undefined // Use platform's default pubkey
       );
 
       console.log(`Generated multisig escrow: ${escrowResult.address}`);
