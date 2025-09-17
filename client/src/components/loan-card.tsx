@@ -95,7 +95,7 @@ export default function LoanCard({ loan, onFund, showFundButton = true }: LoanCa
                loan.status === "active" ? "Active" : loan.status}
             </Badge>
           </div>
-          {showFundButton && (loan.status === "pending" || loan.status === "posted" || loan.status === "initiated" || loan.status === "funding") && (
+          {showFundButton && (loan.status === "posted" || loan.status === "initiated" || loan.status === "funding") && (
             <Button
               onClick={() => onFund?.(loan.id)}
               className="bg-secondary hover:bg-secondary/90 text-white"
