@@ -375,9 +375,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to update loan" });
       }
 
-      // Generate escrow address for the existing loan (mock pubkeys for now)
-      const mockBorrowerPubkey = "03" + "a".repeat(64); // Mock compressed pubkey
-      const mockLenderPubkey = "03" + "b".repeat(64);   // Mock compressed pubkey
+      // Generate unique mock pubkeys for each loan to ensure unique escrow addresses
+      const createUniquePubkey = (seed: string) => {
+        // Create a simple hash-like string from the seed
+        let hash = 0;
+        for (let i = 0; i < seed.length; i++) {
+          const char = seed.charCodeAt(i);
+          hash = ((hash << 5) - hash + char) & 0xffffffff;
+        }
+        // Create a 64-char hex string from the hash, ensuring it's valid
+        const hexString = Math.abs(hash).toString(16).padStart(8, '0');
+        return "03" + hexString.repeat(8).substring(0, 64);
+      };
+      
+      const mockBorrowerPubkey = createUniquePubkey(`borrower_${updatedLoan.borrowerId}_${loanId}`);
+      const mockLenderPubkey = createUniquePubkey(`lender_${lenderId}_${loanId}`);
       
       try {
         const escrowResult = await bitcoinEscrow.generateMultisigEscrowAddress(
