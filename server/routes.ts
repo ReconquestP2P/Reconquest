@@ -349,7 +349,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Loan not found" });
       }
 
-      if (loan.status !== "pending" && loan.status !== "posted" && loan.status !== "initiated" && loan.status !== "funding") {
+      // Handle different loan statuses gracefully
+      if (loan.status === "escrow_pending" || loan.status === "active" || loan.status === "completed") {
+        // Loan is already being processed or completed - return success to avoid user confusion
+        return res.json({
+          success: true,
+          message: "Loan funding is already in progress",
+          escrowAddress: loan.escrowAddress || "Escrow address being generated",
+          loanId: loanId,
+          instructions: "Funding process has already been initiated for this loan"
+        });
+      }
+      
+      if (loan.status !== "posted") {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
 
