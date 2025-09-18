@@ -591,7 +591,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
   /**
    * Email notification for borrower when loan is matched
    */
-  private async notifyBorrowerOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
+  async notifyBorrowerOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
     try {
       const borrower = await this.storage.getUser(loan.borrowerId);
       if (!borrower) return;
@@ -635,7 +635,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
   /**
    * Email notification for lender when loan is matched
    */
-  private async notifyLenderOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
+  async notifyLenderOfLoanMatching(loan: Loan, escrowAddress: string): Promise<void> {
     try {
       if (!loan.lenderId) return;
       const lender = await this.storage.getUser(loan.lenderId);
@@ -682,7 +682,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
   /**
    * Email notification for admin when loan is matched
    */
-  private async notifyAdminOfLoanMatching(loan: Loan): Promise<void> {
+  async notifyAdminOfLoanMatching(loan: Loan): Promise<void> {
     try {
       const borrower = await this.storage.getUser(loan.borrowerId);
       if (!borrower || !loan.lenderId) return;

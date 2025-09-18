@@ -397,59 +397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`Generated escrow address for loan ${loanId}: ${escrowResult.address}`);
 
-        // Send Bitcoin escrow instruction email to borrower
-        const borrower = await storage.getUser(updatedLoan.borrowerId);
-        if (borrower?.email) {
-          console.log(`📧 Sending Bitcoin escrow instructions to borrower: ${borrower.email}`);
-          await sendEmail({
-            to: borrower.email,
-            from: 'onboarding@resend.dev',
-            subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
-            html: `
-              <h2>Your loan has been funded! Time to deposit collateral.</h2>
-              <p>Hello ${borrower.username},</p>
-              <p>Great news! A lender has agreed to fund your ${updatedLoan.amount} ${updatedLoan.currency} loan request.</p>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #d4af37;">Next Step: Deposit Bitcoin Collateral</h3>
-                <p><strong>Bitcoin Testnet Escrow Address:</strong></p>
-                <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowResult.address}</code>
-                <p><strong>Amount to Send:</strong> ${updatedLoan.collateralBtc} BTC</p>
-                <p><strong>Network:</strong> Bitcoin Testnet</p>
-                <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address starting with "tb1". Lower fees, enhanced security. Do not send mainnet Bitcoin to this address.</p>
-              </div>
-              
-              <p><strong>Loan Details:</strong></p>
-              <ul>
-                <li><strong>Loan Amount:</strong> ${updatedLoan.amount} ${updatedLoan.currency}</li>
-                <li><strong>Interest Rate:</strong> ${updatedLoan.interestRate}% per year</li>
-                <li><strong>Term:</strong> ${updatedLoan.termMonths} months</li>
-                <li><strong>Collateral Required:</strong> ${updatedLoan.collateralBtc} BTC</li>
-              </ul>
-              
-              <p>Once you send the Bitcoin to the escrow address above, the lender will transfer the ${updatedLoan.currency} to your account.</p>
-              
-              <p><strong>Important:</strong> Only send Bitcoin to this exact address. Do not send any other cryptocurrency.</p>
-              
-              <p>Best regards,<br>The Reconquest Team</p>
-            `
-          });
-          console.log(`✅ Bitcoin escrow instructions sent to borrower: ${borrower.email}`);
-        }
-
-        // Send loan funding notification to borrower with delay to prevent rate limiting
-        console.log(`🔔 Attempting to send funding notification for loan ${loanId}, lenderId: ${lenderId}`);
-        const lender = await storage.getUser(lenderId);
-        console.log(`📋 Lender found:`, lender ? `${lender.username} (${lender.email})` : 'null');
-        if (lender) {
-          // Wait a bit to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          console.log(`📧 Sending funding notification to borrower for loan ${loanId}`);
-          await sendLoanFundedNotification(updatedLoan, lender);
-          console.log(`✅ Funding notification process completed for loan ${loanId}`);
-        } else {
-          console.log(`❌ Could not find lender with ID ${lenderId}, notification not sent`);
-        }
+        // Use the proper workflow notifications (this was working before!)
+        await lendingWorkflow.notifyBorrowerOfLoanMatching(updatedLoan, escrowResult.address);
+        await lendingWorkflow.notifyLenderOfLoanMatching(updatedLoan, escrowResult.address);  
+        await lendingWorkflow.notifyAdminOfLoanMatching(updatedLoan);
+        
+        console.log(`✅ All loan matching notifications sent for loan ${loanId}`);
 
         res.json({
           success: true,
