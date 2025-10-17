@@ -34,12 +34,38 @@ export const loans = pgTable("loans", {
   fundedAt: timestamp("funded_at"),
   dueDate: timestamp("due_date"),
   repaidAt: timestamp("repaid_at"),
+  
+  // Enhanced Bitcoin Escrow Fields (Firefish-inspired)
   escrowAddress: text("escrow_address"),
   escrowRedeemScript: text("escrow_redeem_script"),
+  escrowWitnessScript: text("escrow_witness_script"), // P2WSH witness script
+  escrowScriptHash: text("escrow_script_hash"),
+  
+  // Key Pair Data (ENCRYPTED in production - store encrypted WIF)
   borrowerPubkey: text("borrower_pubkey"),
+  borrowerPrivateKeyWif: text("borrower_private_key_wif"), // Store encrypted!
+  borrowerAddress: text("borrower_address"),
   lenderPubkey: text("lender_pubkey"),
+  lenderPrivateKeyWif: text("lender_private_key_wif"), // Store encrypted!
+  lenderAddress: text("lender_address"),
   platformPubkey: text("platform_pubkey"),
-  escrowTxHash: text("escrow_tx_hash"),
+  
+  // Pre-Signed Transaction Hashes
+  repaymentTxHash: text("repayment_tx_hash"), // Pre-signed repayment transaction
+  defaultTxHash: text("default_tx_hash"), // Pre-signed default transaction
+  liquidationTxHash: text("liquidation_tx_hash"), // Pre-signed liquidation transaction
+  recoveryTxHash: text("recovery_tx_hash"), // Time-locked recovery transaction
+  
+  // Funding Transaction Data
+  escrowTxHash: text("escrow_tx_hash"), // Funding transaction hash
+  fundingVout: integer("funding_vout"), // Output index in funding TX
+  fundedAmountSats: integer("funded_amount_sats"), // Amount funded in satoshis
+  
+  // Escrow State Management
+  escrowState: text("escrow_state"), // initialized, waiting_for_funding, funded, transactions_signed, active, repaid, defaulted, liquidated, recovered
+  escrowContractJson: text("escrow_contract_json"), // Full contract data as JSON backup
+  
+  // Workflow Flags
   fiatTransferConfirmed: boolean("fiat_transfer_confirmed").default(false),
   borrowerConfirmedReceipt: boolean("borrower_confirmed_receipt").default(false),
   loanStartedAt: timestamp("loan_started_at"),
