@@ -48,15 +48,30 @@ Preferred communication style: Simple, everyday language.
 - **Development Environment**: Replit
 - **Bitcoin Integration**: Python bitcoinlib for Bitcoin testnet multisig escrow address generation
 
-## Recent Achievements (Aug 22, 2025)
+## Recent Achievements
 
-### Bitcoin Multisig Escrow System - COMPLETE ✅
+### WASM Escrow Architecture - IN PROGRESS (Oct 18, 2025) 🔧
+- **Security Upgrade**: Removed all private key storage from backend database (critical security fix)
+- **Database Schema**: Created `escrow_sessions`, `signature_exchanges`, and `escrow_events` tables for WASM coordination
+- **REST API**: Implemented 6 new endpoints for Firefish WASM integration:
+  - `POST /api/escrow/sessions` - Create escrow session (browser generates keys)
+  - `GET /api/escrow/sessions/:sessionId` - Get session state
+  - `PATCH /api/escrow/sessions/:sessionId` - Update session
+  - `POST /api/escrow/signatures` - Submit PSBT signatures
+  - `GET /api/escrow/funding/:address` - Check blockchain funding status
+  - `POST /api/escrow/events` - Log audit events
+- **Blockchain Monitoring**: Blockstream API integration with 5-second caching for testnet UTXOs
+- **Architecture**: Frontend WASM (keys + signing) → Backend (coordination + state) → PostgreSQL (public data only)
+- **Next Steps**: Integrate actual Firefish WASM module and test end-to-end workflow
+
+### Bitcoin Multisig Escrow System - DEPRECATED (Aug 22, 2025) ⚠️
 - **Python Integration**: Successfully integrated Python bitcoinlib with Node.js backend using file-based execution approach
 - **Multisig Generation**: Fully functional 2-of-3 multisig Bitcoin testnet escrow address creation (borrower, lender, platform keys)
 - **Loan Matching Workflow**: Complete end-to-end process from loan offer creation to escrow address generation
 - **Database Integration**: Escrow addresses, redeem scripts, and public keys stored in loan records
 - **Testing**: Comprehensive test workflow validates the entire loan matching with Bitcoin escrow generation
 - **Example Output**: Generated address `2NCEzPMdSL9us5583kbcuYR7pqYCcpyn55r` with working redeem script for secure collateral handling
+- **⚠️ Security Issue**: This approach stored private keys on backend - replaced with WASM architecture
 
 ### Persistent JWT Authentication - COMPLETE ✅
 - **JWT Implementation**: 7-day token expiration with localStorage persistence 

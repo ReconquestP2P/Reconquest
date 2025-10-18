@@ -12,6 +12,13 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { EmailVerificationService } from "./services/EmailVerificationService";
 import { PasswordResetService } from "./services/PasswordResetService";
+import { blockchainMonitoring } from "./services/BlockchainMonitoring";
+import { 
+  insertEscrowSessionSchema, 
+  insertSignatureExchangeSchema, 
+  insertEscrowEventSchema,
+  updateEscrowSessionClientSchema
+} from "@shared/schema";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -401,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update loan with escrow details
         await storage.updateLoanWithEscrow(loanId, {
           escrowAddress: escrowResult.address,
-          escrowRedeemScript: escrowResult.redeemScript,
+          witnessScript: escrowResult.redeemScript,
           borrowerPubkey: mockBorrowerPubkey,
           lenderPubkey: mockLenderPubkey,
           platformPubkey: escrowResult.platformPubkey
@@ -1618,6 +1625,207 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     } catch (error) {
       console.error("Test email error:", error);
       res.status(500).json({ success: false, message: "Email test failed" });
+    }
+  });
+
+  // ========== WASM ESCROW API ENDPOINTS ==========
+  // For Firefish WASM integration (NO PRIVATE KEYS on backend!)
+
+  // Create Escrow Session (after WASM generates address in browser)
+  app.post("/api/escrow/sessions", authenticateToken, async (req, res) => {
+    try {
+      const sessionData = insertEscrowSessionSchema.parse(req.body);
+      
+      // Verify the loan belongs to the user
+      const loan = await storage.getLoan(sessionData.loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.borrowerId !== req.user.id && loan.lenderId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to create escrow for this loan" });
+      }
+
+      const session = await storage.createEscrowSession(sessionData);
+      
+      // Log escrow creation event
+      await storage.createEscrowEvent({
+        escrowSessionId: session.sessionId,
+        eventType: "created",
+        eventData: JSON.stringify({
+          loanId: session.loanId,
+          escrowAddress: session.escrowAddress,
+        }),
+      });
+
+      res.json({ success: true, session });
+    } catch (error) {
+      console.error("Error creating escrow session:", error);
+      res.status(500).json({ message: "Failed to create escrow session" });
+    }
+  });
+
+  // Get Escrow Session Details
+  app.get("/api/escrow/sessions/:sessionId", authenticateToken, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = await storage.getEscrowSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Escrow session not found" });
+      }
+
+      // Verify user has access to this session
+      const loan = await storage.getLoan(session.loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.borrowerId !== req.user.id && loan.lenderId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const events = await storage.getEscrowEvents(sessionId);
+      
+      res.json({ session, events });
+    } catch (error) {
+      console.error("Error fetching escrow session:", error);
+      res.status(500).json({ message: "Failed to fetch escrow session" });
+    }
+  });
+
+  // Update Escrow Session State (RESTRICTED - clients can only update wasmState)
+  app.patch("/api/escrow/sessions/:sessionId", authenticateToken, async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      // SECURITY: Validate and restrict updates to ONLY wasmState field
+      // This prevents clients from tampering with blockchain-derived fields
+      const validatedUpdates = updateEscrowSessionClientSchema.parse(req.body);
+      
+      // CRITICAL: Reject requests with extra fields that bypass validation
+      const allowedKeys = Object.keys(updateEscrowSessionClientSchema.shape);
+      const requestKeys = Object.keys(req.body);
+      const unauthorizedKeys = requestKeys.filter(key => !allowedKeys.includes(key));
+      
+      if (unauthorizedKeys.length > 0) {
+        return res.status(400).json({ 
+          message: `Unauthorized fields: ${unauthorizedKeys.join(', ')}. Only wasmState updates allowed.`
+        });
+      }
+      
+      const session = await storage.getEscrowSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Escrow session not found" });
+      }
+
+      // Verify authorization
+      const loan = await storage.getLoan(session.loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.borrowerId !== req.user.id && loan.lenderId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      // Use ONLY the validated updates (not req.body!)
+      const updatedSession = await storage.updateEscrowSession(sessionId, validatedUpdates);
+      
+      // Log state update event
+      await storage.createEscrowEvent({
+        escrowSessionId: sessionId,
+        eventType: "state_updated",
+        eventData: JSON.stringify({
+          updatedBy: req.user.id,
+          role: loan.borrowerId === req.user.id ? "borrower" : "lender",
+        }),
+      });
+      
+      res.json({ success: true, session: updatedSession });
+    } catch (error) {
+      console.error("Error updating escrow session:", error);
+      res.status(500).json({ message: "Failed to update escrow session" });
+    }
+  });
+
+  // Submit WASM-generated Signatures
+  app.post("/api/escrow/signatures", authenticateToken, async (req, res) => {
+    try {
+      const signatureData = insertSignatureExchangeSchema.parse(req.body);
+      
+      const signature = await storage.createSignatureExchange(signatureData);
+      
+      // Log signature received event
+      await storage.createEscrowEvent({
+        escrowSessionId: signatureData.escrowSessionId,
+        eventType: "signature_received",
+        eventData: JSON.stringify({
+          senderRole: signatureData.senderRole,
+          signatureType: signatureData.signatureType,
+        }),
+      });
+
+      res.json({ success: true, signatureId: signature.id });
+    } catch (error) {
+      console.error("Error storing signature:", error);
+      res.status(500).json({ message: "Failed to store signature" });
+    }
+  });
+
+  // Check Funding Status (polls Blockstream API)
+  app.get("/api/escrow/funding/:address", authenticateToken, async (req, res) => {
+    try {
+      const { address } = req.params;
+      const { expectedAmount } = req.query;
+      
+      const fundingStatus = await blockchainMonitoring.checkAddressFunding(
+        address,
+        expectedAmount ? parseInt(expectedAmount as string) : undefined
+      );
+
+      // If funded, check for associated session and update it
+      if (fundingStatus.funded && fundingStatus.txid) {
+        const sessions = await storage.getEscrowSession(address);
+        if (sessions) {
+          // Update the session with funding info
+          await storage.updateEscrowSession(sessions.sessionId, {
+            fundingTxid: fundingStatus.txid,
+            fundingVout: fundingStatus.vout,
+            fundedAmountSats: fundingStatus.amountSats,
+            currentState: "funded",
+          });
+
+          // Log funding event
+          await storage.createEscrowEvent({
+            escrowSessionId: sessions.sessionId,
+            eventType: "funded",
+            blockchainTxid: fundingStatus.txid,
+            eventData: JSON.stringify({
+              amountSats: fundingStatus.amountSats,
+              confirmations: fundingStatus.confirmations,
+            }),
+          });
+        }
+      }
+
+      res.json(fundingStatus);
+    } catch (error) {
+      console.error("Error checking funding status:", error);
+      res.status(500).json({ message: "Failed to check funding status" });
+    }
+  });
+
+  // Log Escrow Event
+  app.post("/api/escrow/events", authenticateToken, async (req, res) => {
+    try {
+      const eventData = insertEscrowEventSchema.parse(req.body);
+      const event = await storage.createEscrowEvent(eventData);
+      
+      res.json({ success: true, eventId: event.id });
+    } catch (error) {
+      console.error("Error logging escrow event:", error);
+      res.status(500).json({ message: "Failed to log event" });
     }
   });
 

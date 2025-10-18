@@ -188,6 +188,24 @@ export const insertEscrowSessionSchema = createInsertSchema(escrowSessions).omit
   updatedAt: true,
 });
 
+// Schema for client-initiated WASM state updates (RESTRICTED - only allows wasmState updates)
+export const updateEscrowSessionClientSchema = z.object({
+  wasmState: z.string().optional(), // Only allow clients to update their WASM state
+});
+
+// Schema for server-controlled escrow updates (blockchain-derived data)
+export const updateEscrowSessionServerSchema = z.object({
+  currentState: z.string().optional(),
+  fundingTxid: z.string().optional(),
+  fundingVout: z.number().optional(),
+  fundedAmountSats: z.number().optional(),
+  lenderPubkey: z.string().optional(), // Can be added when lender joins
+  repaymentTxHash: z.string().optional(),
+  defaultTxHash: z.string().optional(),
+  liquidationTxHash: z.string().optional(),
+  recoveryTxHash: z.string().optional(),
+});
+
 export const insertSignatureExchangeSchema = createInsertSchema(signatureExchanges).omit({
   id: true,
   createdAt: true,

@@ -1,4 +1,13 @@
-import { users, loans, loanOffers, type User, type InsertUser, type Loan, type InsertLoan, type LoanOffer, type InsertLoanOffer } from "@shared/schema";
+import { 
+  users, loans, loanOffers, 
+  escrowSessions, signatureExchanges, escrowEvents,
+  type User, type InsertUser, 
+  type Loan, type InsertLoan, 
+  type LoanOffer, type InsertLoanOffer,
+  type EscrowSession, type InsertEscrowSession,
+  type SignatureExchange, type InsertSignatureExchange,
+  type EscrowEvent, type InsertEscrowEvent
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
 
@@ -30,13 +39,25 @@ export interface IStorage {
   acceptLoanOffer(offerId: number): Promise<LoanOffer>;
   updateLoanWithEscrow(loanId: number, escrowData: {
     escrowAddress: string;
-    escrowRedeemScript: string;
+    witnessScript: string;
     borrowerPubkey: string;
     lenderPubkey: string;
     platformPubkey: string;
   }): Promise<Loan>;
 
-
+  // WASM Escrow Session operations
+  createEscrowSession(session: InsertEscrowSession): Promise<EscrowSession>;
+  getEscrowSession(sessionId: string): Promise<EscrowSession | undefined>;
+  getEscrowSessionByLoanId(loanId: number): Promise<EscrowSession | undefined>;
+  updateEscrowSession(sessionId: string, updates: Partial<EscrowSession>): Promise<EscrowSession | undefined>;
+  
+  // Signature Exchange operations
+  createSignatureExchange(signature: InsertSignatureExchange): Promise<SignatureExchange>;
+  getSignatureExchanges(escrowSessionId: string): Promise<SignatureExchange[]>;
+  
+  // Escrow Event operations
+  createEscrowEvent(event: InsertEscrowEvent): Promise<EscrowEvent>;
+  getEscrowEvents(escrowSessionId: string): Promise<EscrowEvent[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -320,7 +341,72 @@ export class MemStorage implements IStorage {
     return Array.from(this.loanOffers.values()).filter(offer => offer.lenderId === userId);
   }
 
+  async getLoanOffer(offerId: number): Promise<LoanOffer | undefined> {
+    return this.loanOffers.get(offerId);
+  }
 
+  async acceptLoanOffer(offerId: number): Promise<LoanOffer> {
+    const offer = this.loanOffers.get(offerId);
+    if (!offer) throw new Error('Offer not found');
+    const updated = { ...offer, status: 'accepted' as const };
+    this.loanOffers.set(offerId, updated);
+    return updated;
+  }
+
+  async updateLoanWithEscrow(loanId: number, escrowData: {
+    escrowAddress: string;
+    witnessScript: string;
+    borrowerPubkey: string;
+    lenderPubkey: string;
+    platformPubkey: string;
+  }): Promise<Loan> {
+    const loan = this.loans.get(loanId);
+    if (!loan) throw new Error('Loan not found');
+    const updated = {
+      ...loan,
+      escrowAddress: escrowData.escrowAddress,
+      escrowWitnessScript: escrowData.witnessScript,
+      borrowerPubkey: escrowData.borrowerPubkey,
+      lenderPubkey: escrowData.lenderPubkey,
+      platformPubkey: escrowData.platformPubkey,
+      status: 'funding' as const
+    };
+    this.loans.set(loanId, updated);
+    return updated;
+  }
+
+  // WASM Escrow Session Operations (Stubs - not used with MemStorage)
+  async createEscrowSession(session: InsertEscrowSession): Promise<EscrowSession> {
+    throw new Error('Escrow sessions not supported in MemStorage');
+  }
+
+  async getEscrowSession(sessionId: string): Promise<EscrowSession | undefined> {
+    return undefined;
+  }
+
+  async getEscrowSessionByLoanId(loanId: number): Promise<EscrowSession | undefined> {
+    return undefined;
+  }
+
+  async updateEscrowSession(sessionId: string, updates: Partial<EscrowSession>): Promise<EscrowSession | undefined> {
+    return undefined;
+  }
+
+  async createSignatureExchange(signature: InsertSignatureExchange): Promise<SignatureExchange> {
+    throw new Error('Signature exchanges not supported in MemStorage');
+  }
+
+  async getSignatureExchanges(escrowSessionId: string): Promise<SignatureExchange[]> {
+    return [];
+  }
+
+  async createEscrowEvent(event: InsertEscrowEvent): Promise<EscrowEvent> {
+    throw new Error('Escrow events not supported in MemStorage');
+  }
+
+  async getEscrowEvents(escrowSessionId: string): Promise<EscrowEvent[]> {
+    return [];
+  }
 }
 
 // Database storage implementation
@@ -468,7 +554,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateLoanWithEscrow(loanId: number, escrowData: {
     escrowAddress: string;
-    escrowRedeemScript: string;
+    witnessScript: string;
     borrowerPubkey: string;
     lenderPubkey: string;
     platformPubkey: string;
@@ -477,7 +563,7 @@ export class DatabaseStorage implements IStorage {
       .update(loans)
       .set({
         escrowAddress: escrowData.escrowAddress,
-        escrowRedeemScript: escrowData.escrowRedeemScript,
+        escrowWitnessScript: escrowData.witnessScript,
         borrowerPubkey: escrowData.borrowerPubkey,
         lenderPubkey: escrowData.lenderPubkey,
         platformPubkey: escrowData.platformPubkey,
@@ -488,7 +574,71 @@ export class DatabaseStorage implements IStorage {
     return updatedLoan;
   }
 
+  // WASM Escrow Session Operations
+  async createEscrowSession(session: InsertEscrowSession): Promise<EscrowSession> {
+    const [escrowSession] = await db
+      .insert(escrowSessions)
+      .values(session)
+      .returning();
+    return escrowSession;
+  }
 
+  async getEscrowSession(sessionId: string): Promise<EscrowSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(escrowSessions)
+      .where(eq(escrowSessions.sessionId, sessionId));
+    return session || undefined;
+  }
+
+  async getEscrowSessionByLoanId(loanId: number): Promise<EscrowSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(escrowSessions)
+      .where(eq(escrowSessions.loanId, loanId));
+    return session || undefined;
+  }
+
+  async updateEscrowSession(sessionId: string, updates: Partial<EscrowSession>): Promise<EscrowSession | undefined> {
+    const [session] = await db
+      .update(escrowSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(escrowSessions.sessionId, sessionId))
+      .returning();
+    return session || undefined;
+  }
+
+  // Signature Exchange Operations
+  async createSignatureExchange(signature: InsertSignatureExchange): Promise<SignatureExchange> {
+    const [exchange] = await db
+      .insert(signatureExchanges)
+      .values(signature)
+      .returning();
+    return exchange;
+  }
+
+  async getSignatureExchanges(escrowSessionId: string): Promise<SignatureExchange[]> {
+    return await db
+      .select()
+      .from(signatureExchanges)
+      .where(eq(signatureExchanges.escrowSessionId, escrowSessionId));
+  }
+
+  // Escrow Event Operations
+  async createEscrowEvent(event: InsertEscrowEvent): Promise<EscrowEvent> {
+    const [escrowEvent] = await db
+      .insert(escrowEvents)
+      .values(event)
+      .returning();
+    return escrowEvent;
+  }
+
+  async getEscrowEvents(escrowSessionId: string): Promise<EscrowEvent[]> {
+    return await db
+      .select()
+      .from(escrowEvents)
+      .where(eq(escrowEvents.escrowSessionId, escrowSessionId));
+  }
 }
 
 export const storage = new DatabaseStorage();
