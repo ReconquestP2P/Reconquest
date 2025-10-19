@@ -103,9 +103,34 @@ import * as Firefish from '@firefish/wasm';
 
 ---
 
-### 2. useFirefishWASM Hook (`client/src/hooks/use-firefish-wasm.ts`)
+### 2. FirefishWASM Context Provider (`client/src/contexts/FirefishWASMContext.tsx`)
 
-**Purpose**: React hook that manages WASM lifecycle and backend communication.
+**Purpose**: Context provider that creates a single shared `useFirefishWASM` instance for all escrow components.
+
+**⚠️ IMPORTANT**: All escrow components must be wrapped in `<FirefishWASMProvider>` to share state.
+
+**Usage**:
+```tsx
+import { FirefishWASMProvider } from '@/contexts/FirefishWASMContext';
+
+function MyDashboard() {
+  return (
+    <FirefishWASMProvider>
+      <EscrowSetup loanId={123} role="borrower" />
+      <FundingTracker escrowAddress="tb1q..." expectedAmountBTC={0.5} />
+      <TransactionSigning sessionId="uuid" role="borrower" userKeys={keys} />
+    </FirefishWASMProvider>
+  );
+}
+```
+
+**Why This Matters**: Without the provider, each component creates its own isolated state, breaking the workflow. `EscrowSetup` would create a session that `FundingTracker` can't see.
+
+---
+
+### 3. useFirefishWASM Hook (`client/src/hooks/use-firefish-wasm.ts`)
+
+**Purpose**: React hook that manages WASM lifecycle and backend communication. **Must be consumed via context.**
 
 **State Management**:
 ```typescript
@@ -137,10 +162,12 @@ const {
 } = useFirefishWASM();
 ```
 
-**Example Usage**:
+**Example Usage** (via context):
 ```typescript
+import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
+
 const MyComponent = () => {
-  const { generateBorrowerKeys, createEscrow, submitToBackend } = useFirefishWASM();
+  const { generateBorrowerKeys, createEscrow, submitToBackend } = useFirefishWASMContext();
 
   const handleSetup = async () => {
     // Generate keys client-side
@@ -289,6 +316,7 @@ interface TransactionSigningProps {
 
 ```typescript
 // In borrower-dashboard.tsx
+import { FirefishWASMProvider } from '@/contexts/FirefishWASMContext';
 import EscrowSetup from '@/components/escrow-setup';
 import FundingTracker from '@/components/funding-tracker';
 
@@ -296,7 +324,8 @@ function BorrowerDashboard() {
   const [escrowAddress, setEscrowAddress] = useState<string | null>(null);
 
   return (
-    <div>
+    <FirefishWASMProvider>
+      <div>
       {/* Step 1: Generate escrow address */}
       {!escrowAddress && (
         <EscrowSetup
@@ -320,7 +349,8 @@ function BorrowerDashboard() {
           }}
         />
       )}
-    </div>
+      </div>
+    </FirefishWASMProvider>
   );
 }
 ```
@@ -331,13 +361,16 @@ function BorrowerDashboard() {
 
 ```typescript
 // In lender-dashboard.tsx
+import { FirefishWASMProvider } from '@/contexts/FirefishWASMContext';
+
 function LenderDashboard() {
   const { data: fundedLoans } = useQuery({
     queryKey: ['/api/users', userId, 'loans'],
   });
 
   return (
-    <div>
+    <FirefishWASMProvider>
+      <div>
       {fundedLoans.map((loan) => (
         loan.escrowAddress ? (
           <FundingTracker
@@ -350,7 +383,8 @@ function LenderDashboard() {
           <p>Waiting for borrower to create escrow...</p>
         )
       ))}
-    </div>
+      </div>
+    </FirefishWASMProvider>
   );
 }
 ```

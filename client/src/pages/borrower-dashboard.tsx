@@ -9,6 +9,7 @@ import LoanCalculator from "@/components/loan-calculator";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
+import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { Loan } from "@shared/schema";
@@ -71,13 +72,14 @@ export default function BorrowerDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Borrower Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
-      </div>
+    <FirefishWASMProvider>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Borrower Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
+        </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Loans</TabsTrigger>
@@ -243,6 +245,7 @@ export default function BorrowerDashboard() {
           <AchievementsDashboard userId={userId} />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </FirefishWASMProvider>
   );
 }

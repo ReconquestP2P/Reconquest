@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Bitcoin, CheckCircle, Clock, ExternalLink, RefreshCw } from 'lucide-react';
-import { useFirefishWASM } from '@/hooks/use-firefish-wasm';
+import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
 import { formatBTC } from '@/lib/utils';
 
 interface FundingTrackerProps {
@@ -26,7 +26,7 @@ export default function FundingTracker({
     checkFunding,
     startFundingPolling,
     stopFundingPolling,
-  } = useFirefishWASM();
+  } = useFirefishWASMContext();
 
   const [isPolling, setIsPolling] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);

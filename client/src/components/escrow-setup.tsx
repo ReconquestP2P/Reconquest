@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Check, Key, Shield, Bitcoin, Download, Upload, Eye, EyeOff } from 'lucide-react';
-import { useFirefishWASM } from '@/hooks/use-firefish-wasm';
+import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
 import { useToast } from '@/hooks/use-toast';
 import type { KeyPair } from '@/lib/firefish-wasm-mock';
 
@@ -30,7 +30,7 @@ export default function EscrowSetup({ loanId, role, onEscrowCreated }: EscrowSet
     submitToBackend,
     exportKeys,
     importKeys,
-  } = useFirefishWASM();
+  } = useFirefishWASMContext();
 
   const [borrowerKeys, setBorrowerKeys] = useState<KeyPair | null>(null);
   const [lenderKeys, setLenderKeys] = useState<KeyPair | null>(null);

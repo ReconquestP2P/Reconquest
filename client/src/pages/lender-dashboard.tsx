@@ -16,6 +16,7 @@ import LoanCard from "@/components/loan-card";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
+import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatPercentage, formatDate } from "@/lib/utils";
@@ -174,13 +175,14 @@ export default function LenderDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Lender Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
-      </div>
+    <FirefishWASMProvider>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Lender Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
+        </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
@@ -466,6 +468,7 @@ export default function LenderDashboard() {
           <AchievementsDashboard userId={userId} />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </FirefishWASMProvider>
   );
 }

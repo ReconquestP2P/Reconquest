@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileSignature, CheckCircle, AlertTriangle, Copy, Check } from 'lucide-react';
-import { useFirefishWASM } from '@/hooks/use-firefish-wasm';
+import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatBTC } from '@/lib/utils';
 import type { KeyPair, TransactionTemplate, SignedTransaction } from '@/lib/firefish-wasm-mock';
@@ -37,7 +37,7 @@ export default function TransactionSigning({
     signTransaction,
     submitSignature,
     isLoading,
-  } = useFirefishWASM();
+  } = useFirefishWASMContext();
 
   const [txTemplate, setTxTemplate] = useState<TransactionTemplate | null>(null);
   const [signedTx, setSignedTx] = useState<SignedTransaction | null>(null);
