@@ -1084,11 +1084,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Loan is not awaiting BTC deposit" });
       }
       
+      // Check if already notified
+      if (loan.btcDepositNotifiedAt) {
+        return res.status(400).json({ message: "BTC deposit already confirmed. Awaiting admin verification." });
+      }
+      
       // Get borrower details
       const borrower = await storage.getUser(borrowerId);
       if (!borrower) {
         return res.status(404).json({ message: "Borrower not found" });
       }
+      
+      // Update loan with notification timestamp
+      await storage.updateLoan(loanId, {
+        btcDepositNotifiedAt: new Date(),
+      });
       
       // Send email to admin
       await sendEmail({

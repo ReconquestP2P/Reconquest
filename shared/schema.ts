@@ -65,6 +65,7 @@ export const loans = pgTable("loans", {
   // Workflow Flags
   fiatTransferConfirmed: boolean("fiat_transfer_confirmed").default(false),
   borrowerConfirmedReceipt: boolean("borrower_confirmed_receipt").default(false),
+  btcDepositNotifiedAt: timestamp("btc_deposit_notified_at"), // When borrower clicked "I've Sent BTC"
   loanStartedAt: timestamp("loan_started_at"),
 });
 

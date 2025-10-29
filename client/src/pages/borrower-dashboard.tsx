@@ -315,22 +315,44 @@ export default function BorrowerDashboard() {
                               </div>
                             </div>
 
-                            <div className="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="text-white">
-                                  <p className="font-semibold text-sm">Ready to confirm your deposit?</p>
-                                  <p className="text-xs opacity-90 mt-1">Click below after sending BTC to notify admin for verification</p>
+                            {loan.btcDepositNotifiedAt ? (
+                              // Already confirmed - show awaiting state
+                              <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-white">
+                                    <p className="font-semibold text-sm">✓ Confirmation Sent</p>
+                                    <p className="text-xs opacity-90 mt-1">
+                                      Awaiting admin verification - We'll notify you once verified
+                                    </p>
+                                  </div>
+                                  <Button
+                                    disabled
+                                    className="bg-white/20 text-white cursor-not-allowed font-semibold whitespace-nowrap"
+                                    data-testid={`button-awaiting-confirmation-${loan.id}`}
+                                  >
+                                    ⏳ Awaiting Confirmation
+                                  </Button>
                                 </div>
-                                <Button
-                                  onClick={() => confirmBtcSent.mutate(loan.id)}
-                                  disabled={confirmBtcSent.isPending}
-                                  className="bg-white text-orange-600 hover:bg-gray-100 font-semibold whitespace-nowrap"
-                                  data-testid={`button-confirm-btc-sent-${loan.id}`}
-                                >
-                                  {confirmBtcSent.isPending ? "Sending..." : "✓ I've Sent BTC"}
-                                </Button>
                               </div>
-                            </div>
+                            ) : (
+                              // Not yet confirmed - show action button
+                              <div className="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-white">
+                                    <p className="font-semibold text-sm">Ready to confirm your deposit?</p>
+                                    <p className="text-xs opacity-90 mt-1">Click below after sending BTC to notify admin for verification</p>
+                                  </div>
+                                  <Button
+                                    onClick={() => confirmBtcSent.mutate(loan.id)}
+                                    disabled={confirmBtcSent.isPending}
+                                    className="bg-white text-orange-600 hover:bg-gray-100 font-semibold whitespace-nowrap"
+                                    data-testid={`button-confirm-btc-sent-${loan.id}`}
+                                  >
+                                    {confirmBtcSent.isPending ? "Sending..." : "✓ I've Sent BTC"}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
 
                             <FundingTracker
                               escrowAddress={loan.escrowAddress}
