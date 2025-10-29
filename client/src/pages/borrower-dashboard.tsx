@@ -12,14 +12,16 @@ import FundingTracker from "@/components/funding-tracker";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import type { Loan } from "@shared/schema";
 
 export default function BorrowerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Mock user ID - in real app, get from authentication
-  const userId = 1;
+  // Get actual authenticated user ID
+  const userId = user?.id ?? 0;
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: ["/api/users", userId, "loans"],

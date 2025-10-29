@@ -18,6 +18,7 @@ import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatPercentage, formatDate } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
@@ -25,6 +26,7 @@ import type { Loan } from "@shared/schema";
 export default function LenderDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [currencyFilter, setCurrencyFilter] = useState("all");
   const [termFilter, setTermFilter] = useState("all");
   
@@ -36,8 +38,8 @@ export default function LenderDashboard() {
   const [selectedTerms, setSelectedTerms] = useState<number[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState("all");
 
-  // Mock user ID - in real app, get from authentication
-  const userId = 2;
+  // Get actual authenticated user ID
+  const userId = user?.id ?? 0;
 
   const { data: userLoans = [], isLoading: loansLoading } = useQuery<Loan[]>({
     queryKey: ["/api/users", userId, "loans"],
