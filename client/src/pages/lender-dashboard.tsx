@@ -67,6 +67,9 @@ export default function LenderDashboard() {
   const filteredLoans = useMemo(() => {
     let filtered = allLoans;
 
+    // CRITICAL: Exclude loans created by the current user (prevent self-funding)
+    filtered = filtered.filter(loan => loan.borrowerId !== userId);
+
     // Filter by status
     if (statusFilter === "available") {
       filtered = filtered.filter(loan => 

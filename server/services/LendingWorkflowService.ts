@@ -148,6 +148,14 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         };
       }
 
+      // CRITICAL: Prevent self-funding - borrower cannot fund their own loan
+      if (offer.lenderId === loan.borrowerId) {
+        return {
+          success: false,
+          errorMessage: 'You cannot fund your own loan. Borrowers and lenders must be different users.'
+        };
+      }
+
       // Generate 2-of-3 multisig escrow address (using platform's default pubkey)
       const escrowResult = await this.bitcoinEscrow.generateMultisigEscrowAddress(
         borrowerPubkey,
