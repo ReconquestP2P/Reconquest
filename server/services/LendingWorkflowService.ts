@@ -613,7 +613,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="color: #333; margin-top: 0;">Next Steps</h3>
-                <p><strong>Escrow Address:</strong> <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">${escrowAddress}</code></p>
+                <p><strong>Escrow Address (Testnet):</strong></p>
+                <p style="word-break: break-all;"><code style="background: #e9ecef; padding: 4px 8px; border-radius: 3px; font-size: 13px;">${escrowAddress}</code></p>
                 <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
                 <p>Please deposit your Bitcoin collateral to the escrow address above. Once confirmed, your loan will be funded.</p>
               </div>
@@ -621,6 +622,24 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; color: #155724;">
                   <strong>Loan Amount:</strong> ${loan.amount} ${loan.currency} at ${loan.interestRate}% for ${loan.termMonths} months
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/dashboard/borrower" 
+                   style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
+                  📊 View Dashboard
+                </a>
+                <a href="https://blockstream.info/testnet/address/${escrowAddress}" 
+                   target="_blank"
+                   style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
+                  🔍 Track Deposit on Blockchain
+                </a>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                  <strong>⚡ After Depositing:</strong> Click "View Dashboard" above to confirm your deposit and track escrow status.
                 </p>
               </div>
             </div>
@@ -662,12 +681,31 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
-                <p><strong>Escrow:</strong> <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">${escrowAddress}</code></p>
+                <p><strong>Escrow Address (Testnet):</strong></p>
+                <p style="word-break: break-all;"><code style="background: #e9ecef; padding: 4px 8px; border-radius: 3px; font-size: 13px;">${escrowAddress}</code></p>
               </div>
               
               <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; color: #0c5460;">
                   <strong>Next Step:</strong> Once the borrower deposits Bitcoin to escrow, you can proceed with fiat transfer.
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/dashboard/lender" 
+                   style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
+                  📊 View Dashboard
+                </a>
+                <a href="https://blockstream.info/testnet/address/${escrowAddress}" 
+                   target="_blank"
+                   style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
+                  🔍 Monitor Escrow Funding
+                </a>
+              </div>
+              
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #155724; font-size: 14px;">
+                  <strong>✅ Stay Updated:</strong> You'll receive notifications when the borrower deposits Bitcoin. Track real-time status on your dashboard.
                 </p>
               </div>
             </div>
