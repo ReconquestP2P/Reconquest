@@ -45,6 +45,34 @@ export default function BorrowerDashboard() {
     });
   };
 
+  const confirmBtcSent = useMutation({
+    mutationFn: async (loanId: number) => {
+      const res = await fetch(`/api/loans/${loanId}/confirm-btc-sent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Confirmation Sent!",
+        description: "Admin has been notified to verify your BTC deposit.",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -284,6 +312,23 @@ export default function BorrowerDashboard() {
                                 >
                                   🔍 View on Blockchain
                                 </a>
+                              </div>
+                            </div>
+
+                            <div className="bg-gradient-to-r from-orange-500 to-yellow-500 rounded-lg p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="text-white">
+                                  <p className="font-semibold text-sm">Ready to confirm your deposit?</p>
+                                  <p className="text-xs opacity-90 mt-1">Click below after sending BTC to notify admin for verification</p>
+                                </div>
+                                <Button
+                                  onClick={() => confirmBtcSent.mutate(loan.id)}
+                                  disabled={confirmBtcSent.isPending}
+                                  className="bg-white text-orange-600 hover:bg-gray-100 font-semibold whitespace-nowrap"
+                                  data-testid={`button-confirm-btc-sent-${loan.id}`}
+                                >
+                                  {confirmBtcSent.isPending ? "Sending..." : "✓ I've Sent BTC"}
+                                </Button>
                               </div>
                             </div>
 
