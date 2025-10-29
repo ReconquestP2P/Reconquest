@@ -83,9 +83,9 @@ export default function BorrowerDashboard() {
 
         <Tabs defaultValue="request" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="request">Request</TabsTrigger>
+          <TabsTrigger value="request">Request Loan</TabsTrigger>
           <TabsTrigger value="escrow">Escrow Pending</TabsTrigger>
-          <TabsTrigger value="loans">Loans</TabsTrigger>
+          <TabsTrigger value="loans">Active Loans</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
