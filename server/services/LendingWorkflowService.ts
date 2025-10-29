@@ -148,11 +148,10 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         };
       }
 
-      // Generate 2-of-3 multisig escrow address
+      // Generate 2-of-3 multisig escrow address (using platform's default pubkey)
       const escrowResult = await this.bitcoinEscrow.generateMultisigEscrowAddress(
         borrowerPubkey,
-        lenderPubkey,
-        undefined // Use platform's default pubkey
+        lenderPubkey
       );
 
       console.log(`Generated multisig escrow: ${escrowResult.address}`);
@@ -163,7 +162,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       // Update loan with escrow details and set lender
       const updatedLoan = await this.storage.updateLoanWithEscrow(loan.id, {
         escrowAddress: escrowResult.address,
-        escrowRedeemScript: escrowResult.redeemScript,
+        witnessScript: escrowResult.witnessScript || escrowResult.redeemScript,
         borrowerPubkey,
         lenderPubkey,
         platformPubkey: escrowResult.platformPubkey // Use correct platform pubkey from escrow result
@@ -228,7 +227,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       // Update loan status
       await this.storage.updateLoan(loanId, {
         status: 'escrow_pending',
-        escrowTxHash: verification.txHash
+        fundingTxid: verification.txHash
       });
 
       // Get transaction URL

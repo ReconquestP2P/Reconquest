@@ -22,7 +22,7 @@ export interface IBitcoinEscrowService {
   generateMultisigEscrowAddress(
     borrowerPubkey: string, 
     lenderPubkey: string, 
-    platformPubkey: string
+    platformPubkey?: string
   ): Promise<MultisigEscrowResult>;
   verifyTransaction(address: string, expectedAmount: number): Promise<{ verified: boolean; txHash?: string }>;
   getTransactionUrl(txHash: string): string;
