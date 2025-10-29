@@ -606,7 +606,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       await sendEmail({
         to: borrower.email,
         from: 'noreply@reconquestp2p.com',
-        subject: '🎉 Your Loan Has Been Matched!',
+        subject: 'Loan Matched! Time to Deposit your BTC!',
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
             <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
