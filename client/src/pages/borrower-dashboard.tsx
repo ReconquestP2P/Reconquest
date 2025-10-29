@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy } from "lucide-react";
+import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/stats-card";
 import LoanCalculator from "@/components/loan-calculator";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
@@ -35,6 +36,14 @@ export default function BorrowerDashboard() {
   const avgLTV = activeLoans.length > 0 
     ? activeLoans.reduce((sum, loan) => sum + parseFloat(loan.ltvRatio), 0) / activeLoans.length 
     : 0;
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+    toast({
+      title: "Refreshed",
+      description: "Your loans have been updated.",
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -129,7 +138,19 @@ export default function BorrowerDashboard() {
           {/* Active Loans Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Your Active Loans</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Your Active Loans</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-loans"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {borrowerLoans.length === 0 ? (
@@ -176,10 +197,24 @@ export default function BorrowerDashboard() {
           {/* Escrow Pending - Matched Loans Awaiting BTC Deposit */}
           <Card>
             <CardHeader>
-              <CardTitle>Loans Matched - Awaiting BTC Deposit</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Your loan has been matched with a lender! Deposit Bitcoin to the escrow address below to activate your loan.
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Loans Matched - Awaiting BTC Deposit</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Your loan has been matched with a lender! Deposit Bitcoin to the escrow address below to activate your loan.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-escrow"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {borrowerLoans.filter(loan => loan.status === 'funding').length === 0 ? (
