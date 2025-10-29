@@ -24,7 +24,7 @@ export default function BorrowerDashboard() {
   const userId = user?.id ?? 0;
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
-    queryKey: ["/api/users", userId, "loans"],
+    queryKey: [`/api/users/${userId}/loans`],
   });
 
   const borrowerLoans = userLoans.filter(loan => loan.borrowerId === userId);
@@ -261,7 +261,7 @@ export default function BorrowerDashboard() {
                                   title: '✅ BTC Deposit Confirmed!',
                                   description: `Your loan is now active! TXID: ${txid.slice(0, 20)}...`,
                                 });
-                                queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
                               }}
                             />
                           </>
