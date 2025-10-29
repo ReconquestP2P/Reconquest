@@ -627,7 +627,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               <div style="text-align: center; margin: 30px 0;">
                 <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/dashboard/borrower" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
-                  📊 View Dashboard
+                  ✅ BTC Deposit Confirmation
                 </a>
                 <a href="https://blockstream.info/testnet/address/${escrowAddress}" 
                    target="_blank"
@@ -638,7 +638,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               
               <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; color: #856404; font-size: 14px;">
-                  <strong>⚡ After Depositing:</strong> Click "View Dashboard" above to confirm your deposit and track escrow status.
+                  <strong>⚡ After Depositing BTC:</strong> Click "BTC Deposit Confirmation" above to confirm your deposit on your dashboard.
                 </p>
               </div>
             </div>

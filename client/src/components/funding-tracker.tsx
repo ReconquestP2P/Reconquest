@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Bitcoin, CheckCircle, Clock, ExternalLink, RefreshCw } from 'lucide-react';
+import { AlertCircle, Bitcoin, CheckCircle, Clock, ExternalLink, RefreshCw } from 'lucide-react';
 import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
 import { formatBTC } from '@/lib/utils';
 
@@ -196,38 +196,62 @@ export default function FundingTracker({
           </div>
         )}
 
-        {/* Polling Controls */}
-        <div className="flex gap-2 pt-2 border-t">
-          {!isPolling ? (
-            <Button
-              data-testid="button-start-tracking"
-              onClick={handleStartPolling}
-              variant="default"
-              className="flex-1"
-              disabled={isFunded && confirmations >= requiredConfirmations}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Start Auto-Tracking
-            </Button>
-          ) : (
-            <Button
-              data-testid="button-stop-tracking"
-              onClick={handleStopPolling}
-              variant="outline"
-              className="flex-1"
-            >
-              Stop Tracking
-            </Button>
-          )}
+        {/* BTC Deposit Confirmation - Primary Action */}
+        {!isFunded && !isPolling && (
+          <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              Ready to Confirm Your Deposit?
+            </AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300 space-y-3">
+              <p>After sending Bitcoin to the escrow address above, click the button below to start monitoring the blockchain.</p>
+              <Button
+                data-testid="button-confirm-deposit"
+                onClick={handleStartPolling}
+                className="w-full bg-gradient-to-r from-yellow-400 to-blue-500 hover:from-yellow-500 hover:to-blue-600 text-white font-bold"
+                size="lg"
+              >
+                <Bitcoin className="mr-2 h-5 w-5" />
+                ✅ I Have Deposited BTC - Confirm
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <Button
-            data-testid="button-check-now"
-            onClick={handleManualCheck}
-            variant="outline"
-          >
-            Check Now
-          </Button>
-        </div>
+        {/* Polling Controls */}
+        {(isFunded || isPolling) && (
+          <div className="flex gap-2 pt-2 border-t">
+            {isPolling ? (
+              <Button
+                data-testid="button-stop-tracking"
+                onClick={handleStopPolling}
+                variant="outline"
+                className="flex-1"
+              >
+                Stop Tracking
+              </Button>
+            ) : (
+              <Button
+                data-testid="button-start-tracking"
+                onClick={handleStartPolling}
+                variant="default"
+                className="flex-1"
+                disabled={confirmations >= requiredConfirmations}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Resume Tracking
+              </Button>
+            )}
+
+            <Button
+              data-testid="button-check-now"
+              onClick={handleManualCheck}
+              variant="outline"
+            >
+              Check Now
+            </Button>
+          </div>
+        )}
 
         {/* Last Check Timestamp */}
         {lastCheck && (
