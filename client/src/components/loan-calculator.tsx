@@ -13,9 +13,9 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function LoanCalculator() {
   const [amount, setAmount] = useState("25000");
-  const [currency, setCurrency] = useState("USDC");
+  const [currency, setCurrency] = useState("EUR");
   const [term, setTerm] = useState("6");
-  const [interestRate, setInterestRate] = useState(8.5);
+  const [interestRate, setInterestRate] = useState(6);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
