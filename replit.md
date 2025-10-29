@@ -50,6 +50,21 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Achievements
 
+### Critical Security Fix: Self-Funding Prevention - COMPLETE ✅ (Oct 29, 2025)
+- **Root Cause Identified**: Backend endpoints used hardcoded user IDs instead of authenticated users
+- **Vulnerabilities Fixed**:
+  - `POST /api/loans` - Changed from hardcoded `borrowerId = 1` to `req.user.id`
+  - `POST /api/loans/:id/fund` - Changed from hardcoded `lenderId = 2` to `req.user.id`
+  - `POST /api/loan-offers` - Changed from hardcoded `lenderId = 2` to `req.user.id`
+  - Lender Dashboard - Changed from hardcoded `userId = 2` to `useAuth()` hook
+  - Borrower Dashboard - Changed from hardcoded `userId = 1` to `useAuth()` hook
+- **Multi-Layer Protection**:
+  - **Frontend Filter**: Excludes borrower's own loans from available loans list (`loan.borrowerId !== userId`)
+  - **Backend Validation**: All funding endpoints now check `lenderId === loan.borrowerId` and reject with 403 error
+  - **Authentication Required**: All loan creation/funding endpoints now require JWT authentication via `authenticateToken` middleware
+- **Testing**: Verified fix prevents same user from funding own loans - system returns "You cannot fund your own loan" error message
+- **Security Impact**: Eliminates critical P2P lending integrity violation where users could lend to themselves
+
 ### Firefish WASM Frontend Integration - COMPLETE ✅ (Oct 19, 2025)
 - **Client-Side Escrow**: Full React frontend integration for Firefish WASM Bitcoin escrow
 - **UI Components Built**:

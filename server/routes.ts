@@ -949,13 +949,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new loan request
-  app.post("/api/loans", async (req, res) => {
+  app.post("/api/loans", authenticateToken, async (req: any, res) => {
     try {
       // Parse only the required fields from the request body
       const requestData = insertLoanSchema.parse(req.body);
       
-      // Mock user ID (in real app, get from authentication)
-      const borrowerId = 1;
+      // Get authenticated user ID from JWT token
+      const borrowerId = req.user.id;
       
       // Calculate collateral based on 2:1 ratio using real-time BTC price in loan currency
       const btcPrice = await getBtcPriceForCurrency(requestData.currency);
@@ -991,16 +991,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Fund a loan (lender accepts loan request)
-  app.post("/api/loans/:id/fund", async (req, res) => {
+  app.post("/api/loans/:id/fund", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     
-    // Mock lender ID (in real app, get from authentication)
-    const lenderId = 2;
+    // Get authenticated user ID from JWT token
+    const lenderId = req.user.id;
     
     try {
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // CRITICAL: Prevent self-funding - borrower cannot fund their own loan
+      if (lenderId === loan.borrowerId) {
+        return res.status(403).json({ 
+          success: false,
+          message: "You cannot fund your own loan. Borrowers and lenders must be different users." 
+        });
       }
       
       if (loan.status !== "pending" && loan.status !== "posted" && loan.status !== "initiated" && loan.status !== "funding") {
@@ -1025,15 +1033,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create loan offer
-  app.post("/api/loan-offers", async (req, res) => {
+  app.post("/api/loan-offers", authenticateToken, async (req: any, res) => {
     try {
       console.log("Loan offer request body:", req.body);
       
-      // Mock lender ID (in real app, get from authentication)
-      const lenderId = 2;
+      // Get authenticated user ID from JWT token
+      const lenderId = req.user.id;
       
       const validatedData = insertLoanOfferSchema.parse(req.body);
       console.log("Validated data:", validatedData);
+      
+      // Get the loan to check for self-funding
+      const loan = await storage.getLoan(validatedData.loanId);
+      if (!loan) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Loan not found" 
+        });
+      }
+      
+      // CRITICAL: Prevent self-funding - borrower cannot fund their own loan
+      if (lenderId === loan.borrowerId) {
+        return res.status(403).json({ 
+          success: false,
+          message: "You cannot fund your own loan. Borrowers and lenders must be different users." 
+        });
+      }
       
       const offer = await storage.createLoanOffer({
         ...validatedData,
@@ -1041,10 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Notify admin about funding attempt
-      const loan = await storage.getLoan(validatedData.loanId);
-      if (loan) {
-        await sendFundingNotification(loan, lenderId);
-      }
+      await sendFundingNotification(loan, lenderId);
       
       res.status(201).json(offer);
     } catch (error) {
