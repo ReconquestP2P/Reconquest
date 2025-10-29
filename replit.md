@@ -50,6 +50,26 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Achievements
 
+### Admin BTC Verification & Lender Notification Workflow - COMPLETE ✅ (Oct 29, 2025)
+- **Borrower Confirmation Flow**: "I've Sent BTC" button in borrower dashboard sends email to admin@reconquestp2p.com
+- **Admin Dashboard Enhancement**:
+  - New "Pending Escrow" tab showing loans with status="funding"
+  - "Confirm BTC Deposit" button for each loan awaiting verification
+  - Direct blockchain verification link to blockstream.info/testnet
+- **Firefish-Style Email Templates**: Professional lender notification emails with:
+  - BTC deposit confirmation with blockchain verification link
+  - Complete loan details (amount, interest, maturity date)
+  - Borrower bank account details for fiat transfer
+  - "Transfer funds" CTA button
+- **Lender Dashboard "Pending Transfers" Tab**:
+  - Shows loans where BTC deposit confirmed, awaiting fiat transfer
+  - Displays borrower bank account details (holder, number, bank, routing, country)
+  - Real-time blockchain verification links
+  - "I've Sent the Funds" confirmation button
+- **Bank Account Management**: Added fields to users table for secure fiat transfer coordination
+- **Enriched API Endpoint**: GET /api/users/:id/loans/enriched returns loan data with borrower bank details
+- **Workflow**: Borrower confirms BTC → Admin verifies on blockchain → Admin confirms → Lender receives email → Lender sends fiat → Lender confirms
+
 ### Critical Security Fix: Self-Funding Prevention - COMPLETE ✅ (Oct 29, 2025)
 - **Root Cause Identified**: Backend endpoints used hardcoded user IDs instead of authenticated users
 - **Vulnerabilities Fixed**:
