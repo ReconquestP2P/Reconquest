@@ -188,11 +188,10 @@ export default function LenderDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
-          <TabsTrigger value="escrow">Escrow</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -536,77 +535,6 @@ export default function LenderDashboard() {
             </div>
           </div>
 
-        </TabsContent>
-
-        <TabsContent value="escrow" className="space-y-6">
-          {/* Escrow Management for Funded Loans */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Bitcoin Escrow Management</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Manage escrow addresses for your funded loans
-              </p>
-            </CardHeader>
-            <CardContent>
-              {lenderLoans.filter(loan => loan.status === 'escrow_pending' || loan.status === 'active').length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No loans requiring escrow setup. Fund a loan to get started.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {lenderLoans
-                    .filter(loan => loan.status === 'escrow_pending' || loan.status === 'active')
-                    .map((loan) => (
-                      <div key={loan.id} className="border rounded-lg p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold">Loan #{loan.id}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(parseFloat(loan.amount))} · {loan.termMonths} months · {formatPercentage(loan.interestRate)} APY
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Collateral</p>
-                            <p className="font-semibold">{parseFloat(loan.collateralBtc).toFixed(8)} BTC</p>
-                          </div>
-                        </div>
-
-                        {loan.status === 'escrow_pending' && !loan.escrowAddress && (
-                          <EscrowSetup
-                            loanId={loan.id}
-                            role="lender"
-                            onEscrowCreated={(sessionId, address) => {
-                              toast({
-                                title: 'Escrow Created',
-                                description: `Address: ${address.slice(0, 20)}...`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
-                            }}
-                          />
-                        )}
-
-                        {loan.escrowAddress && (
-                          <FundingTracker
-                            escrowAddress={loan.escrowAddress}
-                            expectedAmountBTC={parseFloat(loan.collateralBtc)}
-                            autoStart={loan.status === 'escrow_pending'}
-                            onFunded={(txid, confirmations) => {
-                              toast({
-                                title: 'Loan Activated',
-                                description: `Escrow funded with ${confirmations} confirmations`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-6">
