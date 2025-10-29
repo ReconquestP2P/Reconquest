@@ -85,7 +85,7 @@ export default function BorrowerDashboard() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Loans</TabsTrigger>
-          <TabsTrigger value="escrow">Escrow</TabsTrigger>
+          <TabsTrigger value="escrow">Escrow Pending</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -173,67 +173,102 @@ export default function BorrowerDashboard() {
         </TabsContent>
 
         <TabsContent value="escrow" className="space-y-6">
-          {/* Escrow Management for Borrowers */}
+          {/* Escrow Pending - Matched Loans Awaiting BTC Deposit */}
           <Card>
             <CardHeader>
-              <CardTitle>Bitcoin Collateral Management</CardTitle>
+              <CardTitle>Loans Matched - Awaiting BTC Deposit</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Manage Bitcoin escrow for your funded loans
+                Your loan has been matched with a lender! Deposit Bitcoin to the escrow address below to activate your loan.
               </p>
             </CardHeader>
             <CardContent>
-              {borrowerLoans.filter(loan => loan.status === 'escrow_pending' || loan.status === 'active').length === 0 ? (
+              {borrowerLoans.filter(loan => loan.status === 'funding').length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
-                    No loans requiring escrow setup. Wait for a lender to accept your loan request.
+                    No loans awaiting BTC deposit. Once a lender accepts your loan request, it will appear here.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {borrowerLoans
-                    .filter(loan => loan.status === 'escrow_pending' || loan.status === 'active')
+                    .filter(loan => loan.status === 'funding')
                     .map((loan) => (
-                      <div key={loan.id} className="border rounded-lg p-4 space-y-4">
+                      <div key={loan.id} className="border rounded-lg p-6 space-y-4 bg-gradient-to-br from-orange-50 to-blue-50 dark:from-orange-950 dark:to-blue-950">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h3 className="font-semibold">Loan #{loan.id}</h3>
+                            <h3 className="font-semibold text-lg">Loan #{loan.id}</h3>
                             <p className="text-sm text-muted-foreground">
-                              Borrowed: {formatCurrency(parseFloat(loan.amount))} · {loan.termMonths} months · {formatPercentage(loan.interestRate)} APY
+                              Amount: {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months · {formatPercentage(loan.interestRate)} APY
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">Required Collateral</p>
-                            <p className="font-semibold text-orange-600">{parseFloat(loan.collateralBtc).toFixed(8)} BTC</p>
-                          </div>
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100">
+                            Awaiting Deposit
+                          </Badge>
                         </div>
 
-                        {loan.status === 'escrow_pending' && !loan.escrowAddress && (
-                          <EscrowSetup
-                            loanId={loan.id}
-                            role="borrower"
-                            onEscrowCreated={(sessionId, address) => {
-                              toast({
-                                title: 'Escrow Created',
-                                description: `Send Bitcoin to: ${address.slice(0, 20)}...`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
-                            }}
-                          />
-                        )}
+                        {loan.escrowAddress ? (
+                          <>
+                            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 space-y-3">
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">
+                                  Bitcoin Escrow Address (Testnet)
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-sm bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded font-mono break-all">
+                                    {loan.escrowAddress}
+                                  </code>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(loan.escrowAddress!);
+                                      toast({ title: "Copied!", description: "Escrow address copied to clipboard" });
+                                    }}
+                                    className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs whitespace-nowrap"
+                                    data-testid={`button-copy-address-${loan.id}`}
+                                  >
+                                    Copy
+                                  </button>
+                                </div>
+                              </div>
 
-                        {loan.escrowAddress && (
-                          <FundingTracker
-                            escrowAddress={loan.escrowAddress}
-                            expectedAmountBTC={parseFloat(loan.collateralBtc)}
-                            autoStart={loan.status === 'escrow_pending'}
-                            onFunded={(txid, confirmations) => {
-                              toast({
-                                title: 'Collateral Confirmed',
-                                description: `Your loan is now active! TXID: ${txid.slice(0, 20)}...`,
-                              });
-                              queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
-                            }}
-                          />
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">
+                                  Required Collateral
+                                </p>
+                                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                                  {parseFloat(loan.collateralBtc).toFixed(8)} BTC
+                                </p>
+                              </div>
+
+                              <div className="flex gap-2 pt-2">
+                                <a
+                                  href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-center text-sm font-medium"
+                                  data-testid={`link-blockstream-${loan.id}`}
+                                >
+                                  🔍 View on Blockchain
+                                </a>
+                              </div>
+                            </div>
+
+                            <FundingTracker
+                              escrowAddress={loan.escrowAddress}
+                              expectedAmountBTC={parseFloat(loan.collateralBtc)}
+                              autoStart={true}
+                              onFunded={(txid, confirmations) => {
+                                toast({
+                                  title: '✅ BTC Deposit Confirmed!',
+                                  description: `Your loan is now active! TXID: ${txid.slice(0, 20)}...`,
+                                });
+                                queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
+                              }}
+                            />
+                          </>
+                        ) : (
+                          <div className="text-center py-4 text-gray-500">
+                            Generating escrow address...
+                          </div>
                         )}
                       </div>
                     ))}
