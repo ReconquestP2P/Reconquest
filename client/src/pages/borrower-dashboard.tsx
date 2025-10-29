@@ -153,9 +153,9 @@ export default function BorrowerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {borrowerLoans.length === 0 ? (
+              {activeLoans.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">No loans found. Create your first loan request in the Overview tab.</p>
+                  <p className="text-gray-500 dark:text-gray-400">No active loans. Once you deposit BTC and the lender transfers funds, your loan will appear here.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -172,7 +172,7 @@ export default function BorrowerDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {borrowerLoans.map((loan) => (
+                      {activeLoans.map((loan) => (
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">#{loan.id}</TableCell>
                           <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
