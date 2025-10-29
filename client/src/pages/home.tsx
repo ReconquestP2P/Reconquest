@@ -24,7 +24,7 @@ export default function Home() {
             </div>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-            Built for Bitcoiners needing capital and for investors who provide it.<br />
+            Built for Bitcoiners seeking capital and for Investors looking for a safe way to earn fixed returns<br />
             Secure, non-custodial lending with Bitcoin as collateral.
           </p>
           <div className="flex gap-4 justify-center mt-12">
