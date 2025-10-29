@@ -41,8 +41,8 @@ export default function LenderDashboard() {
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
 
-  const { data: userLoans = [], isLoading: loansLoading } = useQuery<Loan[]>({
-    queryKey: ["/api/users", userId, "loans"],
+  const { data: userLoans = [], isLoading: loansLoading } = useQuery<any[]>({
+    queryKey: [`/api/users/${userId}/loans/enriched`],
   });
 
   const { data: allLoans = [], isLoading: availableLoading } = useQuery<Loan[]>({
@@ -188,8 +188,9 @@ export default function LenderDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
           <TabsTrigger value="escrow">Escrow</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
@@ -225,6 +226,145 @@ export default function LenderDashboard() {
               valueColor="text-secondary"
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="pending-transfers" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Pending Fund Transfers</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  BTC deposits confirmed - send fiat funds to borrowers' bank accounts
+                </p>
+              </div>
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                data-testid="button-refresh-transfers"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {lenderLoans.filter(loan => loan.status === "funding").length > 0 ? (
+                <div className="space-y-4">
+                  {lenderLoans.filter(loan => loan.status === "funding").map((loan) => (
+                    <Card key={loan.id} className="border-2 border-yellow-200 dark:border-yellow-800">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* Loan Header */}
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-lg font-semibold">Loan #{loan.id.toString().padStart(6, '0')}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Bitcoin escrow confirmed - awaiting your bank transfer
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-green-600">
+                                {formatCurrency(Number(loan.amount))} {loan.currency}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {parseFloat(loan.interestRate).toFixed(2)}% APY
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Escrow Verification */}
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-green-600 dark:text-green-400 font-semibold">✓ Bitcoin Deposited</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Borrower deposited {Number(loan.collateralBtc).toFixed(4)} BTC to escrow address
+                            </p>
+                            <a 
+                              href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              🔍 Verify on Blockchain →
+                            </a>
+                          </div>
+
+                          {/* Bank Account Details */}
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-300 dark:border-yellow-800">
+                            <h4 className="font-semibold mb-3 text-yellow-800 dark:text-yellow-200">
+                              📤 Send Funds To:
+                            </h4>
+                            {loan.borrower?.bankAccountHolder || loan.borrower?.bankAccountNumber ? (
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                {loan.borrower?.bankAccountHolder && (
+                                  <div>
+                                    <p className="text-muted-foreground">Account Holder</p>
+                                    <p className="font-medium">{loan.borrower.bankAccountHolder}</p>
+                                  </div>
+                                )}
+                                {loan.borrower?.bankAccountNumber && (
+                                  <div>
+                                    <p className="text-muted-foreground">Account Number</p>
+                                    <p className="font-medium font-mono">{loan.borrower.bankAccountNumber}</p>
+                                  </div>
+                                )}
+                                {loan.borrower?.bankName && (
+                                  <div>
+                                    <p className="text-muted-foreground">Bank Name</p>
+                                    <p className="font-medium">{loan.borrower.bankName}</p>
+                                  </div>
+                                )}
+                                {loan.borrower?.bankRoutingNumber && (
+                                  <div>
+                                    <p className="text-muted-foreground">Routing/SWIFT</p>
+                                    <p className="font-medium font-mono">{loan.borrower.bankRoutingNumber}</p>
+                                  </div>
+                                )}
+                                {loan.borrower?.bankCountry && (
+                                  <div>
+                                    <p className="text-muted-foreground">Country</p>
+                                    <p className="font-medium">{loan.borrower.bankCountry}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                  ⚠️ Borrower has not provided bank account details yet
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Please contact the borrower ({loan.borrower?.email}) to provide their bank information
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Button */}
+                          <div className="pt-2">
+                            <Button 
+                              className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white"
+                              data-testid={`button-confirm-transfer-${loan.id}`}
+                            >
+                              ✓ I've Sent the Funds
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No pending fund transfers</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Funded loans will appear here once borrowers deposit BTC to escrow
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">

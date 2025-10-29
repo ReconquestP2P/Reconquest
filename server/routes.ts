@@ -948,6 +948,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(loans);
   });
 
+  // Get enriched loan data with borrower details for lenders
+  app.get("/api/users/:id/loans/enriched", async (req, res) => {
+    const userId = parseInt(req.params.id);
+    const loans = await storage.getUserLoans(userId);
+    
+    // Enrich loans with borrower bank account details
+    const enrichedLoans = await Promise.all(
+      loans.map(async (loan) => {
+        if (loan.borrowerId) {
+          const borrower = await storage.getUser(loan.borrowerId);
+          return {
+            ...loan,
+            borrower: {
+              id: borrower?.id,
+              username: borrower?.username,
+              email: borrower?.email,
+              bankAccountHolder: borrower?.bankAccountHolder,
+              bankAccountNumber: borrower?.bankAccountNumber,
+              bankName: borrower?.bankName,
+              bankRoutingNumber: borrower?.bankRoutingNumber,
+              bankCountry: borrower?.bankCountry,
+            }
+          };
+        }
+        return loan;
+      })
+    );
+    
+    res.json(enrichedLoans);
+  });
+
   // Create new loan request
   app.post("/api/loans", authenticateToken, async (req: any, res) => {
     try {
