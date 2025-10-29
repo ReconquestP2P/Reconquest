@@ -15,6 +15,14 @@ export const users = pgTable("users", {
   emailVerificationExpires: timestamp("email_verification_expires"),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpires: timestamp("password_reset_expires"),
+  
+  // Bank Account Details (for receiving loan funds)
+  bankAccountHolder: text("bank_account_holder"),
+  bankAccountNumber: text("bank_account_number"),
+  bankName: text("bank_name"),
+  bankRoutingNumber: text("bank_routing_number"), // For US banks or SWIFT/IBAN
+  bankCountry: text("bank_country"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

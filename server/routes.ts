@@ -1125,6 +1125,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin confirms BTC deposit and notifies lender to send fiat funds
+  app.post("/api/admin/loans/:id/confirm-btc-deposit", async (req, res) => {
+    const loanId = parseInt(req.params.id);
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify loan is in funding status
+      if (loan.status !== "funding") {
+        return res.status(400).json({ message: "Loan is not awaiting BTC deposit" });
+      }
+      
+      // Get borrower and lender details
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lender = await storage.getUser(loan.lenderId);
+      
+      if (!borrower || !lender) {
+        return res.status(404).json({ message: "Borrower or lender not found" });
+      }
+      
+      // Calculate maturity date and amount due
+      const maturityDate = new Date();
+      maturityDate.setMonth(maturityDate.getMonth() + loan.termMonths);
+      const interestAmount = (parseFloat(loan.amount) * parseFloat(loan.interestRate) / 100);
+      const amountDue = (parseFloat(loan.amount) + interestAmount);
+      
+      // Send email to lender (Firefish-style template)
+      await sendEmail({
+        to: lender.email,
+        from: 'noreply@reconquestp2p.com',
+        subject: `Transfer funds - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="padding: 20px;">
+              <h1 style="color: #333; font-size: 24px; margin: 0 0 20px 0;">Reconquest 🔥🐠</h1>
+              
+              <h2 style="color: #333; font-size: 20px; margin: 0 0 20px 0;">Transfer funds</h2>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
+                Dear ${lender.username},
+              </p>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
+                The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="https://blockstream.info/testnet/address/${loan.escrowAddress}" target="_blank" style="color: #e74c3c; text-decoration: underline;">designated address</a>.
+              </p>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">
+                You can now proceed with the bank transfer. Please follow the instructions on the platform to send the loan amount to the borrower's bank account.
+              </p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 0 0 20px 0;">
+                <p style="margin: 0 0 8px 0; color: #333;"><strong>Loan ID:</strong> ${loan.id.toString().padStart(6, '0')}</p>
+                <p style="margin: 0 0 8px 0; color: #333;"><strong>Maturity Date:</strong> ${maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                <p style="margin: 0 0 8px 0; color: #333;"><strong>Loan Amount:</strong> ${parseFloat(loan.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${loan.currency}</p>
+                <p style="margin: 0 0 8px 0; color: #333;"><strong>Interest Rate:</strong> ${parseFloat(loan.interestRate).toFixed(2)} % p.a.</p>
+                <p style="margin: 0; color: #333;"><strong>Amount Due:</strong> ${amountDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${loan.currency}</p>
+              </div>
+              
+              <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 0 0 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #856404; font-weight: bold;">📤 Borrower's Bank Account Details</p>
+                ${borrower.bankAccountHolder ? `<p style="margin: 0 0 5px 0; color: #333;"><strong>Account Holder:</strong> ${borrower.bankAccountHolder}</p>` : ''}
+                ${borrower.bankAccountNumber ? `<p style="margin: 0 0 5px 0; color: #333;"><strong>Account Number:</strong> ${borrower.bankAccountNumber}</p>` : ''}
+                ${borrower.bankName ? `<p style="margin: 0 0 5px 0; color: #333;"><strong>Bank Name:</strong> ${borrower.bankName}</p>` : ''}
+                ${borrower.bankRoutingNumber ? `<p style="margin: 0 0 5px 0; color: #333;"><strong>Routing/SWIFT:</strong> ${borrower.bankRoutingNumber}</p>` : ''}
+                ${borrower.bankCountry ? `<p style="margin: 0; color: #333;"><strong>Country:</strong> ${borrower.bankCountry}</p>` : ''}
+                ${!borrower.bankAccountHolder && !borrower.bankAccountNumber ? '<p style="margin: 0; color: #856404;">⚠️ Borrower has not provided bank details yet. Please check the platform.</p>' : ''}
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/lender-dashboard" 
+                   style="display: inline-block; background: #e74c3c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Transfer funds
+                </a>
+              </div>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
+                Once you confirm the transfer, the borrower will be notified to validate the transaction on their end.
+              </p>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
+                Please complete the funds transfer within the agreed-upon timeframe mentioned in the loan agreement for a smooth and efficient lending process.
+              </p>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
+                If you have any questions or need assistance, please check our <a href="#" style="color: #e74c3c; text-decoration: underline;">FAQ</a> or contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #e74c3c; text-decoration: underline;">admin@reconquestp2p.com</a>.
+              </p>
+              
+              <p style="color: #666; line-height: 1.6; margin: 0;">
+                Best regards,
+              </p>
+              <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">
+                Your <span style="color: #e74c3c; font-weight: bold;">Reconquest</span> Team
+              </p>
+            </div>
+          </div>
+        `
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Lender has been notified to transfer funds" 
+      });
+    } catch (error) {
+      console.error("Error confirming BTC deposit:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Create loan offer
   app.post("/api/loan-offers", authenticateToken, async (req: any, res) => {
     try {

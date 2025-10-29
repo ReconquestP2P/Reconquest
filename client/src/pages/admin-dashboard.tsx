@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail } 
 import { formatCurrency } from "@/lib/utils";
 import type { Loan, User } from "@shared/schema";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminStats {
   totalLoans: number;
@@ -83,6 +85,28 @@ export default function AdminDashboard() {
     queryKey: ["/api/btc-price"],
     refetchInterval: 30000,
     enabled: isAuthenticated, // Only fetch when authenticated
+  });
+
+  const { toast } = useToast();
+
+  const confirmBtcDepositMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      return await apiRequest(`/api/admin/loans/${loanId}/confirm-btc-deposit`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      toast({
+        title: "✅ BTC Deposit Confirmed",
+        description: "Lender has been notified to transfer funds to borrower's bank account",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Confirmation Failed",
+        description: error.message || "Failed to confirm BTC deposit",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleRefresh = () => {
@@ -292,11 +316,83 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabbed Interface for Loans and Users */}
-      <Tabs defaultValue="loans" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="loans">Loans Management</TabsTrigger>
+      <Tabs defaultValue="escrow" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="escrow">Pending Escrow</TabsTrigger>
+          <TabsTrigger value="loans">All Loans</TabsTrigger>
           <TabsTrigger value="users">Users Management</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="escrow" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Escrow Verification</CardTitle>
+              <CardDescription>
+                Loans awaiting BTC deposit confirmation - verify on blockchain before proceeding
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Loan ID</TableHead>
+                      <TableHead>Borrower</TableHead>
+                      <TableHead>Lender</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Collateral (BTC)</TableHead>
+                      <TableHead>Escrow Address</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loans?.filter(loan => loan.status === "funding").map((loan) => (
+                      <TableRow key={loan.id}>
+                        <TableCell className="font-medium">#{loan.id}</TableCell>
+                        <TableCell>{loan.borrowerId}</TableCell>
+                        <TableCell>{loan.lenderId}</TableCell>
+                        <TableCell>{formatCurrency(Number(loan.amount))} {loan.currency}</TableCell>
+                        <TableCell>{Number(loan.collateralBtc).toFixed(4)} BTC</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                              {loan.escrowAddress?.substring(0, 12)}...{loan.escrowAddress?.substring(loan.escrowAddress.length - 6)}
+                            </code>
+                            <a 
+                              href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              🔍 View on Blockchain
+                            </a>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            size="sm"
+                            data-testid={`button-confirm-btc-deposit-${loan.id}`}
+                            className="bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white"
+                            onClick={() => confirmBtcDepositMutation.mutate(loan.id)}
+                            disabled={confirmBtcDepositMutation.isPending}
+                          >
+                            {confirmBtcDepositMutation.isPending ? "Confirming..." : "✓ Confirm BTC Deposit"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {loans?.filter(loan => loan.status === "funding").length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No loans pending BTC verification</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
         
         <TabsContent value="loans" className="space-y-4">
           <Card>
@@ -387,7 +483,6 @@ export default function AdminDashboard() {
                       <TableHead>Email Status</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Registered</TableHead>
-                      <TableHead>Last Updated</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -414,9 +509,6 @@ export default function AdminDashboard() {
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             {new Date(user.createdAt).toLocaleDateString()}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.updatedAt).toLocaleDateString()}
                         </TableCell>
                       </TableRow>
                     ))}
