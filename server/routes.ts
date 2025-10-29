@@ -1061,7 +1061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send email to admin
       await sendEmail({
-        to: 'jfestrada93@gmail.com', // Admin email
+        to: 'admin@reconquestp2p.com', // Admin email
         from: 'noreply@reconquestp2p.com',
         subject: `🔔 BTC Deposit Confirmation - Loan #${loan.id}`,
         html: `
