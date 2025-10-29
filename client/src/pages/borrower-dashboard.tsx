@@ -81,15 +81,15 @@ export default function BorrowerDashboard() {
           <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="request" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="loans">Loans</TabsTrigger>
+          <TabsTrigger value="request">Request</TabsTrigger>
           <TabsTrigger value="escrow">Escrow Pending</TabsTrigger>
+          <TabsTrigger value="loans">Loans</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="request" className="space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatsCard
