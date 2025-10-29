@@ -633,7 +633,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/dashboard/borrower" 
+                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/borrower" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   ✅ BTC Deposit Confirmation
                 </a>
@@ -699,7 +699,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/dashboard/lender" 
+                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/lender" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   📊 View Dashboard
                 </a>
