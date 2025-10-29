@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,9 @@ export default function BorrowerDashboard() {
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
+
+  // Track loans where user clicked "I've Sent BTC" to prevent double-clicking
+  const [confirmedLoanIds, setConfirmedLoanIds] = useState<Set<number>>(new Set());
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: [`/api/users/${userId}/loans`],
@@ -54,17 +58,30 @@ export default function BorrowerDashboard() {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText);
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (loanId: number) => {
+      // Immediately mark this loan as confirmed in local state
+      setConfirmedLoanIds(prev => new Set(prev).add(loanId));
+    },
+    onSuccess: (data, loanId) => {
       toast({
         title: "✅ Confirmation Sent!",
         description: "Admin has been notified to verify your BTC deposit.",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, loanId) => {
+      // Remove from confirmed set if error occurs
+      setConfirmedLoanIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(loanId);
+        return newSet;
+      });
       toast({
         title: "Error",
         description: error.message,
@@ -315,7 +332,7 @@ export default function BorrowerDashboard() {
                               </div>
                             </div>
 
-                            {loan.btcDepositNotifiedAt ? (
+                            {loan.btcDepositNotifiedAt || confirmedLoanIds.has(loan.id) ? (
                               // Already confirmed - show awaiting state
                               <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-4">
                                 <div className="flex items-center justify-between">
