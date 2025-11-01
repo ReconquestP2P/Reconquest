@@ -340,111 +340,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fund loan endpoint - triggers the full lending workflow
+  // ⚠️ DEPRECATED - OLD ENDPOINT WITH CRITICAL BUG ⚠️
+  // This endpoint creates FAKE public keys from hash functions with NO private keys
+  // Bitcoin sent to addresses created here is PERMANENTLY LOCKED and UNRECOVERABLE
+  // Use the new endpoint POST /api/loans/:id/fund (line 1039) with real keypairs instead
+  // 
+  // KEEPING THIS DISABLED TO PREVENT ACCIDENTAL FUND LOSS
+  /*
   app.post("/api/loans/:loanId/fund", async (req, res) => {
-    try {
-      const loanId = parseInt(req.params.loanId);
-      const { lenderId } = req.body;
-
-      if (!loanId || !lenderId) {
-        return res.status(400).json({ message: "Loan ID and Lender ID are required" });
-      }
-
-      // Get the loan details
-      const loan = await storage.getLoan(loanId);
-      if (!loan) {
-        return res.status(404).json({ message: "Loan not found" });
-      }
-
-      // Handle different loan statuses gracefully
-      if (loan.status === "escrow_pending" || loan.status === "active" || loan.status === "completed") {
-        // Loan is already being processed or completed - return success to avoid user confusion
-        return res.json({
-          success: true,
-          message: "Loan funding is already in progress",
-          escrowAddress: loan.escrowAddress || "Escrow address being generated",
-          loanId: loanId,
-          instructions: "Funding process has already been initiated for this loan"
-        });
-      }
-      
-      if (loan.status !== "posted") {
-        return res.status(400).json({ message: "Loan is not available for funding" });
-      }
-
-      // Update loan with lender and set status to escrow_pending
-      const updatedLoan = await storage.updateLoan(loanId, {
-        lenderId: lenderId,
-        status: "escrow_pending"
-      });
-
-      if (!updatedLoan) {
-        return res.status(500).json({ message: "Failed to update loan" });
-      }
-
-      // Generate unique mock pubkeys for each loan to ensure unique escrow addresses
-      const createUniquePubkey = (seed: string) => {
-        // Create a simple hash-like string from the seed
-        let hash = 0;
-        for (let i = 0; i < seed.length; i++) {
-          const char = seed.charCodeAt(i);
-          hash = ((hash << 5) - hash + char) & 0xffffffff;
-        }
-        // Create a 64-char hex string from the hash, ensuring it's valid
-        const hexString = Math.abs(hash).toString(16).padStart(8, '0');
-        return "03" + hexString.repeat(8).substring(0, 64);
-      };
-      
-      const mockBorrowerPubkey = createUniquePubkey(`borrower_${updatedLoan.borrowerId}_${loanId}`);
-      const mockLenderPubkey = createUniquePubkey(`lender_${lenderId}_${loanId}`);
-      
-      try {
-        const escrowResult = await bitcoinEscrow.generateMultisigEscrowAddress(
-          mockBorrowerPubkey,
-          mockLenderPubkey,
-          undefined // Use platform's default pubkey
-        );
-
-        // Update loan with escrow details
-        await storage.updateLoanWithEscrow(loanId, {
-          escrowAddress: escrowResult.address,
-          witnessScript: escrowResult.redeemScript,
-          borrowerPubkey: mockBorrowerPubkey,
-          lenderPubkey: mockLenderPubkey,
-          platformPubkey: escrowResult.platformPubkey
-        });
-
-        console.log(`Generated escrow address for loan ${loanId}: ${escrowResult.address}`);
-
-        // Use the proper workflow notifications (this was working before!)
-        await lendingWorkflow.notifyBorrowerOfLoanMatching(updatedLoan, escrowResult.address);
-        await lendingWorkflow.notifyLenderOfLoanMatching(updatedLoan, escrowResult.address);  
-        await lendingWorkflow.notifyAdminOfLoanMatching(updatedLoan);
-        
-        console.log(`✅ All loan matching notifications sent for loan ${loanId}`);
-
-        res.json({
-          success: true,
-          message: "Loan funding initiated successfully",
-          escrowAddress: escrowResult.address,
-          loanId: loanId,
-          instructions: `Borrower will be notified to send ${updatedLoan.collateralBtc} BTC to escrow address: ${escrowResult.address}`
-        });
-      } catch (escrowError) {
-        console.error('Error generating escrow address:', escrowError);
-        res.status(500).json({
-          success: false,
-          message: "Failed to generate escrow address"
-        });
-      }
-    } catch (error) {
-      console.error("Error funding loan:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "Internal server error while funding loan" 
-      });
-    }
+    return res.status(410).json({ 
+      error: "This endpoint is deprecated and disabled",
+      message: "Mock key generation creates unrecoverable Bitcoin addresses. Use POST /api/loans/:id/fund with real keypairs from Firefish WASM.",
+      migration: "Borrowers and lenders must generate Bitcoin keypairs in their browsers and submit only public keys."
+    });
   });
+  */
 
   // User login
   app.post("/api/auth/login", async (req, res) => {
