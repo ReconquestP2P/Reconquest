@@ -982,8 +982,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new loan request
   app.post("/api/loans", authenticateToken, async (req: any, res) => {
     try {
-      // Parse only the required fields from the request body
+      // Parse request data
       const requestData = insertLoanSchema.parse(req.body);
+      
+      // Extract and validate borrower's Bitcoin public key
+      const { borrowerPubkey } = req.body;
+      if (!borrowerPubkey || typeof borrowerPubkey !== 'string' || borrowerPubkey.length !== 66) {
+        return res.status(400).json({ 
+          message: "Valid borrower Bitcoin public key (66 hex chars) is required" 
+        });
+      }
       
       // Get authenticated user ID from JWT token
       const borrowerId = req.user.id;
@@ -997,6 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loanData = {
         ...requestData,
         borrowerId,
+        borrowerPubkey, // Store the borrower's real Bitcoin public key
         collateralBtc: requiredBtc,
         ltvRatio: "50.00",
         status: "posted",
@@ -1005,6 +1014,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const loan = await storage.createLoan(loanData);
 
+      console.log(`✅ Loan #${loan.id} created with borrower pubkey: ${borrowerPubkey.substring(0, 20)}...`);
+      
       // Send email notifications for new loan
       console.log(`Attempting to send email notifications for new loan #${loan.id}`);
       await sendNotificationsForNewLoan(loan, borrowerId);
