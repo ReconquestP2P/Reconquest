@@ -1057,9 +1057,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
       
+      // Extract and validate lender's Bitcoin public key
+      const { lenderPubkey } = req.body;
+      if (!lenderPubkey || typeof lenderPubkey !== 'string' || lenderPubkey.length !== 66) {
+        return res.status(400).json({ 
+          message: "Valid lender Bitcoin public key (66 hex chars) is required" 
+        });
+      }
+      
+      // Validate borrower has a public key
+      if (!loan.borrowerPubkey) {
+        return res.status(400).json({ 
+          message: "Borrower public key not found. Loan may be from old system." 
+        });
+      }
+      
+      // Create 2-of-3 multisig escrow address
+      const { createMultisigAddress } = await import('./utils/multisig-creator.js');
+      const PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
+      
+      const multisig = createMultisigAddress(
+        loan.borrowerPubkey,
+        lenderPubkey,
+        PLATFORM_PUBKEY
+      );
+      
+      console.log(`🔐 Created escrow for Loan #${loanId}: ${multisig.address}`);
+      
+      // Update loan with lender info and escrow details
       const updatedLoan = await storage.updateLoan(loanId, {
         lenderId,
-        status: "active",
+        lenderPubkey,
+        platformPubkey: PLATFORM_PUBKEY,
+        escrowAddress: multisig.address,
+        escrowWitnessScript: multisig.witnessScript,
+        escrowScriptHash: multisig.scriptHash,
+        status: "funding",
         fundedAt: new Date(),
       });
 
@@ -1070,6 +1103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedLoan);
     } catch (error) {
+      console.error('Error funding loan:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
