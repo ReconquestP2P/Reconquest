@@ -897,9 +897,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract and validate borrower's Bitcoin public key
       const { borrowerPubkey } = req.body;
-      if (!borrowerPubkey || typeof borrowerPubkey !== 'string' || borrowerPubkey.length !== 66) {
+      
+      // Validate public key format
+      if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
         return res.status(400).json({ 
-          message: "Valid borrower Bitcoin public key (66 hex chars) is required" 
+          message: "Borrower Bitcoin public key is required" 
+        });
+      }
+      
+      // Validate public key structure
+      if (borrowerPubkey.length !== 66) {
+        return res.status(400).json({ 
+          message: "Borrower public key must be exactly 66 characters (33 bytes compressed)" 
+        });
+      }
+      
+      if (!/^[0-9a-fA-F]{66}$/.test(borrowerPubkey)) {
+        return res.status(400).json({ 
+          message: "Borrower public key must be valid hexadecimal" 
+        });
+      }
+      
+      const prefix = borrowerPubkey.substring(0, 2);
+      if (prefix !== '02' && prefix !== '03') {
+        return res.status(400).json({ 
+          message: "Borrower public key must start with 02 or 03 (compressed format)" 
+        });
+      }
+      
+      // CRITICAL: Cryptographically verify the public key is a valid secp256k1 point
+      try {
+        const secp256k1 = await import('@noble/secp256k1');
+        await secp256k1.Point.fromHex(borrowerPubkey);
+      } catch (error) {
+        return res.status(400).json({ 
+          message: `Borrower public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
         });
       }
       
@@ -969,9 +1001,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract and validate lender's Bitcoin public key
       const { lenderPubkey } = req.body;
-      if (!lenderPubkey || typeof lenderPubkey !== 'string' || lenderPubkey.length !== 66) {
+      
+      // Validate public key format
+      if (!lenderPubkey || typeof lenderPubkey !== 'string') {
         return res.status(400).json({ 
-          message: "Valid lender Bitcoin public key (66 hex chars) is required" 
+          message: "Lender Bitcoin public key is required" 
+        });
+      }
+      
+      if (lenderPubkey.length !== 66) {
+        return res.status(400).json({ 
+          message: "Lender public key must be exactly 66 characters (33 bytes compressed)" 
+        });
+      }
+      
+      if (!/^[0-9a-fA-F]{66}$/.test(lenderPubkey)) {
+        return res.status(400).json({ 
+          message: "Lender public key must be valid hexadecimal" 
+        });
+      }
+      
+      const prefix = lenderPubkey.substring(0, 2);
+      if (prefix !== '02' && prefix !== '03') {
+        return res.status(400).json({ 
+          message: "Lender public key must start with 02 or 03 (compressed format)" 
+        });
+      }
+      
+      // CRITICAL: Cryptographically verify the public key is a valid secp256k1 point
+      try {
+        const secp256k1 = await import('@noble/secp256k1');
+        await secp256k1.Point.fromHex(lenderPubkey);
+      } catch (error) {
+        return res.status(400).json({ 
+          message: `Lender public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
         });
       }
       
@@ -982,11 +1045,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create 2-of-3 multisig escrow address
+      // Create 2-of-3 multisig escrow address with cryptographic validation
       const { createMultisigAddress } = await import('./utils/multisig-creator.js');
       const PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
       
-      const multisig = createMultisigAddress(
+      const multisig = await createMultisigAddress(
         loan.borrowerPubkey,
         lenderPubkey,
         PLATFORM_PUBKEY

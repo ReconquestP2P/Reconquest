@@ -50,6 +50,41 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Achievements
 
+### CRITICAL FIX: Real Bitcoin Keypair Generation - COMPLETE ✅ (Nov 1, 2025)
+- **Problem Identified**: Old funding endpoint generated FAKE public keys from hash functions with NO corresponding private keys
+  - Mock keys created via `createUniquePubkey()` hash function could never be used to sign transactions
+  - Bitcoin sent to these addresses was PERMANENTLY LOCKED and UNRECOVERABLE
+  - User's testnet BTC at `tb1q5xgzsvmy9v8zfag2msreeffj954x7x5ssln7x9x9aycdt7xn8lmqyhyjs0` cannot be recovered
+- **Solution Implemented**:
+  - **Borrower Flow**: Updated `LoanRequestForm` to generate real Bitcoin keypairs using Firefish WASM mock
+    - Private key shown ONCE with strong warnings to save securely
+    - Copy/show-hide functionality with security alerts
+    - Only public key sent to backend (POST /api/loans)
+  - **Lender Flow**: Created `LenderFundingModal` for Bitcoin keypair generation when funding loans
+    - 3-step process: Generate keys → Save private key → Complete funding
+    - Clear warnings about private key backup requirements
+    - Only public key sent to backend (POST /api/loans/:id/fund)
+  - **Backend Updates**:
+    - POST /api/loans: Accepts and validates borrowerPubkey with comprehensive checks
+    - POST /api/loans/:id/fund: Accepts lenderPubkey and creates real 2-of-3 multisig
+    - Created `multisig-creator.ts` utility using same logic as Firefish WASM mock
+    - Platform public key: `02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9`
+    - **Comprehensive Public Key Validation** (using @noble/secp256k1):
+      - Must be exactly 66 hex characters (33 bytes compressed)
+      - Must be valid hexadecimal
+      - Must start with 02 or 03 (compressed secp256k1 format)
+      - **Cryptographic verification**: Uses secp256k1 curve validation to ensure key is a valid point
+      - Cannot be all zeros or all same character
+    - This prevents malicious injection of invalid keys that would create unrecoverable escrow addresses
+    - Invalid keys are rejected with clear error messages before multisig creation
+  - **Old Endpoint Disabled**: Commented out dangerous POST /api/loans/:loanId/fund with clear warnings
+- **Security Model**: 
+  - Each party generates keypair in browser via Firefish WASM
+  - Private keys NEVER sent to backend, stored only in user's browser/password manager
+  - Backend only stores public keys for multisig creation
+  - 2-of-3 multisig: Any 2 signatures can spend (borrower+lender, borrower+platform, or lender+platform)
+- **Testing Status**: Server running successfully, ready for end-to-end testing with two user accounts
+
 ### Admin BTC Verification & Lender Notification Workflow - COMPLETE ✅ (Oct 29, 2025)
 - **Borrower Confirmation Flow**: "I've Sent BTC" button in borrower dashboard sends email to admin@reconquestp2p.com
 - **Admin Dashboard Enhancement**:
