@@ -1,0 +1,26 @@
+{
+  "escrow_address": "tb1q5sjahh3lncmsda5e2q2wp9l6sg43g4qdkwf98tgakfqqxfud3hrsrdsqfu",
+  "witness_script": "52210250fde8759e649a5c3762e3d5558c1700848997a0fbf22f908b9b89c410af30332102aa467b479e9a541672416dccfb85e1a41c5af4d0988d38340cdffdb0922abb122103f30e9944818accc853b10d61a60606f0c48c50737a1163f43aa53b42a8225ab753ae",
+  "script_hash": "a425dbde3f9e3706f6995014e097fa822b14540db39253ad1db24003278d8dc7",
+  "signatures_required": 2,
+  "total_keys": 3,
+  "network": "testnet",
+  "keys": {
+    "borrower": {
+      "public_key": "0250fde8759e649a5c3762e3d5558c1700848997a0fbf22f908b9b89c410af3033",
+      "private_key_wif": "cMhPiHpaCUCGeoNc9GNTWktyAKfbFwMMCnakovboChe8LHnaG7B9",
+      "private_key_hex": "037125a58e994f328208344a582167dac8a8e69f3d8d4223829bf0b72d57ff4d"
+    },
+    "lender": {
+      "public_key": "02aa467b479e9a541672416dccfb85e1a41c5af4d0988d38340cdffdb0922abb12",
+      "private_key_wif": "cP6nGfW6ZRcazWWotodVfHgabFksukayXmdZHvkJh2i8dSecxUHm",
+      "private_key_hex": "2d4fc079f6a6a3853d6d754179cdd6c7d586c77cbe5a2b21083ea116032b3ece"
+    },
+    "platform": {
+      "public_key": "03f30e9944818accc853b10d61a60606f0c48c50737a1163f43aa53b42a8225ab7",
+      "private_key_wif": "cVFFNvx8RRzUoCX6ZeUkkNCA8tnMBuGqogaLVnGDD527GkSrXrw7",
+      "private_key_hex": "e4b11d299c2f6474a353e7683857f7e3c2543c223fa08a88d751b560bbe8176d"
+    }
+  },
+  "explorer_url": "https://blockstream.info/testnet/address/tb1q5sjahh3lncmsda5e2q2wp9l6sg43g4qdkwf98tgakfqqxfud3hrsrdsqfu"
+}
