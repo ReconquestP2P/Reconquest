@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,13 @@ import { Slider } from "@/components/ui/slider";
 import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
+import LenderFundingModal from "@/components/lender-funding-modal";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatPercentage, formatDate } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 
@@ -37,6 +37,10 @@ export default function LenderDashboard() {
   const [statusFilter, setStatusFilter] = useState("available"); // "available" or "matched"
   const [selectedTerms, setSelectedTerms] = useState<number[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState("all");
+  
+  // Funding modal state
+  const [fundingModalOpen, setFundingModalOpen] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
@@ -124,33 +128,12 @@ export default function LenderDashboard() {
     setSelectedCurrency("all");
   };
 
-  const fundLoan = useMutation({
-    mutationFn: async (loanId: number) => {
-      // Use the current logged-in user as the lender
-      const response = await apiRequest(`/api/loans/${loanId}/fund`, "POST", {
-        lenderId: userId
-      });
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Loan Funding Initiated",
-        description: "Borrower will be notified of your interest in this loan.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "loans"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fund loan. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleFundLoan = (loanId: number) => {
-    fundLoan.mutate(loanId);
+    const loan = allLoans.find(l => l.id === loanId);
+    if (loan) {
+      setSelectedLoan(loan);
+      setFundingModalOpen(true);
+    }
   };
 
   const handleRefresh = () => {
@@ -542,6 +525,20 @@ export default function LenderDashboard() {
         </TabsContent>
       </Tabs>
       </div>
+      
+      {/* Funding Modal */}
+      {selectedLoan && (
+        <LenderFundingModal
+          isOpen={fundingModalOpen}
+          onClose={() => {
+            setFundingModalOpen(false);
+            setSelectedLoan(null);
+          }}
+          loanId={selectedLoan.id}
+          loanAmount={selectedLoan.amount}
+          currency={selectedLoan.currency}
+        />
+      )}
     </FirefishWASMProvider>
   );
 }
