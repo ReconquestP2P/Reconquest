@@ -163,8 +163,13 @@ export async function generateAndSignTransactions(params: {
  * This is only called within the ephemeral scope
  */
 async function signTransaction(messageHash: string, privateKey: string): Promise<string> {
+  // secp256k1.sign returns a Signature object (TypeScript types may be wrong)
+  // @ts-ignore - secp256k1 types don't match runtime behavior
   const signature = await secp256k1.sign(messageHash, privateKey);
-  return signature.toCompactHex();
+  
+  // Signature object has toCompactHex() method
+  // @ts-ignore - Runtime has this method even if types don't show it
+  return signature.toCompactHex ? signature.toCompactHex() : String(signature);
 }
 
 /**

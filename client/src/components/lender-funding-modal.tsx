@@ -78,7 +78,7 @@ export default function LenderFundingModal({
         loanAmount: parseFloat(loanAmount),
         collateralBtc: parseFloat(loan.collateralBtc || '0'),
         currency,
-        term: loan.term,
+        term: loan.termMonths,
       });
       
       setSignedPublicKey(result.publicKey);
