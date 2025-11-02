@@ -441,6 +441,7 @@ export default function BorrowerDashboard() {
               )}
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-6">
