@@ -59,13 +59,16 @@ export const loans = pgTable("loans", {
   fundedAmountSats: integer("funded_amount_sats"),
   
   // Escrow Workflow State
-  escrowState: text("escrow_state").default("initialized"), // initialized, waiting_funding, funded, active, completed, defaulted
+  escrowState: text("escrow_state").default("initialized"), // initialized, escrow_created, deposit_confirmed, keys_generated, active, completed, defaulted
   escrowSessionId: text("escrow_session_id"), // Links to escrow_sessions table
   
   // Workflow Flags
   fiatTransferConfirmed: boolean("fiat_transfer_confirmed").default(false),
   borrowerConfirmedReceipt: boolean("borrower_confirmed_receipt").default(false),
   btcDepositNotifiedAt: timestamp("btc_deposit_notified_at"), // When borrower clicked "I've Sent BTC"
+  depositConfirmedAt: timestamp("deposit_confirmed_at"), // When borrower confirmed BTC deposit to escrow
+  borrowerKeysGeneratedAt: timestamp("borrower_keys_generated_at"), // When borrower generated ephemeral keys
+  lenderKeysGeneratedAt: timestamp("lender_keys_generated_at"), // When lender generated ephemeral keys
   loanStartedAt: timestamp("loan_started_at"),
 });
 
