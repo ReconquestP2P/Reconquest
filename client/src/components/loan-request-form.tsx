@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5,12 +6,16 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import BorrowerKeyGenerationModal from "@/components/borrower-key-generation-modal";
+import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
+import type { Loan } from "@shared/schema";
 
 const loanRequestSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
@@ -25,6 +30,8 @@ type LoanRequestForm = z.infer<typeof loanRequestSchema>;
 export default function LoanRequestForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [createdLoan, setCreatedLoan] = useState<Loan | null>(null);
+  const [showKeyModal, setShowKeyModal] = useState(false);
 
   const form = useForm<LoanRequestForm>({
     resolver: zodResolver(loanRequestSchema),
@@ -45,19 +52,21 @@ export default function LoanRequestForm() {
         interestRate: data.interestRate.toString(),
         termMonths: data.termMonths,
         purpose: data.purpose
-        // NO borrowerPubkey - keys generated later after matching
+        // borrowerPubkey added after key generation
       });
       return await response.json();
     },
-    onSuccess: (loan: any) => {
-      // Reset form
-      handleNewLoanRequest();
+    onSuccess: (loan: Loan) => {
+      console.log('✅ Loan created successfully:', loan.id);
+      
+      // Show key generation modal
+      setCreatedLoan(loan);
+      setShowKeyModal(true);
       
       toast({
-        title: "Loan Request Posted",
-        description: "Your loan request is now visible to lenders! You'll be notified when someone accepts it.",
+        title: "Loan Created! 🎉",
+        description: "Now let's secure it with your Bitcoin keys...",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
     onError: (error) => {
       toast({
@@ -69,93 +78,28 @@ export default function LoanRequestForm() {
   });
 
   const onSubmit = (data: LoanRequestForm) => {
-    // Submit loan WITHOUT keys - keys generated later after match
+    // Submit loan first, then generate keys in modal
     createLoan.mutate(data);
+  };
+
+  const handleKeyGenerationSuccess = () => {
+    // Reset form after successful key generation
+    form.reset();
+    queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+    
+    toast({
+      title: "Loan Request Complete! ✅",
+      description: "Your loan is now ready for lenders to fund.",
+    });
   };
 
   const handleNewLoanRequest = () => {
     form.reset();
   };
 
-  // NOTE: Private key warning removed - keys are stored in localStorage
-  // and will be shown in dashboard when loan is matched (status='funding')
-  if (false) {
-    return (
-      <Card className="border-orange-500 border-2 shadow-lg">
-        <CardHeader className="bg-orange-50">
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
-            CRITICAL: Save Your Bitcoin Private Key
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-6">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>⚠️ This is shown only ONCE!</AlertTitle>
-            <AlertDescription>
-              Your Bitcoin private key is required to access your collateral. If you lose it, your Bitcoin will be permanently locked. Save it securely NOW.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Your Bitcoin Public Key</Label>
-            <div className="bg-gray-50 p-3 rounded font-mono text-xs break-all border">
-              {borrowerKeys.publicKey}
-            </div>
-
-            <Label className="text-sm font-medium text-red-600">Your Bitcoin Private Key 🔐</Label>
-            <div className="relative">
-              <div className="bg-red-50 border-2 border-red-200 p-3 rounded font-mono text-xs break-all">
-                {showPrivateKey ? borrowerKeys.privateKey : '•'.repeat(64)}
-              </div>
-              <div className="absolute top-2 right-2 flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowPrivateKey(!showPrivateKey)}
-                  data-testid="button-toggle-private-key"
-                >
-                  {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={copyPrivateKey}
-                  data-testid="button-copy-private-key"
-                >
-                  {privateKeyCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertDescription className="text-sm space-y-2">
-              <p className="font-semibold">Next Steps:</p>
-              <ol className="list-decimal ml-4 space-y-1">
-                <li>Copy and save your private key in a secure location (password manager, encrypted file)</li>
-                <li>Wait for a lender to fund your loan</li>
-                <li>When matched, you'll send Bitcoin to the escrow address</li>
-                <li>You'll need this private key to reclaim your collateral after repaying the loan</li>
-              </ol>
-            </AlertDescription>
-          </Alert>
-
-          <Button
-            onClick={handleNewLoanRequest}
-            className="w-full"
-            data-testid="button-create-another-loan"
-          >
-            Create Another Loan Request
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
+    <FirefishWASMProvider>
+      {/* Loan Request Form */}
     <Card className="border-gray-200 shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">
@@ -293,6 +237,7 @@ export default function LoanRequestForm() {
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-black"
               disabled={createLoan.isPending}
+              data-testid="button-submit-loan-request"
             >
               {createLoan.isPending ? "Submitting..." : "Submit Loan Request"}
             </Button>
@@ -300,5 +245,16 @@ export default function LoanRequestForm() {
         </Form>
       </CardContent>
     </Card>
+
+      {/* Borrower Key Generation Modal */}
+      {createdLoan && (
+        <BorrowerKeyGenerationModal
+          isOpen={showKeyModal}
+          onClose={() => setShowKeyModal(false)}
+          loan={createdLoan}
+          onSuccess={handleKeyGenerationSuccess}
+        />
+      )}
+    </FirefishWASMProvider>
   );
 }
