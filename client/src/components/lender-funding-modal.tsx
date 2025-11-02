@@ -12,17 +12,13 @@ import type { Loan } from "@shared/schema";
 interface LenderFundingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  loanId: number;
-  loanAmount: string;
-  currency: string;
+  loan: Loan;
 }
 
 export default function LenderFundingModal({ 
   isOpen, 
   onClose, 
-  loanId, 
-  loanAmount, 
-  currency 
+  loan
 }: LenderFundingModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -31,24 +27,13 @@ export default function LenderFundingModal({
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
   const [signedPublicKey, setSignedPublicKey] = useState<string | null>(null);
 
-  // Fetch loan details
-  const { data: loan, isLoading: isLoadingLoan, error: loanError } = useQuery<Loan>({
-    queryKey: [`/api/loans/${loanId}`],
-    enabled: isOpen && loanId > 0,
-  });
-  
-  // Debug logging
-  if (isOpen) {
-    console.log('Lender Funding Modal - Loan data:', { loan, isLoadingLoan, loanError, loanId });
-  }
-
   const fundLoan = useMutation({
     mutationFn: async (data: { lenderPubkey: string }) => {
-      const response = await apiRequest(`/api/loans/${loanId}/fund`, "POST", {
+      const response = await apiRequest(`/api/loans/${loan.id}/fund`, "POST", {
         lenderPubkey: data.lenderPubkey
       });
-      const loan = await response.json();
-      return loan;
+      const loanResponse = await response.json();
+      return loanResponse;
     },
     onSuccess: (loan: any) => {
       setStep('funded');
@@ -68,25 +53,7 @@ export default function LenderFundingModal({
   });
 
   const handleGenerateKeysAndFund = async () => {
-    console.log('Generate button clicked - loan data:', { loan, isLoadingLoan, loanId });
-    
-    if (isLoadingLoan) {
-      toast({
-        title: "Loading loan data...",
-        description: "Please wait while we fetch loan details.",
-      });
-      return;
-    }
-    
-    if (!loan) {
-      console.error('No loan data available', { loanId, loanError });
-      toast({
-        title: "Error Loading Loan",
-        description: "Could not load loan details. Please close and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
+    console.log('Generate button clicked - loan data:', loan);
     
     setIsGeneratingKeys(true);
     setStep('generating');
@@ -95,19 +62,19 @@ export default function LenderFundingModal({
       // Generate ephemeral keys and sign transactions
       // Keys are DISCARDED after signing - never stored!
       const result = await generateAndSignTransactions({
-        loanId,
+        loanId: loan.id,
         role: 'lender',
         escrowAddress: loan.escrowAddress || undefined,
-        loanAmount: parseFloat(loanAmount),
+        loanAmount: parseFloat(loan.amount),
         collateralBtc: parseFloat(loan.collateralBtc || '0'),
-        currency,
+        currency: loan.currency,
         term: loan.termMonths,
       });
       
       setSignedPublicKey(result.publicKey);
       
       // Download signed transactions (user's recovery method)
-      downloadSignedTransactions(loanId, 'lender', result);
+      downloadSignedTransactions(loan.id, 'lender', result);
       
       console.log("🔐 Ephemeral key generated, transactions signed, key discarded");
       
@@ -141,7 +108,7 @@ export default function LenderFundingModal({
             <DialogHeader>
               <DialogTitle>Fund Loan - Ephemeral Escrow</DialogTitle>
               <DialogDescription>
-                You are about to fund a loan for {loanAmount} {currency}. Your Bitcoin keys will be generated and immediately discarded.
+                You are about to fund a loan for {loan.amount} {loan.currency}. Your Bitcoin keys will be generated and immediately discarded.
               </DialogDescription>
             </DialogHeader>
             
@@ -178,15 +145,10 @@ export default function LenderFundingModal({
               <Button 
                 onClick={handleGenerateKeysAndFund}
                 className="flex-1"
-                disabled={isGeneratingKeys || isLoadingLoan}
+                disabled={isGeneratingKeys}
                 data-testid="button-generate-lender-keys"
               >
-                {isLoadingLoan ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading Loan...
-                  </>
-                ) : isGeneratingKeys ? (
+                {isGeneratingKeys ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing Transactions...
@@ -230,7 +192,7 @@ export default function LenderFundingModal({
               <AlertDescription className="text-sm">
                 <p className="font-semibold">📥 Recovery Transactions Downloaded</p>
                 <p className="mt-1">Your signed transactions were saved to your downloads folder. Store this file safely - it's your recovery method if the platform disappears.</p>
-                <p className="mt-2 text-xs text-muted-foreground">File: reconquest-lender-loan{loanId}-recovery.json</p>
+                <p className="mt-2 text-xs text-muted-foreground">File: reconquest-lender-loan{loan.id}-recovery.json</p>
               </AlertDescription>
             </Alert>
 

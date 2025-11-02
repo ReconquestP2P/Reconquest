@@ -550,9 +550,7 @@ export default function LenderDashboard() {
             setFundingModalOpen(false);
             setSelectedLoan(null);
           }}
-          loanId={selectedLoan.id}
-          loanAmount={selectedLoan.amount}
-          currency={selectedLoan.currency}
+          loan={selectedLoan}
         />
       )}
     </FirefishWASMProvider>
