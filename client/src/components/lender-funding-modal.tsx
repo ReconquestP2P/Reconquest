@@ -32,10 +32,15 @@ export default function LenderFundingModal({
   const [signedPublicKey, setSignedPublicKey] = useState<string | null>(null);
 
   // Fetch loan details
-  const { data: loan, isLoading: isLoadingLoan } = useQuery<Loan>({
+  const { data: loan, isLoading: isLoadingLoan, error: loanError } = useQuery<Loan>({
     queryKey: [`/api/loans/${loanId}`],
-    enabled: isOpen,
+    enabled: isOpen && loanId > 0,
   });
+  
+  // Debug logging
+  if (isOpen) {
+    console.log('Lender Funding Modal - Loan data:', { loan, isLoadingLoan, loanError, loanId });
+  }
 
   const fundLoan = useMutation({
     mutationFn: async (data: { lenderPubkey: string }) => {
@@ -63,10 +68,22 @@ export default function LenderFundingModal({
   });
 
   const handleGenerateKeysAndFund = async () => {
-    if (!loan) {
+    console.log('Generate button clicked - loan data:', { loan, isLoadingLoan, loanId });
+    
+    if (isLoadingLoan) {
       toast({
         title: "Loading loan data...",
         description: "Please wait while we fetch loan details.",
+      });
+      return;
+    }
+    
+    if (!loan) {
+      console.error('No loan data available', { loanId, loanError });
+      toast({
+        title: "Error Loading Loan",
+        description: "Could not load loan details. Please close and try again.",
+        variant: "destructive",
       });
       return;
     }
