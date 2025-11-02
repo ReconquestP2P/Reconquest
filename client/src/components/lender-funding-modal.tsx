@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import * as Firefish from "@/lib/firefish-wasm-mock";
+import { storeBitcoinKeys } from "@/lib/bitcoin-key-storage";
 import { Copy, Eye, EyeOff, AlertTriangle, Check, Loader2 } from "lucide-react";
 
 interface LenderFundingModalProps {
@@ -33,17 +34,23 @@ export default function LenderFundingModal({
   const [privateKeyCopied, setPrivateKeyCopied] = useState(false);
 
   const fundLoan = useMutation({
-    mutationFn: async (lenderPubkey: string) => {
-      const response = await apiRequest("POST", `/api/loans/${loanId}/fund`, {
-        lenderPubkey
+    mutationFn: async (data: { lenderPubkey: string, keys: Firefish.KeyPair }) => {
+      const response = await apiRequest(`/api/loans/${loanId}/fund`, "POST", {
+        lenderPubkey: data.lenderPubkey
       });
-      return response.json();
+      const loan = await response.json();
+      return { loan, keys: data.keys };
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      const { loan, keys } = data;
+      
+      // Store lender Bitcoin keys in browser localStorage
+      storeBitcoinKeys(loan.id, keys);
+      
       setStep('funded');
       toast({
         title: "Loan Funded Successfully",
-        description: "You are now the lender for this loan. The escrow address will be created next.",
+        description: "You are now the lender for this loan. Your Bitcoin keys are securely stored.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
@@ -64,7 +71,7 @@ export default function LenderFundingModal({
 
   const handleFundLoan = () => {
     if (!lenderKeys) return;
-    fundLoan.mutate(lenderKeys.publicKey);
+    fundLoan.mutate({ lenderPubkey: lenderKeys.publicKey, keys: lenderKeys });
   };
 
   const copyPrivateKey = () => {

@@ -14,6 +14,7 @@ import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "l
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
+import BitcoinKeysModal from "@/components/bitcoin-keys-modal";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
@@ -41,6 +42,10 @@ export default function LenderDashboard() {
   // Funding modal state
   const [fundingModalOpen, setFundingModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  
+  // Bitcoin keys modal state
+  const [keysModalLoanId, setKeysModalLoanId] = useState<number | null>(null);
+  const [keysModalOpen, setKeysModalOpen] = useState(false);
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
@@ -263,14 +268,28 @@ export default function LenderDashboard() {
                             <p className="text-sm text-muted-foreground mb-2">
                               Borrower deposited {Number(loan.collateralBtc).toFixed(4)} BTC to escrow address
                             </p>
-                            <a 
-                              href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              🔍 Verify on Blockchain →
-                            </a>
+                            <div className="flex gap-2 items-center">
+                              <a 
+                                href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                🔍 Verify on Blockchain →
+                              </a>
+                              <Button
+                                onClick={() => {
+                                  setKeysModalLoanId(loan.id);
+                                  setKeysModalOpen(true);
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto"
+                                data-testid={`button-view-lender-keys-${loan.id}`}
+                              >
+                                🔐 View My Keys
+                              </Button>
+                            </div>
                           </div>
 
                           {/* Bank Account Details */}
@@ -537,6 +556,20 @@ export default function LenderDashboard() {
           loanId={selectedLoan.id}
           loanAmount={selectedLoan.amount}
           currency={selectedLoan.currency}
+        />
+      )}
+      
+      {/* Bitcoin Keys Modal */}
+      {keysModalLoanId && (
+        <BitcoinKeysModal
+          loanId={keysModalLoanId}
+          escrowAddress={lenderLoans.find(l => l.id === keysModalLoanId)?.escrowAddress || undefined}
+          role="lender"
+          open={keysModalOpen}
+          onOpenChange={(open) => {
+            setKeysModalOpen(open);
+            if (!open) setKeysModalLoanId(null);
+          }}
         />
       )}
     </FirefishWASMProvider>

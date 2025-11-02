@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import * as Firefish from "@/lib/firefish-wasm-mock";
+import { storeBitcoinKeys } from "@/lib/bitcoin-key-storage";
 import { Copy, Eye, EyeOff, AlertTriangle, Check } from "lucide-react";
 
 const loanRequestSchema = z.object({
@@ -47,15 +48,30 @@ export default function LoanRequestForm() {
   });
 
   const createLoan = useMutation({
-    mutationFn: async (data: LoanRequestForm & { borrowerPubkey: string }) => {
-      const response = await apiRequest("POST", "/api/loans", data);
-      return response.json();
+    mutationFn: async (data: LoanRequestForm & { borrowerPubkey: string, keys: Firefish.KeyPair }) => {
+      const response = await apiRequest("/api/loans", "POST", {
+        amount: data.amount,
+        currency: data.currency,
+        interestRate: data.interestRate.toString(),
+        termMonths: data.termMonths,
+        purpose: data.purpose,
+        borrowerPubkey: data.borrowerPubkey
+      });
+      const loan = await response.json();
+      return { loan, keys: data.keys };
     },
-    onSuccess: () => {
-      setLoanCreated(true);
+    onSuccess: (data: any) => {
+      const { loan, keys } = data;
+      
+      // Store Bitcoin keys in browser localStorage (will be revealed when loan is matched)
+      storeBitcoinKeys(loan.id, keys);
+      
+      // Reset form
+      handleNewLoanRequest();
+      
       toast({
         title: "Loan Request Submitted",
-        description: "Your loan request has been created and is now visible to lenders.",
+        description: "Your loan has been posted! Lenders will see it shortly. Your Bitcoin keys are securely stored.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
@@ -76,7 +92,8 @@ export default function LoanRequestForm() {
     // Submit loan with public key
     createLoan.mutate({
       ...data,
-      borrowerPubkey: keys.publicKey
+      borrowerPubkey: keys.publicKey,
+      keys
     });
   };
 
@@ -100,8 +117,9 @@ export default function LoanRequestForm() {
     form.reset();
   };
 
-  // Show private key warning after loan creation
-  if (loanCreated && borrowerKeys) {
+  // NOTE: Private key warning removed - keys are stored in localStorage
+  // and will be shown in dashboard when loan is matched (status='funding')
+  if (false) {
     return (
       <Card className="border-orange-500 border-2 shadow-lg">
         <CardHeader className="bg-orange-50">

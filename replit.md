@@ -50,20 +50,45 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Achievements
 
+### Bitcoin Private Key UX Flow Improvements - COMPLETE ✅ (Nov 2, 2025)
+- **Problem**: Borrowers and lenders were shown private key warning screens immediately after loan creation/funding, before loans were even matched. This was premature and confusing.
+- **Solution**: Implemented proper UX lifecycle for Bitcoin key management
+  - **Browser Storage**: Created `bitcoin-key-storage.ts` utility to securely store private keys in browser localStorage (keyed by loanId)
+  - **Loan Creation Flow** (Borrower):
+    - Generate real cryptographically valid Bitcoin keypair using @noble/secp256k1
+    - Store private key in browser localStorage
+    - Send only public key to backend
+    - NO immediate warning screen - borrower sees success toast and continues browsing
+  - **Loan Funding Flow** (Lender):
+    - Generate Bitcoin keypair when funding loan
+    - Store private key in browser localStorage  
+    - Send only public key to backend
+    - Creates 2-of-3 multisig escrow address
+  - **Key Reveal Flow** (After Match):
+    - Borrower Dashboard "Escrow" tab shows loans with status='funding' (matched by lender)
+    - Lender Dashboard "Pending Transfers" tab shows funded loans awaiting fiat transfer
+    - Both parties get "View My Keys" button to open modal with:
+      - Public key (for reference)
+      - Private key (hidden by default, show/hide toggle)
+      - Escrow address (Bitcoin testnet)
+      - Copy buttons and security warnings
+    - Private keys only revealed AFTER loan is matched, not at creation time
+  - **Real Cryptographic Keys**: Updated Firefish WASM mock to use @noble/secp256k1 library
+    - `secp256k1.getPublicKey()` generates real valid public keys from private keys
+    - Keys pass backend cryptographic validation (secp256k1.Point.fromHex())
+    - No more random hex strings - all keys are valid secp256k1 curve points
+- **Components Created/Updated**:
+  - `BitcoinKeysModal` - Reusable modal for viewing Bitcoin keys (borrower/lender roles)
+  - Updated `LoanCalculator`, `LoanRequestForm`, `LenderFundingModal` to store keys without showing them
+  - Updated `BorrowerDashboard`, `LenderDashboard` to add "View My Keys" buttons for matched loans
+- **Security**: Private keys remain client-side only, never sent to backend, stored in browser localStorage per loan
+
 ### CRITICAL FIX: Real Bitcoin Keypair Generation - COMPLETE ✅ (Nov 1, 2025)
 - **Problem Identified**: Old funding endpoint generated FAKE public keys from hash functions with NO corresponding private keys
   - Mock keys created via `createUniquePubkey()` hash function could never be used to sign transactions
   - Bitcoin sent to these addresses was PERMANENTLY LOCKED and UNRECOVERABLE
   - User's testnet BTC at `tb1q5xgzsvmy9v8zfag2msreeffj954x7x5ssln7x9x9aycdt7xn8lmqyhyjs0` cannot be recovered
 - **Solution Implemented**:
-  - **Borrower Flow**: Updated `LoanRequestForm` to generate real Bitcoin keypairs using Firefish WASM mock
-    - Private key shown ONCE with strong warnings to save securely
-    - Copy/show-hide functionality with security alerts
-    - Only public key sent to backend (POST /api/loans)
-  - **Lender Flow**: Created `LenderFundingModal` for Bitcoin keypair generation when funding loans
-    - 3-step process: Generate keys → Save private key → Complete funding
-    - Clear warnings about private key backup requirements
-    - Only public key sent to backend (POST /api/loans/:id/fund)
   - **Backend Updates**:
     - POST /api/loans: Accepts and validates borrowerPubkey with comprehensive checks
     - POST /api/loans/:id/fund: Accepts lenderPubkey and creates real 2-of-3 multisig
@@ -80,10 +105,9 @@ Preferred communication style: Simple, everyday language.
   - **Old Endpoint Disabled**: Commented out dangerous POST /api/loans/:loanId/fund with clear warnings
 - **Security Model**: 
   - Each party generates keypair in browser via Firefish WASM
-  - Private keys NEVER sent to backend, stored only in user's browser/password manager
+  - Private keys NEVER sent to backend, stored only in user's browser localStorage
   - Backend only stores public keys for multisig creation
   - 2-of-3 multisig: Any 2 signatures can spend (borrower+lender, borrower+platform, or lender+platform)
-- **Testing Status**: Server running successfully, ready for end-to-end testing with two user accounts
 
 ### Admin BTC Verification & Lender Notification Workflow - COMPLETE ✅ (Oct 29, 2025)
 - **Borrower Confirmation Flow**: "I've Sent BTC" button in borrower dashboard sends email to admin@reconquestp2p.com
