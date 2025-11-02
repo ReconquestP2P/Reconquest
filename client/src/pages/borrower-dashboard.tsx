@@ -13,6 +13,7 @@ import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
 import RepaymentModal from "@/components/repayment-modal";
 import DepositInstructionsCard from "@/components/deposit-instructions-card";
+import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,9 @@ export default function BorrowerDashboard() {
   
   // Track which loan to repay
   const [repayingLoan, setRepayingLoan] = useState<Loan | null>(null);
+  
+  // Track which loan needs signing ceremony
+  const [signingLoan, setSigningLoan] = useState<Loan | null>(null);
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: [`/api/users/${userId}/loans`],
@@ -295,6 +299,50 @@ export default function BorrowerDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Signing Ceremony - Loans needing ephemeral key generation */}
+          {borrowerLoans.filter(loan => loan.depositConfirmedAt && !loan.borrowerKeysGeneratedAt).length > 0 && (
+            <Card className="border-purple-200 dark:border-purple-800">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+                <CardTitle className="flex items-center gap-2">
+                  🔐 Generate Recovery Plan (Firefish Security)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Your BTC deposit is confirmed! Complete the signing ceremony to activate your loan. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
+                </p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {borrowerLoans
+                    .filter(loan => loan.depositConfirmedAt && !loan.borrowerKeysGeneratedAt)
+                    .map((loan) => (
+                      <div key={loan.id} className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-indigo-50/50 dark:from-purple-950/20 dark:to-indigo-950/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold">Loan #{loan.id}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months
+                            </p>
+                            {loan.lenderKeysGeneratedAt && (
+                              <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                                ✓ Lender Signed
+                              </Badge>
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => setSigningLoan(loan)}
+                            className="bg-purple-600 hover:bg-purple-700"
+                            data-testid={`button-generate-recovery-borrower-${loan.id}`}
+                          >
+                            🔐 Generate Recovery Plan
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           {/* Old escrow display - keeping for backward compatibility */}
           {borrowerLoans.filter(loan => loan.status === 'funding' && !loan.escrowState).length > 0 && (
@@ -455,6 +503,24 @@ export default function BorrowerDashboard() {
           isOpen={!!repayingLoan}
           onClose={() => setRepayingLoan(null)}
           loan={repayingLoan}
+        />
+      )}
+
+      {/* Signing Ceremony Modal */}
+      {signingLoan && (
+        <SigningCeremonyModal
+          isOpen={!!signingLoan}
+          onClose={() => setSigningLoan(null)}
+          loan={{
+            id: signingLoan.id,
+            amount: signingLoan.amount,
+            currency: signingLoan.currency,
+            collateralBtc: signingLoan.collateralBtc,
+            termMonths: signingLoan.termMonths,
+            escrowAddress: signingLoan.escrowAddress,
+          }}
+          role="borrower"
+          userId={userId}
         />
       )}
       </div>

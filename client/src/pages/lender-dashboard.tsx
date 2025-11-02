@@ -14,6 +14,7 @@ import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "l
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
+import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
@@ -41,6 +42,9 @@ export default function LenderDashboard() {
   // Funding modal state
   const [fundingModalOpen, setFundingModalOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
+  
+  // Signing ceremony modal state
+  const [signingLoan, setSigningLoan] = useState<Loan | null>(null);
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
@@ -363,6 +367,52 @@ export default function LenderDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Signing Ceremony - Loans needing ephemeral key generation */}
+          {lenderLoans.filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt).length > 0 && (
+            <Card className="border-purple-200 dark:border-purple-800">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+                <CardTitle className="flex items-center gap-2">
+                  🔐 Generate Recovery Plan (Firefish Security)
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Borrower has deposited BTC! Complete the signing ceremony to activate the loan. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
+                </p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {lenderLoans
+                    .filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt)
+                    .map((loan) => (
+                      <div key={loan.id} className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-indigo-50/50 dark:from-purple-950/20 dark:to-indigo-950/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold">Loan #{loan.id}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months
+                            </p>
+                            {loan.borrowerKeysGeneratedAt && (
+                              <div className="inline-flex items-center gap-2 mt-2">
+                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                                  ✓ Borrower Signed
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => setSigningLoan(loan)}
+                            className="bg-purple-600 hover:bg-purple-700"
+                            data-testid={`button-generate-recovery-lender-${loan.id}`}
+                          >
+                            🔐 Generate Recovery Plan
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">
@@ -551,6 +601,24 @@ export default function LenderDashboard() {
             setSelectedLoan(null);
           }}
           loan={selectedLoan}
+        />
+      )}
+
+      {/* Signing Ceremony Modal */}
+      {signingLoan && (
+        <SigningCeremonyModal
+          isOpen={!!signingLoan}
+          onClose={() => setSigningLoan(null)}
+          loan={{
+            id: signingLoan.id,
+            amount: signingLoan.amount,
+            currency: signingLoan.currency,
+            collateralBtc: signingLoan.collateralBtc,
+            termMonths: signingLoan.termMonths,
+            escrowAddress: signingLoan.escrowAddress,
+          }}
+          role="lender"
+          userId={userId}
         />
       )}
     </FirefishWASMProvider>
