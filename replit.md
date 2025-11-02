@@ -75,3 +75,23 @@ Preferred communication style: Simple, everyday language.
 - Keys wiped from memory immediately after use
 - Users download signed transactions, not keys
 - If platform disappears, recovery transaction ensures fund recovery
+
+## Repayment Flow (Cooperative Close Broadcast)
+
+### How Loan Repayment Works (November 2024)
+1. **Borrower confirms fiat payment**: Borrower transfers loan principal + interest to lender via bank transfer
+2. **Borrower triggers repayment**: Clicks "Repay Loan" button in borrower dashboard
+3. **Backend signature aggregation**: 
+   - Platform retrieves borrower's pre-signed cooperative_close transaction (stored when loan created)
+   - Platform retrieves lender's pre-signed cooperative_close transaction (stored when loan funded)
+   - Platform generates its own signature (3rd party in 2-of-3 multisig)
+4. **Transaction broadcast**: Combined transaction broadcast to Bitcoin testnet
+5. **Collateral return**: Bitcoin collateral automatically sent back to borrower's address
+6. **Loan completion**: Loan status updated to "completed"
+
+### Key Components:
+- **Backend**: `server/services/bitcoin-broadcast.ts` - Signature aggregation & broadcasting
+- **Database**: `pre_signed_transactions` table - Stores all party signatures
+- **API**: `POST /api/loans/:id/cooperative-close` - Triggers broadcast
+- **Frontend**: `client/src/components/repayment-modal.tsx` - User interface
+- **Storage**: Transactions auto-stored when ephemeral keys generated

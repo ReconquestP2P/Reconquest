@@ -22,6 +22,9 @@ export default function RepaymentModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Get user ID from loan data
+  const userId = loan.borrowerId;
+  
   const [step, setStep] = useState<'confirm' | 'broadcasting' | 'completed'>('confirm');
 
   const repayLoan = useMutation({
@@ -35,7 +38,10 @@ export default function RepaymentModal({
         title: "Loan Repaid Successfully! 🎉",
         description: `Transaction broadcast to Bitcoin testnet. Your collateral is being returned. Txid: ${data.txid}`,
       });
+      // Invalidate all relevant queries to update UI immediately
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/loans/${loan.id}`] });
     },
     onError: (error: any) => {
       setStep('confirm');
