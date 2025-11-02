@@ -170,7 +170,7 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   escrowAddress: true,
   escrowWitnessScript: true,
   escrowScriptHash: true,
-  borrowerPubkey: true,
+  // borrowerPubkey: true,  // REMOVED - Now accepted from frontend when creating loan
   lenderPubkey: true,
   platformPubkey: true,
   fundingTxid: true,

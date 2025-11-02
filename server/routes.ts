@@ -897,12 +897,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract and validate borrower's Bitcoin public key
       const { borrowerPubkey } = req.body;
-      console.log('POST /api/loans - Request body:', JSON.stringify(req.body, null, 2));
-      console.log('POST /api/loans - borrowerPubkey:', borrowerPubkey, typeof borrowerPubkey);
       
       // Validate public key format
       if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
-        console.error('POST /api/loans - Validation failed: borrowerPubkey missing or not string');
         return res.status(400).json({ 
           message: "Borrower Bitcoin public key is required" 
         });

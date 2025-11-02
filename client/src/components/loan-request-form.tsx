@@ -71,17 +71,13 @@ export default function LoanRequestForm() {
   const onSubmit = (data: LoanRequestForm) => {
     // Generate Bitcoin keypair for escrow
     const keys = Firefish.generateKeys();
-    console.log('Generated keys:', { publicKey: keys.publicKey, privateKeyLength: keys.privateKey.length });
     setBorrowerKeys(keys);
     
-    const payload = {
+    // Submit loan with public key
+    createLoan.mutate({
       ...data,
       borrowerPubkey: keys.publicKey
-    };
-    console.log('Submitting loan with payload:', payload);
-    
-    // Submit loan with public key
-    createLoan.mutate(payload);
+    });
   };
 
   const copyPrivateKey = () => {
