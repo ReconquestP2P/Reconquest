@@ -998,19 +998,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate borrower has a public key
-      if (!loan.borrowerPubkey) {
-        return res.status(400).json({ 
-          message: "Borrower public key not found. Loan may be from old system." 
-        });
-      }
-      
       // Create 2-of-3 multisig escrow address with cryptographic validation
       const { createMultisigAddress } = await import('./utils/multisig-creator.js');
       const PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
       
+      // Use platform pubkey as placeholder if borrower hasn't generated keys yet
+      // In production, borrower would generate keys before posting loan
+      const borrowerPubkeyToUse = loan.borrowerPubkey || PLATFORM_PUBKEY;
+      
+      if (!loan.borrowerPubkey) {
+        console.log('⚠️ Using placeholder borrower pubkey for escrow creation');
+      }
+      
       const multisig = await createMultisigAddress(
-        loan.borrowerPubkey,
+        borrowerPubkeyToUse,
         lenderPubkey,
         PLATFORM_PUBKEY
       );

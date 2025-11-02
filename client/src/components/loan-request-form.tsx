@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,9 +12,6 @@ import { Slider } from "@/components/ui/slider";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import BorrowerKeyGenerationModal from "@/components/borrower-key-generation-modal";
-import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
-import type { Loan } from "@shared/schema";
 
 const loanRequestSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
@@ -30,8 +26,6 @@ type LoanRequestForm = z.infer<typeof loanRequestSchema>;
 export default function LoanRequestForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [createdLoan, setCreatedLoan] = useState<Loan | null>(null);
-  const [showKeyModal, setShowKeyModal] = useState(false);
 
   const form = useForm<LoanRequestForm>({
     resolver: zodResolver(loanRequestSchema),
@@ -52,21 +46,21 @@ export default function LoanRequestForm() {
         interestRate: data.interestRate.toString(),
         termMonths: data.termMonths,
         purpose: data.purpose
-        // borrowerPubkey added after key generation
       });
       return await response.json();
     },
     onSuccess: (loan: Loan) => {
       console.log('✅ Loan created successfully:', loan.id);
       
-      // Show key generation modal
-      setCreatedLoan(loan);
-      setShowKeyModal(true);
+      // Reset form
+      form.reset();
       
       toast({
-        title: "Loan Created! 🎉",
-        description: "Now let's secure it with your Bitcoin keys...",
+        title: "Loan Request Posted! 🎉",
+        description: "Your loan is now visible to lenders. You'll generate your security keys after a lender funds your loan.",
       });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
     onError: (error) => {
       toast({
@@ -78,28 +72,10 @@ export default function LoanRequestForm() {
   });
 
   const onSubmit = (data: LoanRequestForm) => {
-    // Submit loan first, then generate keys in modal
     createLoan.mutate(data);
   };
 
-  const handleKeyGenerationSuccess = () => {
-    // Reset form after successful key generation
-    form.reset();
-    queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
-    
-    toast({
-      title: "Loan Request Complete! ✅",
-      description: "Your loan is now ready for lenders to fund.",
-    });
-  };
-
-  const handleNewLoanRequest = () => {
-    form.reset();
-  };
-
   return (
-    <FirefishWASMProvider>
-      {/* Loan Request Form */}
     <Card className="border-gray-200 shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-gray-900">
@@ -245,16 +221,5 @@ export default function LoanRequestForm() {
         </Form>
       </CardContent>
     </Card>
-
-      {/* Borrower Key Generation Modal */}
-      {createdLoan && (
-        <BorrowerKeyGenerationModal
-          isOpen={showKeyModal}
-          onClose={() => setShowKeyModal(false)}
-          loan={createdLoan}
-          onSuccess={handleKeyGenerationSuccess}
-        />
-      )}
-    </FirefishWASMProvider>
   );
 }

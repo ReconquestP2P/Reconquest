@@ -28,13 +28,14 @@ export default function BorrowerKeyGenerationModal({
     setStep('generating');
 
     try {
-      console.log('🔑 Borrower generating ephemeral keys for loan:', loan.id);
+      console.log('🔑 Borrower generating public key for loan:', loan.id);
 
-      // Generate ephemeral keys and sign transactions
-      // Keys are DISCARDED after signing - never stored!
+      // For now, only generate public key (not signed transactions)
+      // Signed transactions will be generated after lender funds and escrow is created
       const result = await generateAndSignTransactions({
         loanId: loan.id,
         role: 'borrower',
+        escrowAddress: loan.escrowAddress, // Will be undefined initially, filled when lender funds
         loanAmount: parseFloat(loan.amount),
         collateralBtc: parseFloat(loan.collateralBtc || '0'),
         currency: loan.currency,
@@ -46,25 +47,28 @@ export default function BorrowerKeyGenerationModal({
         transactionsSigned: result.signedTransactions.length,
       });
 
-      // Download signed transactions (user's recovery method)
-      downloadSignedTransactions(loan.id, 'borrower', result);
+      // Only download and store if we have signed transactions (escrow exists)
+      if (result.signedTransactions && result.signedTransactions.length > 0) {
+        // Download signed transactions (user's recovery method)
+        downloadSignedTransactions(loan.id, 'borrower', result);
 
-      console.log("🔐 Ephemeral key generated, transactions signed, key discarded");
+        // Store signed transactions in database (for later broadcast)
+        for (const signedTx of result.signedTransactions) {
+          await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
+            partyRole: 'borrower',
+            partyPubkey: result.publicKey,
+            txType: signedTx.type,
+            psbt: signedTx.psbt,
+            signature: signedTx.signature,
+            txHash: signedTx.txHash,
+            validAfter: signedTx.validAfter,
+          });
+        }
 
-      // Store signed transactions in database (for later broadcast)
-      for (const signedTx of result.signedTransactions) {
-        await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
-          partyRole: 'borrower',
-          partyPubkey: result.publicKey,
-          txType: signedTx.type,
-          psbt: signedTx.psbt,
-          signature: signedTx.signature,
-          txHash: signedTx.txHash,
-          validAfter: signedTx.validAfter,
-        });
+        console.log(`💾 Stored ${result.signedTransactions.length} signed transactions in database`);
+      } else {
+        console.log('ℹ️ No signed transactions generated yet (escrow will be created when lender funds)');
       }
-
-      console.log(`💾 Stored ${result.signedTransactions.length} signed transactions in database`);
 
       // Update loan with borrower pubkey (private key already wiped from memory)
       await apiRequest(`/api/loans/${loan.id}/borrower-keys`, 'PATCH', {
@@ -76,8 +80,8 @@ export default function BorrowerKeyGenerationModal({
       setStep('success');
 
       toast({
-        title: "Keys Generated Successfully! 🔐",
-        description: "Your recovery file has been downloaded. Keep it safe!",
+        title: "Public Key Generated! 🔐",
+        description: "Your loan is now ready for lenders. You'll generate recovery transactions after a lender funds your loan.",
       });
     } catch (error) {
       console.error('❌ Failed to generate borrower keys:', error);

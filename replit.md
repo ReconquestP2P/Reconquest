@@ -76,22 +76,43 @@ Preferred communication style: Simple, everyday language.
 - Users download signed transactions, not keys
 - If platform disappears, recovery transaction ensures fund recovery
 
+## Current Loan Flow (November 2024 - Testnet)
+
+### Loan Creation & Funding
+1. **Borrower posts loan**: Creates loan request WITHOUT generating keys yet
+2. **Lender funds**: Generates ephemeral keys → creates 2-of-3 multisig escrow → signs transactions → downloads recovery file
+3. **Escrow creation**: Uses lender pubkey + platform pubkey + placeholder for borrower (testnet only)
+4. **Status**: Loan moves to "funding" status, awaiting borrower's Bitcoin deposit
+
+### Known Limitation (Testnet)
+- **Borrower key generation**: Currently uses placeholder pubkey for escrow creation
+- **Production TODO**: Implement proper two-phase flow where borrower generates keys before lender can fund
+- **Alternative**: Borrower generates keys after lender funds (requires different escrow creation strategy)
+
 ## Repayment Flow (Cooperative Close Broadcast)
 
 ### How Loan Repayment Works (November 2024)
 1. **Borrower confirms fiat payment**: Borrower transfers loan principal + interest to lender via bank transfer
 2. **Borrower triggers repayment**: Clicks "Repay Loan" button in borrower dashboard
-3. **Backend signature aggregation**: 
-   - Platform retrieves borrower's pre-signed cooperative_close transaction (stored when loan created)
+3. **Backend signature aggregation with SECURITY VERIFICATION**: 
    - Platform retrieves lender's pre-signed cooperative_close transaction (stored when loan funded)
+   - Platform retrieves borrower's pre-signed cooperative_close transaction (if exists)
+   - **CRITICAL**: Each signature is cryptographically verified against stored public keys
+   - **CRITICAL**: Enforces role requirements (must have both borrower + lender signatures)
    - Platform generates its own signature (3rd party in 2-of-3 multisig)
-4. **Transaction broadcast**: Combined transaction broadcast to Bitcoin testnet
+4. **Transaction broadcast**: Combined transaction broadcast to Bitcoin testnet (mock for now)
 5. **Collateral return**: Bitcoin collateral automatically sent back to borrower's address
 6. **Loan completion**: Loan status updated to "completed"
 
+### Security Features (Fixed November 2024)
+- ✅ **Signature Verification**: All signatures validated against public keys before broadcast
+- ✅ **Role Enforcement**: Requires signatures from borrower + lender (2-of-3 multisig)
+- ✅ **Transaction Type Validation**: All signatures must be for same transaction type and hash
+- ✅ **UI Cache Invalidation**: Dashboard updates immediately after repayment
+
 ### Key Components:
-- **Backend**: `server/services/bitcoin-broadcast.ts` - Signature aggregation & broadcasting
+- **Backend**: `server/services/bitcoin-broadcast.ts` - Signature aggregation & broadcasting with verification
 - **Database**: `pre_signed_transactions` table - Stores all party signatures
-- **API**: `POST /api/loans/:id/cooperative-close` - Triggers broadcast
+- **API**: `POST /api/loans/:id/cooperative-close` - Triggers broadcast with security checks
 - **Frontend**: `client/src/components/repayment-modal.tsx` - User interface
 - **Storage**: Transactions auto-stored when ephemeral keys generated
