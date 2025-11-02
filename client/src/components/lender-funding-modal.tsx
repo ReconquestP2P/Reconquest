@@ -86,12 +86,13 @@ export default function LenderFundingModal({
       
     } catch (error) {
       console.error('Failed to generate and sign transactions:', error);
+      setStep('confirm');
+      setIsGeneratingKeys(false);
       toast({
         title: "Error",
         description: "Failed to generate ephemeral Bitcoin keys. Please try again.",
         variant: "destructive",
       });
-      setStep('confirm');
     } finally {
       setIsGeneratingKeys(false);
     }
@@ -100,6 +101,7 @@ export default function LenderFundingModal({
   const handleClose = () => {
     setStep('confirm');
     setSignedPublicKey(null);
+    setIsGeneratingKeys(false);
     onClose();
   };
 
@@ -177,6 +179,16 @@ export default function LenderFundingModal({
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <p className="text-sm text-muted-foreground">Signing transactions...</p>
               <p className="text-xs text-muted-foreground">Private key will be wiped from memory immediately</p>
+            </div>
+
+            <div className="flex justify-center mt-4">
+              <Button 
+                onClick={handleClose} 
+                variant="outline"
+                data-testid="button-cancel-generating"
+              >
+                Cancel
+              </Button>
             </div>
           </>
         )}
