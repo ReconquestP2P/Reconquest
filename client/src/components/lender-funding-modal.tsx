@@ -32,7 +32,7 @@ export default function LenderFundingModal({
   const [signedPublicKey, setSignedPublicKey] = useState<string | null>(null);
 
   // Fetch loan details
-  const { data: loan } = useQuery<Loan>({
+  const { data: loan, isLoading: isLoadingLoan } = useQuery<Loan>({
     queryKey: [`/api/loans/${loanId}`],
     enabled: isOpen,
   });
@@ -63,7 +63,13 @@ export default function LenderFundingModal({
   });
 
   const handleGenerateKeysAndFund = async () => {
-    if (!loan) return;
+    if (!loan) {
+      toast({
+        title: "Loading loan data...",
+        description: "Please wait while we fetch loan details.",
+      });
+      return;
+    }
     
     setIsGeneratingKeys(true);
     setStep('generating');
@@ -155,10 +161,15 @@ export default function LenderFundingModal({
               <Button 
                 onClick={handleGenerateKeysAndFund}
                 className="flex-1"
-                disabled={isGeneratingKeys}
+                disabled={isGeneratingKeys || isLoadingLoan}
                 data-testid="button-generate-lender-keys"
               >
-                {isGeneratingKeys ? (
+                {isLoadingLoan ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading Loan...
+                  </>
+                ) : isGeneratingKeys ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing Transactions...
