@@ -1053,6 +1053,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Borrower confirms they've deposited Bitcoin to escrow address
+  app.post("/api/loans/:id/confirm-deposit", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    const borrowerId = req.user.id;
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify the user is the borrower
+      if (loan.borrowerId !== borrowerId) {
+        return res.status(403).json({ message: "Only the borrower can confirm deposit" });
+      }
+      
+      // Verify loan is in the correct state (escrow created, awaiting deposit)
+      if (loan.escrowState !== "escrow_created") {
+        return res.status(400).json({ 
+          message: "Loan must have an escrow address before confirming deposit" 
+        });
+      }
+      
+      if (!loan.escrowAddress) {
+        return res.status(400).json({ 
+          message: "No escrow address found for this loan" 
+        });
+      }
+      
+      // Update loan to deposit_confirmed state
+      const updatedLoan = await storage.updateLoan(loanId, {
+        escrowState: "deposit_confirmed",
+        depositConfirmedAt: new Date(),
+      });
+      
+      console.log(`✅ Loan #${loanId}: Borrower confirmed BTC deposit to ${loan.escrowAddress}`);
+      
+      res.json(updatedLoan);
+    } catch (error) {
+      console.error('Error confirming deposit:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Update loan with borrower's public key after key generation
   app.patch("/api/loans/:id/borrower-keys", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);

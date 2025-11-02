@@ -76,18 +76,33 @@ Preferred communication style: Simple, everyday language.
 - Users download signed transactions, not keys
 - If platform disappears, recovery transaction ensures fund recovery
 
-## Current Loan Flow (November 2024 - Testnet)
+## Current Loan Flow (November 2024 - Redesigned)
 
-### Loan Creation & Funding
-1. **Borrower posts loan**: Creates loan request WITHOUT generating keys yet
-2. **Lender funds**: Generates ephemeral keys → creates 2-of-3 multisig escrow → signs transactions → downloads recovery file
-3. **Escrow creation**: Uses lender pubkey + platform pubkey + placeholder for borrower (testnet only)
-4. **Status**: Loan moves to "funding" status, awaiting borrower's Bitcoin deposit
+### Phase 1: Loan Creation
+1. **Borrower posts loan**: Creates loan request in database (no keys generated yet)
+2. **Status**: Loan is "posted", visible to lenders
 
-### Known Limitation (Testnet)
-- **Borrower key generation**: Currently uses placeholder pubkey for escrow creation
-- **Production TODO**: Implement proper two-phase flow where borrower generates keys before lender can fund
-- **Alternative**: Borrower generates keys after lender funds (requires different escrow creation strategy)
+### Phase 2: Lender Commitment (NEW FLOW - Fixed Firefish Conflict)
+1. **Lender clicks "Fund Loan"**: Generates PUBLIC KEY ONLY (private key discarded immediately)
+2. **Escrow created**: Platform creates 2-of-3 multisig using lender pubkey + platform pubkey (borrower slot uses placeholder)
+3. **Email sent to borrower**: Contains escrow address, deposit amount, step-by-step instructions
+4. **Status**: Loan moves to "funded", escrowState: "escrow_created"
+
+### Phase 3: Borrower Deposits Collateral
+1. **Borrower receives email**: With Bitcoin testnet escrow address and instructions
+2. **Borrower deposits BTC**: Sends exact collateral amount to escrow address
+3. **Borrower confirms deposit**: Clicks "Confirm Deposit" button in dashboard
+4. **Status**: escrowState moves to "deposit_confirmed"
+
+### Phase 4: Dual Key Generation & Transaction Signing (UPCOMING)
+1. **Both parties generate ephemeral keys**: After deposit confirmed, borrower AND lender sign transactions
+2. **Firefish security applied**: Keys generated → transactions signed → keys wiped from memory
+3. **Recovery files downloaded**: Both parties download pre-signed transaction files
+4. **Status**: escrowState moves to "keys_generated", loan becomes "active"
+
+### Key Innovation: Solves Firefish vs Multisig Conflict
+- **Problem**: Firefish requires ephemeral keys (generate → sign → discard). Multisig requires both pubkeys upfront.
+- **Solution**: Lender generates pubkey early (safe - public keys are meant to be public). Sensitive signing happens later, after real BTC is in escrow.
 
 ## Repayment Flow (Cooperative Close Broadcast)
 

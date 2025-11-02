@@ -12,6 +12,7 @@ import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
 import RepaymentModal from "@/components/repayment-modal";
+import DepositInstructionsCard from "@/components/deposit-instructions-card";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -277,16 +278,34 @@ export default function BorrowerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {borrowerLoans.filter(loan => loan.status === 'funding').length === 0 ? (
+              {borrowerLoans.filter(loan => loan.escrowState === 'escrow_created' || loan.status === 'funded').length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
-                    No loans awaiting BTC deposit. Once a lender accepts your loan request, it will appear here.
+                    No loans awaiting BTC deposit. Once a lender commits to fund your loan request, it will appear here.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {borrowerLoans
-                    .filter(loan => loan.status === 'funding')
+                    .filter(loan => loan.escrowState === 'escrow_created' || loan.status === 'funded')
+                    .map((loan) => (
+                      <DepositInstructionsCard key={loan.id} loan={loan} userId={userId} />
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Old escrow display - keeping for backward compatibility */}
+          {borrowerLoans.filter(loan => loan.status === 'funding' && !loan.escrowState).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Legacy Loans (Old Flow)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {borrowerLoans
+                    .filter(loan => loan.status === 'funding' && !loan.escrowState)
                     .map((loan) => (
                       <div key={loan.id} className="border rounded-lg p-6 space-y-4 bg-gradient-to-br from-orange-50 to-blue-50 dark:from-orange-950 dark:to-blue-950">
                         <div className="flex items-center justify-between">
