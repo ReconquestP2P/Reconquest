@@ -934,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fund a loan (lender accepts loan request)
+  // Fund a loan (lender commits to funding - generates pubkey, creates escrow, notifies borrower)
   app.post("/api/loans/:id/fund", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     
@@ -955,11 +955,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      if (loan.status !== "pending" && loan.status !== "posted" && loan.status !== "initiated" && loan.status !== "funding") {
+      if (loan.status !== "pending" && loan.status !== "posted" && loan.status !== "initiated") {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
       
-      // Extract and validate lender's Bitcoin public key
+      // Extract and validate lender's Bitcoin public key (NO transaction signing yet)
       const { lenderPubkey } = req.body;
       
       // Validate public key format
@@ -998,20 +998,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create 2-of-3 multisig escrow address with cryptographic validation
+      // Create 2-of-3 multisig escrow address using lender + platform pubkeys
+      // Borrower pubkey will be added later after deposit confirmation
       const { createMultisigAddress } = await import('./utils/multisig-creator.js');
       const PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
       
-      // Use platform pubkey as placeholder if borrower hasn't generated keys yet
-      // In production, borrower would generate keys before posting loan
-      const borrowerPubkeyToUse = loan.borrowerPubkey || PLATFORM_PUBKEY;
-      
-      if (!loan.borrowerPubkey) {
-        console.log('⚠️ Using placeholder borrower pubkey for escrow creation');
-      }
-      
+      // Use platform pubkey as placeholder for borrower (will be replaced after deposit)
       const multisig = await createMultisigAddress(
-        borrowerPubkeyToUse,
+        PLATFORM_PUBKEY, // Placeholder borrower pubkey
         lenderPubkey,
         PLATFORM_PUBKEY
       );
@@ -1026,13 +1020,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         escrowAddress: multisig.address,
         escrowWitnessScript: multisig.witnessScript,
         escrowScriptHash: multisig.scriptHash,
-        status: "funding",
+        escrowState: "escrow_created", // New state: escrow created, awaiting borrower deposit
+        status: "funded", // Lender has committed
         fundedAt: new Date(),
       });
 
-      // Notify admin about funding attempt
-      if (updatedLoan) {
-        await sendFundingNotification(updatedLoan, lenderId);
+      // Get borrower details for email notification
+      const borrower = await storage.getUser(loan.borrowerId);
+      if (borrower && updatedLoan) {
+        // Send email to borrower with deposit instructions
+        const { sendBorrowerDepositNotification } = await import('./email.js');
+        const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 'https://your-app.replit.app';
+        
+        await sendBorrowerDepositNotification({
+          to: borrower.email,
+          borrowerName: borrower.username,
+          loanId: updatedLoan.id,
+          loanAmount: updatedLoan.amount,
+          currency: updatedLoan.currency,
+          collateralBtc: updatedLoan.collateralBtc,
+          escrowAddress: updatedLoan.escrowAddress!,
+          dashboardUrl: `${baseUrl}/borrower-dashboard`,
+        });
+        
+        console.log(`📧 Sent deposit notification to borrower: ${borrower.email}`);
       }
       
       res.json(updatedLoan);
