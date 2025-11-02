@@ -2234,6 +2234,70 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // Mark signing ceremony complete for a party
+  app.post("/api/loans/:id/complete-signing", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+      const { role } = req.body;
+
+      // Get loan and verify ownership
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Verify user is the borrower or lender
+      if (role === 'borrower' && loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Not authorized as borrower" });
+      }
+      if (role === 'lender' && loan.lenderId !== userId) {
+        return res.status(403).json({ message: "Not authorized as lender" });
+      }
+
+      // Update the appropriate timestamp
+      const now = new Date();
+      const updateData: any = {};
+      
+      if (role === 'borrower') {
+        updateData.borrowerKeysGeneratedAt = now;
+      } else if (role === 'lender') {
+        updateData.lenderKeysGeneratedAt = now;
+      }
+
+      await storage.updateLoan(loanId, updateData);
+
+      // Check if both parties have now signed
+      const updatedLoan = await storage.getLoan(loanId);
+      if (updatedLoan?.borrowerKeysGeneratedAt && updatedLoan?.lenderKeysGeneratedAt) {
+        // Both parties have signed - activate the loan!
+        await storage.updateLoan(loanId, {
+          status: 'active',
+          escrowState: 'keys_generated',
+          loanStartedAt: now,
+        });
+
+        console.log(`🎉 Loan #${loanId} activated! Both parties have completed signing ceremony.`);
+        res.json({ 
+          success: true, 
+          loanActivated: true,
+          message: "Signing complete! Loan is now active." 
+        });
+      } else {
+        console.log(`✅ ${role} completed signing for loan #${loanId}. Waiting for other party...`);
+        res.json({ 
+          success: true, 
+          loanActivated: false,
+          message: "Signing complete! Waiting for other party to sign." 
+        });
+      }
+
+    } catch (error) {
+      console.error("Error completing signing ceremony:", error);
+      res.status(500).json({ message: "Failed to complete signing" });
+    }
+  });
+
   // Trigger cooperative close broadcast (when borrower repays loan)
   app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
     try {
