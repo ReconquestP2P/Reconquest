@@ -33,33 +33,23 @@ export default function LoanCalculator() {
 
   const createLoanMutation = useMutation({
     mutationFn: async () => {
-      // Generate Bitcoin keypair for escrow
-      const keys = Firefish.generateKeys();
-      setBorrowerKeys(keys);
-      
       const response = await apiRequest("/api/loans", "POST", {
         amount: loanAmount.toString(),
         currency,
         termMonths: parseInt(term),
-        interestRate: interestRate.toString(),
-        borrowerPubkey: keys.publicKey
+        interestRate: interestRate.toString()
+        // NO borrowerPubkey - keys generated later after matching
       });
       
-      const loan = await response.json();
-      return { loan, keys };
+      return await response.json();
     },
-    onSuccess: (data: any) => {
-      const { loan, keys } = data;
-      
-      // Store Bitcoin keys in browser localStorage (will be revealed when loan is matched)
-      storeBitcoinKeys(loan.id, keys);
-      
+    onSuccess: (loan: any) => {
       // Reset form to allow creating another loan
       handleNewLoanRequest();
       
       toast({
-        title: "Loan Request Created",
-        description: "Your loan has been posted! Lenders will see it shortly. Your Bitcoin keys are securely stored.",
+        title: "Loan Request Posted",
+        description: "Your loan request is now visible to lenders! You'll be notified when someone accepts it.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users", 1, "loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });

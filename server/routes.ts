@@ -895,46 +895,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse request data
       const requestData = insertLoanSchema.parse(req.body);
       
-      // Extract and validate borrower's Bitcoin public key
-      const { borrowerPubkey } = req.body;
-      
-      // Validate public key format
-      if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
-        return res.status(400).json({ 
-          message: "Borrower Bitcoin public key is required" 
-        });
-      }
-      
-      // Validate public key structure
-      if (borrowerPubkey.length !== 66) {
-        return res.status(400).json({ 
-          message: "Borrower public key must be exactly 66 characters (33 bytes compressed)" 
-        });
-      }
-      
-      if (!/^[0-9a-fA-F]{66}$/.test(borrowerPubkey)) {
-        return res.status(400).json({ 
-          message: "Borrower public key must be valid hexadecimal" 
-        });
-      }
-      
-      const prefix = borrowerPubkey.substring(0, 2);
-      if (prefix !== '02' && prefix !== '03') {
-        return res.status(400).json({ 
-          message: "Borrower public key must start with 02 or 03 (compressed format)" 
-        });
-      }
-      
-      // CRITICAL: Cryptographically verify the public key is a valid secp256k1 point
-      try {
-        const secp256k1 = await import('@noble/secp256k1');
-        await secp256k1.Point.fromHex(borrowerPubkey);
-      } catch (error) {
-        return res.status(400).json({ 
-          message: `Borrower public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
-        });
-      }
-      
       // Get authenticated user ID from JWT token
       const borrowerId = req.user.id;
       
@@ -947,7 +907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loanData = {
         ...requestData,
         borrowerId,
-        borrowerPubkey, // Store the borrower's real Bitcoin public key
+        // NO borrowerPubkey yet - will be submitted later after match
         collateralBtc: requiredBtc,
         ltvRatio: "50.00",
         status: "posted",
@@ -956,7 +916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const loan = await storage.createLoan(loanData);
 
-      console.log(`✅ Loan #${loan.id} created with borrower pubkey: ${borrowerPubkey.substring(0, 20)}...`);
+      console.log(`✅ Loan #${loan.id} created (no keys yet - will be generated after match)`);
       
       // Send email notifications for new loan
       console.log(`Attempting to send email notifications for new loan #${loan.id}`);

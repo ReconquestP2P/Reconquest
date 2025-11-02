@@ -48,30 +48,24 @@ export default function LoanRequestForm() {
   });
 
   const createLoan = useMutation({
-    mutationFn: async (data: LoanRequestForm & { borrowerPubkey: string, keys: Firefish.KeyPair }) => {
+    mutationFn: async (data: LoanRequestForm) => {
       const response = await apiRequest("/api/loans", "POST", {
         amount: data.amount,
         currency: data.currency,
         interestRate: data.interestRate.toString(),
         termMonths: data.termMonths,
-        purpose: data.purpose,
-        borrowerPubkey: data.borrowerPubkey
+        purpose: data.purpose
+        // NO borrowerPubkey - keys generated later after matching
       });
-      const loan = await response.json();
-      return { loan, keys: data.keys };
+      return await response.json();
     },
-    onSuccess: (data: any) => {
-      const { loan, keys } = data;
-      
-      // Store Bitcoin keys in browser localStorage (will be revealed when loan is matched)
-      storeBitcoinKeys(loan.id, keys);
-      
+    onSuccess: (loan: any) => {
       // Reset form
       handleNewLoanRequest();
       
       toast({
-        title: "Loan Request Submitted",
-        description: "Your loan has been posted! Lenders will see it shortly. Your Bitcoin keys are securely stored.",
+        title: "Loan Request Posted",
+        description: "Your loan request is now visible to lenders! You'll be notified when someone accepts it.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
@@ -85,16 +79,8 @@ export default function LoanRequestForm() {
   });
 
   const onSubmit = (data: LoanRequestForm) => {
-    // Generate Bitcoin keypair for escrow
-    const keys = Firefish.generateKeys();
-    setBorrowerKeys(keys);
-    
-    // Submit loan with public key
-    createLoan.mutate({
-      ...data,
-      borrowerPubkey: keys.publicKey,
-      keys
-    });
+    // Submit loan WITHOUT keys - keys generated later after match
+    createLoan.mutate(data);
   };
 
   const copyPrivateKey = () => {
