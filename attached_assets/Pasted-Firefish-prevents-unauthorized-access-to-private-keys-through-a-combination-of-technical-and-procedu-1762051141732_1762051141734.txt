@@ -1,0 +1,19 @@
+Firefish prevents unauthorized access to private keys through a combination of technical and procedural safeguards:
+
+Key Management and Security Measures
+Ephemeral Key Generation: During the escrow setup, the borrower generates a private key (B-EPH) for the escrow address, but this key is immediately discarded after signing the necessary transactions. This ensures that the private key is never stored or accessible after the setup phase, making it impossible for anyone—including Firefish or malicious actors—to access it later.​
+
+Multi-Signature Escrow: The escrow contract uses a 3-of-3 multi-signature address, where the keys are held by the Price Oracle, Payment Oracle, and the Borrower. The borrower's key is only used during setup and then discarded, so the only way to move funds is through the pre-signed closing transactions.​
+
+Open Source and Audited Code: The Firefish protocol is open source, allowing independent security audits. This transparency means that any vulnerabilities or backdoors would likely be discovered and reported by the community.​
+
+Deterministic Builds: The borrower-client is compiled into WASM and runs in the browser, ensuring that the code used matches the published source. This allows users to verify that the client is not tampering with their keys or transactions.​
+
+No Custody of Keys: Firefish does not hold or store private keys at any point. The platform acts only as an intermediary, and all cryptographic operations are performed by the borrower's client in their browser.​
+
+Additional Security Practices
+Two-Factor Authentication (2FA): Firefish requires strong passwords and 2FA for account access, adding an extra layer of protection against unauthorized access to user accounts.​
+
+Encryption: All sensitive data and transactions are encrypted, further protecting user information and assets.​
+
+In summary, Firefish ensures that private keys are never stored or accessible after the escrow setup, uses multi-signature addresses, and relies on open-source, audited code and strong authentication practices to prevent unauthorized access

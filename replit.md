@@ -37,7 +37,8 @@ Preferred communication style: Simple, everyday language.
 - **Email System**: Comprehensive email notifications for users and admin (welcome, loan updates, password resets).
 - **UI/UX**: Responsive design, dedicated borrower/lender dashboards, "How it works" section, FAQs, About page, and consistent branding.
 - **Gamification**: Blockchain-themed achievement badge system.
-- **Bitcoin Multisig Escrow**: Automated 2-of-3 multisig Bitcoin testnet escrow address generation for secure collateral handling, with client-side key generation and secure storage.
+- **Bitcoin Multisig Escrow**: Automated 2-of-3 multisig Bitcoin testnet escrow address generation for secure collateral handling.
+- **Firefish Ephemeral Key Model**: Maximum security Bitcoin key management where private keys are generated client-side, used to pre-sign recovery transactions, then immediately discarded from memory. Users NEVER see their private keys. Instead, they download pre-signed recovery transactions that can be broadcast if the platform disappears.
 
 ## External Dependencies
 
@@ -46,4 +47,31 @@ Preferred communication style: Simple, everyday language.
 - **Email Service**: Resend
 - **Validation**: Zod
 - **Development Environment**: Replit
-- **Bitcoin Integration**: Python bitcoinlib (for initial multisig logic, now superseded by WASM for client-side ops), @noble/secp256k1 for cryptographic key generation and validation.
+- **Bitcoin Integration**: @noble/secp256k1 for cryptographic key generation and ECDSA signing.
+
+## Security Architecture
+
+### Firefish Ephemeral Key Model (November 2024)
+**CRITICAL SECURITY REQUIREMENT**: Private keys must NEVER be stored or displayed to users.
+
+**How It Works:**
+1. **Key Generation**: When creating a loan or funding as a lender, Bitcoin keypair is generated client-side using @noble/secp256k1
+2. **Transaction Pre-Signing**: Immediately after generation, the private key is used to sign:
+   - Recovery transaction (borrower can broadcast if platform disappears)
+   - Cooperative close transaction (normal loan repayment)
+   - Default transaction (lender protection if borrower defaults)
+3. **Key Disposal**: Private key is wiped from memory using `Uint8Array.fill(0)` in finally blocks
+4. **User Download**: Pre-signed transactions downloaded as JSON file (NOT private keys)
+5. **Recovery**: If platform disappears, user broadcasts pre-signed recovery transaction
+
+**Key Files:**
+- `client/src/lib/ephemeral-signer.ts`: Ephemeral key manager with memory wiping
+- `client/src/lib/transactions/`: Transaction template builders (recovery, cooperative close, default)
+
+**Security Properties:**
+- Private keys exist for ~1 second during signing
+- Keys never stored (not in localStorage, not in sessionStorage, not anywhere)
+- Keys never displayed in UI (no modal, no input field, no console.log)
+- Keys wiped from memory immediately after use
+- Users download signed transactions, not keys
+- If platform disappears, recovery transaction ensures fund recovery
