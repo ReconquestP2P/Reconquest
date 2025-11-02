@@ -1,12 +1,13 @@
 import { 
   users, loans, loanOffers, 
-  escrowSessions, signatureExchanges, escrowEvents,
+  escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
   type LoanOffer, type InsertLoanOffer,
   type EscrowSession, type InsertEscrowSession,
   type SignatureExchange, type InsertSignatureExchange,
-  type EscrowEvent, type InsertEscrowEvent
+  type EscrowEvent, type InsertEscrowEvent,
+  type PreSignedTransaction, type InsertPreSignedTransaction
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -58,6 +59,16 @@ export interface IStorage {
   // Escrow Event operations
   createEscrowEvent(event: InsertEscrowEvent): Promise<EscrowEvent>;
   getEscrowEvents(escrowSessionId: string): Promise<EscrowEvent[]>;
+  
+  // Pre-signed Transaction operations (Firefish Ephemeral Key Model)
+  storePreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction>;
+  getPreSignedTransactions(loanId: number, txType?: string): Promise<PreSignedTransaction[]>;
+  updateTransactionBroadcastStatus(id: number, updates: {
+    broadcastStatus: string;
+    broadcastTxid?: string;
+    broadcastedAt?: Date;
+    confirmedAt?: Date;
+  }): Promise<PreSignedTransaction | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -638,6 +649,49 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(escrowEvents)
       .where(eq(escrowEvents.escrowSessionId, escrowSessionId));
+  }
+
+  // Pre-signed Transaction Operations (Firefish Ephemeral Key Model)
+  async storePreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction> {
+    const [transaction] = await db
+      .insert(preSignedTransactions)
+      .values(tx)
+      .returning();
+    return transaction;
+  }
+
+  async getPreSignedTransactions(loanId: number, txType?: string): Promise<PreSignedTransaction[]> {
+    if (txType) {
+      const { and } = await import("drizzle-orm");
+      return await db
+        .select()
+        .from(preSignedTransactions)
+        .where(and(
+          eq(preSignedTransactions.loanId, loanId),
+          eq(preSignedTransactions.txType, txType)
+        ));
+    }
+    return await db
+      .select()
+      .from(preSignedTransactions)
+      .where(eq(preSignedTransactions.loanId, loanId));
+  }
+
+  async updateTransactionBroadcastStatus(
+    id: number, 
+    updates: {
+      broadcastStatus: string;
+      broadcastTxid?: string;
+      broadcastedAt?: Date;
+      confirmedAt?: Date;
+    }
+  ): Promise<PreSignedTransaction | undefined> {
+    const [transaction] = await db
+      .update(preSignedTransactions)
+      .set(updates)
+      .where(eq(preSignedTransactions.id, id))
+      .returning();
+    return transaction || undefined;
   }
 }
 

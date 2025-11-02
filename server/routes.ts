@@ -2074,6 +2074,144 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // ========================================================================
+  // PRE-SIGNED TRANSACTION ROUTES (Firefish Ephemeral Key Model)
+  // ========================================================================
+
+  // Store pre-signed transaction (called automatically when user generates ephemeral keys)
+  app.post("/api/loans/:id/transactions/store", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const { partyRole, partyPubkey, txType, psbt, signature, txHash, validAfter } = req.body;
+
+      const transaction = await storage.storePreSignedTransaction({
+        loanId,
+        partyRole,
+        partyPubkey,
+        txType,
+        psbt,
+        signature,
+        txHash,
+        validAfter: validAfter ? new Date(validAfter) : undefined,
+      });
+
+      console.log(`✅ Stored ${txType} transaction for ${partyRole} on loan #${loanId}`);
+      res.json({ success: true, transactionId: transaction.id });
+    } catch (error) {
+      console.error("Error storing pre-signed transaction:", error);
+      res.status(500).json({ message: "Failed to store transaction" });
+    }
+  });
+
+  // Get pre-signed transactions for a loan
+  app.get("/api/loans/:id/transactions", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const txType = req.query.txType as string | undefined;
+
+      const transactions = await storage.getPreSignedTransactions(loanId, txType);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching pre-signed transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Trigger cooperative close broadcast (when borrower repays loan)
+  app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+
+      // Get loan and verify ownership
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can initiate cooperative close
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only the borrower can initiate repayment" });
+      }
+
+      // Get cooperative_close transactions
+      const transactions = await storage.getPreSignedTransactions(loanId, 'cooperative_close');
+
+      if (transactions.length < 2) {
+        return res.status(400).json({ 
+          message: "Not enough signatures. Need borrower and lender signatures.",
+          signaturesFound: transactions.length
+        });
+      }
+
+      // Import broadcast service
+      const { aggregateSignatures, broadcastTransaction, generatePlatformSignature } = await import("./services/bitcoin-broadcast.js");
+
+      // Add platform signature
+      const platformSig = await generatePlatformSignature(
+        transactions[0].txHash,
+        `cooperative_close_${loanId}`
+      );
+
+      // Store platform signature
+      const platformTx = await storage.storePreSignedTransaction({
+        loanId,
+        partyRole: 'platform',
+        partyPubkey: platformSig.publicKey,
+        txType: 'cooperative_close',
+        psbt: transactions[0].psbt, // Same PSBT
+        signature: platformSig.signature,
+        txHash: transactions[0].txHash,
+      });
+
+      // Aggregate signatures (2-of-3)
+      const allTransactions = [...transactions, platformTx];
+      const aggregation = await aggregateSignatures(allTransactions);
+
+      if (!aggregation.success || !aggregation.txHex) {
+        return res.status(500).json({ 
+          message: aggregation.error || "Failed to aggregate signatures",
+          signaturesCollected: aggregation.signaturesCollected
+        });
+      }
+
+      // Broadcast to Bitcoin testnet
+      const broadcast = await broadcastTransaction(aggregation.txHex);
+
+      if (!broadcast.success) {
+        return res.status(500).json({ 
+          message: broadcast.error || "Failed to broadcast transaction"
+        });
+      }
+
+      // Update all transactions with broadcast status
+      for (const tx of allTransactions) {
+        await storage.updateTransactionBroadcastStatus(tx.id, {
+          broadcastStatus: 'broadcasting',
+          broadcastTxid: broadcast.txid,
+          broadcastedAt: new Date(),
+        });
+      }
+
+      // Update loan status
+      await storage.updateLoan(loanId, {
+        status: 'completed',
+        repaidAt: new Date(),
+      });
+
+      console.log(`✅ Loan #${loanId} repaid successfully! Txid: ${broadcast.txid}`);
+      res.json({ 
+        success: true, 
+        txid: broadcast.txid,
+        message: "Loan repaid successfully. Collateral is being returned to borrower."
+      });
+
+    } catch (error) {
+      console.error("Error processing cooperative close:", error);
+      res.status(500).json({ message: "Failed to process cooperative close" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

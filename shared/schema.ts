@@ -149,6 +149,33 @@ export const escrowEvents = pgTable("escrow_events", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Pre-signed Transactions (Firefish Ephemeral Key Model)
+// Stores the signed transactions that users download and can re-upload for broadcast
+export const preSignedTransactions = pgTable("pre_signed_transactions", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  
+  // Party Info
+  partyRole: text("party_role").notNull(), // "borrower" | "lender" | "platform"
+  partyPubkey: text("party_pubkey").notNull(),
+  
+  // Transaction Info
+  txType: text("tx_type").notNull(), // "recovery" | "cooperative_close" | "default"
+  psbt: text("psbt").notNull(), // Base64 encoded PSBT
+  signature: text("signature").notNull(), // Party's signature
+  txHash: text("tx_hash").notNull(), // Transaction identifier
+  
+  // Broadcast Status
+  broadcastStatus: text("broadcast_status").notNull().default("pending"), // pending, broadcasting, confirmed, failed
+  broadcastTxid: text("broadcast_txid"), // Blockchain transaction ID after broadcast
+  broadcastedAt: timestamp("broadcasted_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  
+  // Metadata
+  validAfter: timestamp("valid_after"), // For recovery tx with timelock
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -230,6 +257,14 @@ export const insertEscrowEventSchema = createInsertSchema(escrowEvents).omit({
   createdAt: true,
 });
 
+export const insertPreSignedTransactionSchema = createInsertSchema(preSignedTransactions).omit({
+  id: true,
+  createdAt: true,
+  broadcastStatus: true,
+  broadcastedAt: true,
+  confirmedAt: true,
+});
+
 // TypeScript Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -247,3 +282,5 @@ export type SignatureExchange = typeof signatureExchanges.$inferSelect;
 export type InsertSignatureExchange = z.infer<typeof insertSignatureExchangeSchema>;
 export type EscrowEvent = typeof escrowEvents.$inferSelect;
 export type InsertEscrowEvent = z.infer<typeof insertEscrowEventSchema>;
+export type PreSignedTransaction = typeof preSignedTransactions.$inferSelect;
+export type InsertPreSignedTransaction = z.infer<typeof insertPreSignedTransactionSchema>;

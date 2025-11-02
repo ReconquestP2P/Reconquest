@@ -47,9 +47,22 @@ export default function LenderFundingModal({
       setStep('confirm');
       setIsGeneratingKeys(false);
       
+      // Parse error message from API
+      let errorMessage = "Failed to fund loan. Please try again.";
+      
+      if (error.message) {
+        if (error.message.includes("Borrower public key not found")) {
+          errorMessage = "This loan cannot be funded yet. The borrower needs to generate their Bitcoin escrow keys first. Please ask the borrower to accept the loan and generate their keys.";
+        } else if (error.message.includes("old system")) {
+          errorMessage = "This loan was created before the ephemeral key system was implemented. It cannot be funded using the new secure escrow system.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Cannot Fund Loan",
-        description: error.message || "Failed to fund loan. The borrower may not have submitted their Bitcoin keys yet.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -80,6 +93,21 @@ export default function LenderFundingModal({
       downloadSignedTransactions(loan.id, 'lender', result);
       
       console.log("🔐 Ephemeral key generated, transactions signed, key discarded");
+      
+      // Store signed transactions in database (for later broadcast)
+      for (const signedTx of result.signedTransactions) {
+        await apiRequest(`/api/loans/${loan.id}/transactions/store`, "POST", {
+          partyRole: 'lender',
+          partyPubkey: result.publicKey,
+          txType: signedTx.type,
+          psbt: signedTx.psbt,
+          signature: signedTx.signature,
+          txHash: signedTx.txHash,
+          validAfter: signedTx.validAfter,
+        });
+      }
+      
+      console.log(`💾 Stored ${result.signedTransactions.length} signed transactions in database`);
       
       // Submit public key to backend (private key already wiped from memory)
       fundLoan.mutate({ lenderPubkey: result.publicKey });
