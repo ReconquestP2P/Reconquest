@@ -44,9 +44,12 @@ export default function LenderFundingModal({
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
     onError: (error: any) => {
+      setStep('confirm');
+      setIsGeneratingKeys(false);
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to fund loan. Please try again.",
+        title: "Cannot Fund Loan",
+        description: error.message || "Failed to fund loan. The borrower may not have submitted their Bitcoin keys yet.",
         variant: "destructive",
       });
     },
