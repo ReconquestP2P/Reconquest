@@ -11,6 +11,7 @@ import LoanCalculator from "@/components/loan-calculator";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
+import RepaymentModal from "@/components/repayment-modal";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,9 @@ export default function BorrowerDashboard() {
 
   // Track loans where user clicked "I've Sent BTC" to prevent double-clicking
   const [confirmedLoanIds, setConfirmedLoanIds] = useState<Set<number>>(new Set());
+  
+  // Track which loan to repay
+  const [repayingLoan, setRepayingLoan] = useState<Loan | null>(null);
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: [`/api/users/${userId}/loans`],
@@ -214,6 +218,7 @@ export default function BorrowerDashboard() {
                         <TableHead>LTV</TableHead>
                         <TableHead>Due Date</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -228,6 +233,16 @@ export default function BorrowerDashboard() {
                             {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
                           </TableCell>
                           <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                          <TableCell>
+                            <Button
+                              onClick={() => setRepayingLoan(loan)}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              data-testid={`button-repay-loan-${loan.id}`}
+                            >
+                              Repay Loan
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -413,6 +428,15 @@ export default function BorrowerDashboard() {
           <AchievementsDashboard userId={userId} />
         </TabsContent>
       </Tabs>
+
+      {/* Repayment Modal */}
+      {repayingLoan && (
+        <RepaymentModal
+          isOpen={!!repayingLoan}
+          onClose={() => setRepayingLoan(null)}
+          loan={repayingLoan}
+        />
+      )}
       </div>
     </FirefishWASMProvider>
   );
