@@ -892,8 +892,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new loan request
   app.post("/api/loans", authenticateToken, async (req: any, res) => {
     try {
+      // DEBUG: Log what we receive
+      console.log('POST /api/loans - Full request body:', JSON.stringify(req.body, null, 2));
+      console.log('POST /api/loans - borrowerPubkey in req.body:', 'borrowerPubkey' in req.body);
+      console.log('POST /api/loans - borrowerPubkey value:', req.body.borrowerPubkey);
+      
       // Parse request data
       const requestData = insertLoanSchema.parse(req.body);
+      console.log('POST /api/loans - After parse, requestData:', JSON.stringify(requestData, null, 2));
       
       // Extract and validate borrower's Bitcoin public key
       const { borrowerPubkey } = req.body;
