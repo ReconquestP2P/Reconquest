@@ -8,6 +8,8 @@
  * The mock implements the same API surface as the real module.
  */
 
+import * as secp256k1 from '@noble/secp256k1';
+
 export interface KeyPair {
   privateKey: string;  // Hex-encoded private key (NEVER sent to backend)
   publicKey: string;   // Hex-encoded public key
@@ -59,19 +61,26 @@ export interface SignedTransaction {
 
 /**
  * Generate a new Bitcoin key pair (secp256k1)
- * In real WASM, this uses secure randomness and proper key derivation
+ * Uses @noble/secp256k1 to generate REAL cryptographically valid keypairs
  */
 export function generateKeys(): KeyPair {
-  // Mock implementation - generates deterministic keys for testing
-  const randomHex = (length: number) => {
-    return Array.from({ length }, () => 
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('');
-  };
-
-  const privateKey = randomHex(64); // 32 bytes hex
-  const publicKey = '02' + randomHex(64); // Compressed public key (33 bytes)
-  const wif = 'cT' + randomHex(50); // Testnet WIF format
+  // Generate a random 32-byte private key
+  const privateKeyBytes = new Uint8Array(32);
+  crypto.getRandomValues(privateKeyBytes);
+  
+  // Convert to hex string
+  const privateKey = Array.from(privateKeyBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  // Generate the public key using secp256k1 (REAL cryptographic derivation)
+  const publicKeyBytes = secp256k1.getPublicKey(privateKeyBytes, true); // true = compressed format
+  const publicKey = Array.from(publicKeyBytes)
+    .map((b: number) => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  // Testnet WIF format (would be properly derived in real implementation)
+  const wif = 'cT' + privateKey.slice(0, 50);
 
   return { privateKey, publicKey, wif };
 }
