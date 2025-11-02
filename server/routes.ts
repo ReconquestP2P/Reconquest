@@ -1041,6 +1041,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update loan with borrower's public key after key generation
+  app.patch("/api/loans/:id/borrower-keys", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    const borrowerId = req.user.id;
+    const { borrowerPubkey } = req.body;
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify the user is the borrower
+      if (loan.borrowerId !== borrowerId) {
+        return res.status(403).json({ message: "You are not authorized to update this loan" });
+      }
+      
+      // Validate borrower public key format
+      if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
+        return res.status(400).json({ 
+          message: "Borrower public key is required" 
+        });
+      }
+      
+      if (!/^[0-9a-fA-F]{66}$/.test(borrowerPubkey)) {
+        return res.status(400).json({ 
+          message: "Borrower public key must be valid hexadecimal" 
+        });
+      }
+      
+      const prefix = borrowerPubkey.substring(0, 2);
+      if (prefix !== '02' && prefix !== '03') {
+        return res.status(400).json({ 
+          message: "Borrower public key must start with 02 or 03 (compressed format)" 
+        });
+      }
+      
+      // CRITICAL: Cryptographically verify the public key is a valid secp256k1 point
+      try {
+        const secp256k1 = await import('@noble/secp256k1');
+        await secp256k1.Point.fromHex(borrowerPubkey);
+      } catch (error) {
+        return res.status(400).json({ 
+          message: `Borrower public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
+        });
+      }
+      
+      // Update loan with borrower pubkey
+      const updatedLoan = await storage.updateLoan(loanId, {
+        borrowerPubkey,
+      });
+      
+      console.log(`🔐 Loan #${loanId} updated with borrower pubkey: ${borrowerPubkey.slice(0, 20)}...`);
+      
+      res.json(updatedLoan);
+    } catch (error) {
+      console.error('Error updating borrower keys:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Borrower confirms they've sent BTC to escrow
   app.post("/api/loans/:id/confirm-btc-sent", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);

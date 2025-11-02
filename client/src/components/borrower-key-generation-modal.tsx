@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { useFirefishWASM } from "@/contexts/FirefishWASMContext";
+import { generateAndSignTransactions, downloadSignedTransactions } from "@/lib/ephemeral-signer";
 import { Download, Key, Shield, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Loan } from "@shared/schema";
@@ -22,9 +22,7 @@ export default function BorrowerKeyGenerationModal({
   onSuccess,
 }: BorrowerKeyGenerationModalProps) {
   const { toast } = useToast();
-  const { generateEphemeralKeys } = useFirefishWASM();
   const [step, setStep] = useState<'ready' | 'generating' | 'success'>('ready');
-  const [downloadedRecovery, setDownloadedRecovery] = useState(false);
 
   const handleGenerateKeys = async () => {
     setStep('generating');
@@ -33,12 +31,14 @@ export default function BorrowerKeyGenerationModal({
       console.log('🔑 Borrower generating ephemeral keys for loan:', loan.id);
 
       // Generate ephemeral keys and sign transactions
-      const result = await generateEphemeralKeys({
+      // Keys are DISCARDED after signing - never stored!
+      const result = await generateAndSignTransactions({
         loanId: loan.id,
         role: 'borrower',
-        multisigAddress: loan.multisigAddress || '',
-        escrowPubkey: loan.escrowPubkey || '',
-        returnAddress: '', // Borrower will get collateral back to this address
+        loanAmount: parseFloat(loan.amount),
+        collateralBtc: parseFloat(loan.collateralBtc || '0'),
+        currency: loan.currency,
+        term: loan.termMonths,
       });
 
       console.log('✅ Borrower keys generated:', {
@@ -46,33 +46,34 @@ export default function BorrowerKeyGenerationModal({
         transactionsSigned: result.signedTransactions.length,
       });
 
-      // Store signed transactions in database
-      for (const tx of result.signedTransactions) {
-        await apiRequest('/api/transactions/store', 'POST', {
-          loanId: loan.id,
+      // Download signed transactions (user's recovery method)
+      downloadSignedTransactions(loan.id, 'borrower', result);
+
+      console.log("🔐 Ephemeral key generated, transactions signed, key discarded");
+
+      // Store signed transactions in database (for later broadcast)
+      for (const signedTx of result.signedTransactions) {
+        await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
           partyRole: 'borrower',
           partyPubkey: result.publicKey,
-          txType: tx.type,
-          psbt: tx.psbt,
-          signature: tx.signature,
-          txHash: tx.txHash,
+          txType: signedTx.type,
+          psbt: signedTx.psbt,
+          signature: signedTx.signature,
+          txHash: signedTx.txHash,
+          validAfter: signedTx.validAfter,
         });
       }
 
-      console.log('✅ Borrower signed transactions stored in database');
+      console.log(`💾 Stored ${result.signedTransactions.length} signed transactions in database`);
 
-      // Update loan with borrower pubkey
+      // Update loan with borrower pubkey (private key already wiped from memory)
       await apiRequest(`/api/loans/${loan.id}/borrower-keys`, 'PATCH', {
         borrowerPubkey: result.publicKey,
       });
 
       console.log('✅ Loan updated with borrower pubkey');
 
-      // Download recovery file
-      downloadRecoveryFile(result);
-
       setStep('success');
-      setDownloadedRecovery(true);
 
       toast({
         title: "Keys Generated Successfully! 🔐",
@@ -88,29 +89,6 @@ export default function BorrowerKeyGenerationModal({
         variant: "destructive",
       });
     }
-  };
-
-  const downloadRecoveryFile = (result: any) => {
-    const recoveryData = {
-      loanId: loan.id,
-      role: 'borrower',
-      publicKey: result.publicKey,
-      signedTransactions: result.signedTransactions,
-      multisigAddress: loan.multisigAddress,
-      escrowPubkey: loan.escrowPubkey,
-      generatedAt: new Date().toISOString(),
-      warning: 'KEEP THIS FILE SAFE! You need it to recover your Bitcoin collateral if the platform disappears.',
-    };
-
-    const blob = new Blob([JSON.stringify(recoveryData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconquest-borrower-recovery-loan-${loan.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const handleComplete = () => {
