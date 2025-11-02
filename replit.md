@@ -94,11 +94,19 @@ Preferred communication style: Simple, everyday language.
 3. **Borrower confirms deposit**: Clicks "Confirm Deposit" button in dashboard
 4. **Status**: escrowState moves to "deposit_confirmed"
 
-### Phase 4: Dual Key Generation & Transaction Signing (UPCOMING)
-1. **Both parties generate ephemeral keys**: After deposit confirmed, borrower AND lender sign transactions
-2. **Firefish security applied**: Keys generated → transactions signed → keys wiped from memory
-3. **Recovery files downloaded**: Both parties download pre-signed transaction files
-4. **Status**: escrowState moves to "keys_generated", loan becomes "active"
+### Phase 4: Dual Key Generation & Transaction Signing (IMPLEMENTED November 2024)
+1. **Both parties generate ephemeral keys**: After deposit confirmed, borrower AND lender each click "Generate Recovery Plan" button
+2. **SigningCeremonyModal orchestrates**: Interactive UI walks users through 3-step signing process (intro → generating → complete)
+3. **Firefish security applied**: Keys generated → transactions signed → keys wiped from memory (happens automatically)
+4. **Recovery files downloaded**: Both parties download pre-signed transaction files (reconquest-{role}-loan{id}-recovery.json)
+5. **Signing tracked**: borrowerKeysGeneratedAt and lenderKeysGeneratedAt timestamps recorded in database
+6. **Visual feedback**: Dashboard shows "✓ Borrower Signed" and "✓ Lender Signed" badges to track progress
+7. **Loan activation**: When BOTH timestamps are set, loan automatically becomes "active" and escrowState moves to "keys_generated"
+
+**Key Components:**
+- **Frontend**: `client/src/components/signing-ceremony-modal.tsx` - Unified signing modal for both parties
+- **API**: `POST /api/loans/:id/complete-signing` - Records signing completion and activates loan
+- **UI Integration**: Purple "🔐 Generate Recovery Plan" cards in both borrower and lender dashboards
 
 ### Key Innovation: Solves Firefish vs Multisig Conflict
 - **Problem**: Firefish requires ephemeral keys (generate → sign → discard). Multisig requires both pubkeys upfront.
