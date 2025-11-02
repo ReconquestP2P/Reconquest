@@ -5,25 +5,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatBTC, calculateCollateral } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
-import * as Firefish from "@/lib/firefish-wasm-mock";
-import { storeBitcoinKeys } from "@/lib/bitcoin-key-storage";
-import { Copy, Eye, EyeOff, AlertTriangle, Check } from "lucide-react";
 
 export default function LoanCalculator() {
   const [amount, setAmount] = useState("25000");
   const [currency, setCurrency] = useState("EUR");
   const [term, setTerm] = useState("6");
   const [interestRate, setInterestRate] = useState(6);
-  const [borrowerKeys, setBorrowerKeys] = useState<Firefish.KeyPair | null>(null);
-  const [showPrivateKey, setShowPrivateKey] = useState(false);
-  const [privateKeyCopied, setPrivateKeyCopied] = useState(false);
-  const [loanCreated, setLoanCreated] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,23 +56,7 @@ export default function LoanCalculator() {
     },
   });
 
-  const copyPrivateKey = () => {
-    if (borrowerKeys) {
-      navigator.clipboard.writeText(borrowerKeys.privateKey);
-      setPrivateKeyCopied(true);
-      toast({
-        title: "Private Key Copied",
-        description: "Your private key has been copied to clipboard.",
-      });
-      setTimeout(() => setPrivateKeyCopied(false), 2000);
-    }
-  };
-
   const handleNewLoanRequest = () => {
-    setBorrowerKeys(null);
-    setLoanCreated(false);
-    setPrivateKeyCopied(false);
-    setShowPrivateKey(false);
     setAmount("25000");
     setInterestRate(6);
     setTerm("6");

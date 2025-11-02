@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,16 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import * as Firefish from "@/lib/firefish-wasm-mock";
-import { storeBitcoinKeys } from "@/lib/bitcoin-key-storage";
-import { Copy, Eye, EyeOff, AlertTriangle, Check } from "lucide-react";
 
 const loanRequestSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
@@ -31,10 +25,6 @@ type LoanRequestForm = z.infer<typeof loanRequestSchema>;
 export default function LoanRequestForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [borrowerKeys, setBorrowerKeys] = useState<Firefish.KeyPair | null>(null);
-  const [showPrivateKey, setShowPrivateKey] = useState(false);
-  const [privateKeyCopied, setPrivateKeyCopied] = useState(false);
-  const [loanCreated, setLoanCreated] = useState(false);
 
   const form = useForm<LoanRequestForm>({
     resolver: zodResolver(loanRequestSchema),
@@ -83,23 +73,7 @@ export default function LoanRequestForm() {
     createLoan.mutate(data);
   };
 
-  const copyPrivateKey = () => {
-    if (borrowerKeys) {
-      navigator.clipboard.writeText(borrowerKeys.privateKey);
-      setPrivateKeyCopied(true);
-      toast({
-        title: "Private Key Copied",
-        description: "Your private key has been copied to clipboard.",
-      });
-      setTimeout(() => setPrivateKeyCopied(false), 2000);
-    }
-  };
-
   const handleNewLoanRequest = () => {
-    setBorrowerKeys(null);
-    setLoanCreated(false);
-    setPrivateKeyCopied(false);
-    setShowPrivateKey(false);
     form.reset();
   };
 

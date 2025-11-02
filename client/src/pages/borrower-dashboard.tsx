@@ -11,7 +11,6 @@ import LoanCalculator from "@/components/loan-calculator";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
-import BitcoinKeysModal from "@/components/bitcoin-keys-modal";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -28,10 +27,6 @@ export default function BorrowerDashboard() {
 
   // Track loans where user clicked "I've Sent BTC" to prevent double-clicking
   const [confirmedLoanIds, setConfirmedLoanIds] = useState<Set<number>>(new Set());
-  
-  // Track which loan's keys modal is open
-  const [keysModalLoanId, setKeysModalLoanId] = useState<number | null>(null);
-  const [keysModalOpen, setKeysModalOpen] = useState(false);
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: [`/api/users/${userId}/loans`],
@@ -336,13 +331,15 @@ export default function BorrowerDashboard() {
                                 </a>
                                 <Button
                                   onClick={() => {
-                                    setKeysModalLoanId(loan.id);
-                                    setKeysModalOpen(true);
+                                    toast({
+                                      title: "🔐 Keys Secured",
+                                      description: "Your Bitcoin keys are encrypted and stored securely. They're never displayed for your protection.",
+                                    });
                                   }}
-                                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-center text-sm font-medium"
-                                  data-testid={`button-view-keys-${loan.id}`}
+                                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-center text-sm font-medium"
+                                  data-testid={`button-keys-secured-${loan.id}`}
                                 >
-                                  🔐 View My Keys
+                                  🔐 Keys Secured
                                 </Button>
                               </div>
                             </div>
@@ -416,20 +413,6 @@ export default function BorrowerDashboard() {
           <AchievementsDashboard userId={userId} />
         </TabsContent>
       </Tabs>
-
-      {/* Bitcoin Keys Modal */}
-      {keysModalLoanId && (
-        <BitcoinKeysModal
-          loanId={keysModalLoanId}
-          escrowAddress={borrowerLoans.find(l => l.id === keysModalLoanId)?.escrowAddress || undefined}
-          role="borrower"
-          open={keysModalOpen}
-          onOpenChange={(open) => {
-            setKeysModalOpen(open);
-            if (!open) setKeysModalLoanId(null);
-          }}
-        />
-      )}
       </div>
     </FirefishWASMProvider>
   );
