@@ -5,17 +5,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatBTC, calculateCollateral } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
+import * as Firefish from "@/lib/firefish-wasm-mock";
+import { Copy, Eye, EyeOff, AlertTriangle, Check } from "lucide-react";
 
 export default function LoanCalculator() {
   const [amount, setAmount] = useState("25000");
   const [currency, setCurrency] = useState("EUR");
   const [term, setTerm] = useState("6");
   const [interestRate, setInterestRate] = useState(6);
+  const [borrowerKeys, setBorrowerKeys] = useState<Firefish.KeyPair | null>(null);
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [privateKeyCopied, setPrivateKeyCopied] = useState(false);
+  const [loanCreated, setLoanCreated] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -25,17 +32,23 @@ export default function LoanCalculator() {
 
   const createLoanMutation = useMutation({
     mutationFn: async () => {
+      // Generate Bitcoin keypair for escrow
+      const keys = Firefish.generateKeys();
+      setBorrowerKeys(keys);
+      
       return await apiRequest("/api/loans", "POST", {
         amount: loanAmount.toString(),
         currency,
         termMonths: parseInt(term),
-        interestRate: interestRate.toString()
+        interestRate: interestRate.toString(),
+        borrowerPubkey: keys.publicKey
       });
     },
     onSuccess: () => {
+      setLoanCreated(true);
       toast({
         title: "Loan Request Created",
-        description: "Your loan request has been submitted successfully. Lenders will review your request soon.",
+        description: "Your loan request has been submitted successfully. Save your Bitcoin private key below!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users", 1, "loans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
@@ -48,6 +61,28 @@ export default function LoanCalculator() {
       });
     },
   });
+
+  const copyPrivateKey = () => {
+    if (borrowerKeys) {
+      navigator.clipboard.writeText(borrowerKeys.privateKey);
+      setPrivateKeyCopied(true);
+      toast({
+        title: "Private Key Copied",
+        description: "Your private key has been copied to clipboard.",
+      });
+      setTimeout(() => setPrivateKeyCopied(false), 2000);
+    }
+  };
+
+  const handleNewLoanRequest = () => {
+    setBorrowerKeys(null);
+    setLoanCreated(false);
+    setPrivateKeyCopied(false);
+    setShowPrivateKey(false);
+    setAmount("25000");
+    setInterestRate(6);
+    setTerm("6");
+  };
 
   const loanAmount = parseFloat(amount) || 0;
   // Use currency-specific BTC price
@@ -65,6 +100,83 @@ export default function LoanCalculator() {
   
   // For display purposes, show monthly breakdown even though interest is paid at end
   const monthlyPayment = totalRepayment / parseInt(term);
+
+  // Show private key warning after loan creation
+  if (loanCreated && borrowerKeys) {
+    return (
+      <Card className="border-orange-500 border-2 shadow-lg">
+        <CardHeader className="bg-orange-50">
+          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
+            CRITICAL: Save Your Bitcoin Private Key
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>⚠️ This is shown only ONCE!</AlertTitle>
+            <AlertDescription>
+              Your Bitcoin private key is required to access your collateral. If you lose it, your Bitcoin will be permanently locked. Save it securely NOW.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Your Bitcoin Public Key</Label>
+            <div className="bg-gray-50 p-3 rounded font-mono text-xs break-all border">
+              {borrowerKeys.publicKey}
+            </div>
+
+            <Label className="text-sm font-medium text-red-600">Your Bitcoin Private Key 🔐</Label>
+            <div className="relative">
+              <div className="bg-red-50 border-2 border-red-200 p-3 rounded font-mono text-xs break-all">
+                {showPrivateKey ? borrowerKeys.privateKey : '•'.repeat(64)}
+              </div>
+              <div className="absolute top-2 right-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowPrivateKey(!showPrivateKey)}
+                  data-testid="button-toggle-private-key"
+                >
+                  {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={copyPrivateKey}
+                  data-testid="button-copy-private-key"
+                >
+                  {privateKeyCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertDescription className="text-sm space-y-2">
+              <p className="font-semibold">Next Steps:</p>
+              <ol className="list-decimal ml-4 space-y-1">
+                <li>Copy and save your private key in a secure location (password manager, encrypted file)</li>
+                <li>Wait for a lender to fund your loan</li>
+                <li>When matched, you'll send Bitcoin to the escrow address</li>
+                <li>You'll need this private key to reclaim your collateral after repaying the loan</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+
+          <Button
+            onClick={handleNewLoanRequest}
+            className="w-full"
+            data-testid="button-create-another-loan"
+          >
+            Create Another Loan Request
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-gray-200 shadow-sm">
