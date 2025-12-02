@@ -486,9 +486,8 @@ export default function BorrowerDashboard() {
                       </div>
                     ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
