@@ -1,5 +1,5 @@
 import { 
-  users, loans, loanOffers, 
+  users, loans, loanOffers, disputes,
   escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
@@ -7,7 +7,8 @@ import {
   type EscrowSession, type InsertEscrowSession,
   type SignatureExchange, type InsertSignatureExchange,
   type EscrowEvent, type InsertEscrowEvent,
-  type PreSignedTransaction, type InsertPreSignedTransaction
+  type PreSignedTransaction, type InsertPreSignedTransaction,
+  type Dispute, type InsertDispute
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -69,23 +70,32 @@ export interface IStorage {
     broadcastedAt?: Date;
     confirmedAt?: Date;
   }): Promise<PreSignedTransaction | undefined>;
+
+  // Dispute operations
+  createDispute(dispute: InsertDispute): Promise<Dispute>;
+  getDisputesByLoan(loanId: number): Promise<Dispute[]>;
+  updateDispute(id: number, updates: Partial<Dispute>): Promise<Dispute | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private loans: Map<number, Loan>;
   private loanOffers: Map<number, LoanOffer>;
+  private disputes: Map<number, Dispute>;
   private currentUserId: number;
   private currentLoanId: number;
   private currentOfferId: number;
+  private currentDisputeId: number;
 
   constructor() {
     this.users = new Map();
     this.loans = new Map();
     this.loanOffers = new Map();
+    this.disputes = new Map();
     this.currentUserId = 1;
     this.currentLoanId = 1;
     this.currentOfferId = 1;
+    this.currentDisputeId = 1;
 
     // Initialize with mock data
     this.initializeMockData();
@@ -692,6 +702,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(preSignedTransactions.id, id))
       .returning();
     return transaction || undefined;
+  }
+
+  // Dispute Operations
+  async createDispute(dispute: InsertDispute): Promise<Dispute> {
+    const [newDispute] = await db.insert(disputes).values(dispute).returning();
+    return newDispute;
+  }
+
+  async getDisputesByLoan(loanId: number): Promise<Dispute[]> {
+    return await db.select().from(disputes).where(eq(disputes.loanId, loanId));
+  }
+
+  async updateDispute(id: number, updates: Partial<Dispute>): Promise<Dispute | undefined> {
+    const [updated] = await db
+      .update(disputes)
+      .set(updates)
+      .where(eq(disputes.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

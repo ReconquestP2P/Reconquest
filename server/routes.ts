@@ -2298,6 +2298,145 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // File dispute
+  app.post("/api/loans/:id/dispute", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+      const { disputeType, evidence } = req.body;
+
+      // Get loan and verify party
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower or lender can file dispute
+      if (loan.borrowerId !== userId && loan.lenderId !== userId) {
+        return res.status(403).json({ message: "Only loan parties can file disputes" });
+      }
+
+      // Validate dispute type
+      const validTypes = ["borrower_default", "lender_non_payout", "other"];
+      if (!validTypes.includes(disputeType)) {
+        return res.status(400).json({ message: "Invalid dispute type" });
+      }
+
+      // Create dispute
+      const dispute = await storage.createDispute({
+        loanId,
+        filedBy: userId,
+        disputeType,
+        evidenceJson: JSON.stringify(evidence || {}),
+        status: "open",
+      });
+
+      // Update loan dispute status
+      await storage.updateLoan(loanId, {
+        disputeStatus: "under_review",
+      });
+
+      res.json({ success: true, dispute });
+    } catch (error) {
+      console.error("Error filing dispute:", error);
+      res.status(500).json({ message: "Failed to file dispute" });
+    }
+  });
+
+  // Get dispute status
+  app.get("/api/loans/:id/dispute", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only loan parties can view dispute
+      if (loan.borrowerId !== userId && loan.lenderId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const disputes = await storage.getDisputesByLoan(loanId);
+      res.json({ disputes, loanDisputeStatus: loan.disputeStatus });
+    } catch (error) {
+      console.error("Error fetching dispute:", error);
+      res.status(500).json({ message: "Failed to fetch dispute" });
+    }
+  });
+
+  // Resolve dispute (platform admin endpoint)
+  app.post("/api/loans/:id/resolve-dispute", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const { resolution, txTypeToUse } = req.body; // "default" | "cancellation" | "liquidation"
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Fetch appropriate stored tx hex
+      let txHex: string | null = null;
+      if (txTypeToUse === "default" && loan.txDefaultHex) {
+        txHex = loan.txDefaultHex;
+      } else if (txTypeToUse === "cancellation" && loan.txCancellationHex) {
+        txHex = loan.txCancellationHex;
+      } else if (txTypeToUse === "liquidation" && loan.txLiquidationHex) {
+        txHex = loan.txLiquidationHex;
+      }
+
+      if (!txHex) {
+        return res.status(400).json({ message: `No ${txTypeToUse} transaction available` });
+      }
+
+      // Import broadcast service
+      const { broadcastTransaction, generatePlatformSignature } = await import("./services/bitcoin-broadcast.js");
+
+      // Generate temp oracle multisig key and sign
+      const platformSig = await generatePlatformSignature(
+        `dispute_${loanId}`,
+        txTypeToUse
+      );
+
+      // Broadcast transaction
+      const broadcast = await broadcastTransaction(txHex);
+
+      if (!broadcast.success) {
+        return res.status(500).json({ message: broadcast.error || "Failed to broadcast" });
+      }
+
+      // Update dispute
+      const disputes = await storage.getDisputesByLoan(loanId);
+      if (disputes.length > 0) {
+        await storage.updateDispute(disputes[0].id, {
+          status: "resolved",
+          resolution,
+          broadcastTxid: broadcast.txid,
+          resolvedAt: new Date(),
+        });
+      }
+
+      // Update loan
+      await storage.updateLoan(loanId, {
+        disputeStatus: "resolved",
+        disputeResolvedAt: new Date(),
+        status: "defaulted",
+      });
+
+      res.json({ 
+        success: true, 
+        txid: broadcast.txid,
+        message: `Dispute resolved. ${txTypeToUse} transaction broadcast: ${broadcast.txid}`
+      });
+    } catch (error) {
+      console.error("Error resolving dispute:", error);
+      res.status(500).json({ message: "Failed to resolve dispute" });
+    }
+  });
+
   // Trigger cooperative close broadcast (when borrower repays loan)
   app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
     try {

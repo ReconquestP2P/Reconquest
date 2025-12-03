@@ -70,6 +70,17 @@ export const loans = pgTable("loans", {
   borrowerKeysGeneratedAt: timestamp("borrower_keys_generated_at"), // When borrower generated ephemeral keys
   lenderKeysGeneratedAt: timestamp("lender_keys_generated_at"), // When lender generated ephemeral keys
   loanStartedAt: timestamp("loan_started_at"),
+  
+  // Dispute Resolution (Platform Intermediary)
+  disputeStatus: text("dispute_status").default("none"), // none, under_review, resolved
+  disputeResolvedAt: timestamp("dispute_resolved_at"),
+  
+  // Pre-signed Transaction Hex Storage (for disputes)
+  txRepaymentHex: text("tx_repayment_hex"), // Cooperative close transaction hex
+  txDefaultHex: text("tx_default_hex"), // Default (borrower non-payment) transaction hex
+  txLiquidationHex: text("tx_liquidation_hex"), // Post-maturity liquidation transaction hex
+  txRecoveryHex: text("tx_recovery_hex"), // Platform recovery transaction hex
+  txCancellationHex: text("tx_cancellation_hex"), // Lender-initiated cancellation transaction hex
 });
 
 export const loanOffers = pgTable("loan_offers", {
@@ -186,6 +197,19 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+export const disputes = pgTable("disputes", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  filedBy: integer("filed_by").notNull(), // userId of party filing dispute
+  disputeType: text("dispute_type").notNull(), // "borrower_default", "lender_non_payout", "other"
+  evidenceJson: text("evidence_json").notNull(), // JSON blob with evidence from both parties
+  status: text("status").notNull().default("open"), // open, under_review, resolved, dismissed
+  resolution: text("resolution"), // Resolution decision
+  broadcastTxid: text("broadcast_txid"), // TXID of broadcast tx if dispute resulted in on-chain action
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 export const insertLoanSchema = createInsertSchema(loans).omit({
   id: true,
   borrowerId: true,
@@ -211,6 +235,13 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   fiatTransferConfirmed: true,
   borrowerConfirmedReceipt: true,
   loanStartedAt: true,
+  disputeStatus: true,
+  disputeResolvedAt: true,
+  txRepaymentHex: true,
+  txDefaultHex: true,
+  txLiquidationHex: true,
+  txRecoveryHex: true,
+  txCancellationHex: true,
 });
 
 export const insertLoanOfferSchema = createInsertSchema(loanOffers).omit({
@@ -268,6 +299,13 @@ export const insertPreSignedTransactionSchema = createInsertSchema(preSignedTran
   confirmedAt: true,
 });
 
+export const insertDisputeSchema = createInsertSchema(disputes).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+  broadcastTxid: true,
+});
+
 // TypeScript Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -277,6 +315,8 @@ export type LoanOffer = typeof loanOffers.$inferSelect;
 export type InsertLoanOffer = z.infer<typeof insertLoanOfferSchema>;
 export type UserAchievement = typeof userAchievements.$inferSelect;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type Dispute = typeof disputes.$inferSelect;
+export type InsertDispute = z.infer<typeof insertDisputeSchema>;
 
 // WASM Escrow Types
 export type EscrowSession = typeof escrowSessions.$inferSelect;
