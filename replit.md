@@ -139,3 +139,47 @@ Preferred communication style: Simple, everyday language.
 - **API**: `POST /api/loans/:id/cooperative-close` - Triggers broadcast with security checks
 - **Frontend**: `client/src/components/repayment-modal.tsx` - User interface
 - **Storage**: Transactions auto-stored when ephemeral keys generated
+
+## Bitcoin Testnet Integration (December 2025 - NEW)
+
+### Real Bitcoin RPC Support
+**Implemented December 5, 2025:**
+- ✅ Bitcoin RPC Client (`server/services/bitcoin-rpc-client.ts`): Real connection to testnet node via axios
+- ✅ Multisig Service (`server/services/multisig-service.ts`): 2-of-3 multisig address generation & collateral monitoring
+- ✅ Pre-signed TX Builder (`server/services/presigned-tx-builder.ts`): Real secp256k1 signing with Firefish ephemeral key destruction
+- ✅ Bitcoin Broadcast Integration: Real testnet broadcast with fallback to mock mode
+
+### Testnet Configuration (.env)
+```
+BITCOIN_RPC_URL=http://localhost:18332          # Bitcoin Core RPC endpoint
+BITCOIN_RPC_USER=bitcoin                        # RPC username
+BITCOIN_RPC_PASS=password                       # RPC password
+BITCOIN_NETWORK=testnet                         # testnet or regtest
+```
+
+### Ephemeral Key Security Implementation
+1. **Key Generation**: `PreSignedTxBuilder.generateEphemeralKeypair()` creates in-memory keypair
+2. **Pre-signing**: Private key used to sign recovery/cooperative_close/default/liquidation transactions
+3. **Key Destruction**: `Uint8Array.fill(0)` wipes private key immediately in finally block
+4. **No Key Storage**: Keys never persist—only public keys and signatures stored
+5. **User Download**: Pre-signed transaction JSON files downloaded (no private keys exposed)
+
+### Transaction Types Supported
+- **recovery**: Borrower can broadcast if platform disappears
+- **cooperative_close**: Normal loan repayment with borrower + lender signatures
+- **default**: Triggered if borrower fails to repay (liquidates collateral to lender)
+- **liquidation**: Post-maturity forced close splitting collateral
+- **repayment**: Frontend-initiated cooperative close trigger
+
+### Real Testnet Flow
+1. **Lender funds loan**: Public key generated for multisig (private key destroyed)
+2. **Multisig created**: 2-of-3 escrow address generated via RPC
+3. **Borrower deposits BTC**: Real Bitcoin testnet transaction to escrow
+4. **Both sign recovery files**: Ephemeral keys generated → signed → destroyed
+5. **Dispute/Repayment**: Platform aggregates signatures + broadcasts real transaction
+6. **TXID returned**: Transaction ID from Bitcoin testnet in response
+
+### Graceful Fallback
+- If BITCOIN_RPC_URL not set: Uses mock mode (returns mock TXIDs)
+- If RPC unreachable: Logs warning, continues in mock mode
+- Production-ready for switching between mock → real testnet → mainnet
