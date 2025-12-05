@@ -5,8 +5,8 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
+import { createHash } from 'crypto';
 import { getRandomValues } from 'crypto';
-import crypto from 'crypto';
 
 export interface TransactionTemplate {
   txType: 'recovery' | 'cooperative_close' | 'default' | 'liquidation';
@@ -30,7 +30,7 @@ export class PreSignedTxBuilder {
   static generateEphemeralKeypair(): { publicKey: string; privateKey: Uint8Array } {
     // Generate random 32-byte private key
     const privateKey = new Uint8Array(32);
-    crypto.getRandomValues(privateKey);
+    getRandomValues(privateKey);
 
     // Get public key from private key
     const publicKey = secp256k1.getPublicKey(privateKey);
@@ -60,10 +60,11 @@ export class PreSignedTxBuilder {
       // Real implementation would use bitcoinjs-lib or similar
       const txHex = this.generateMockTxHex('recovery', escrowAddress, borrowerReturnAddress);
 
-      // Sign transaction - secp256k1 requires Uint8Array message
+      // Sign transaction - hash with sha256, then sign
       const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
-      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
+      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHashStr, 'hex')).digest());
+      const sig = secp256k1.sign(msgHash, privateKey);
+      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
 
       return {
         txType: 'recovery',
@@ -99,10 +100,11 @@ export class PreSignedTxBuilder {
         borrowerReturnAddress
       );
 
-      // Sign transaction - secp256k1 requires Uint8Array message
+      // Sign transaction - hash with sha256, then sign
       const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
-      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
+      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHashStr, 'hex')).digest());
+      const sig = secp256k1.sign(msgHash, privateKey);
+      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
 
       return {
         txType: 'cooperative_close',
@@ -132,10 +134,11 @@ export class PreSignedTxBuilder {
       // Mock: Create transaction hex for default
       const txHex = this.generateMockTxHex('default', escrowAddress, lenderRecoveryAddress);
 
-      // Sign transaction - secp256k1 requires Uint8Array message
+      // Sign transaction - hash with sha256, then sign
       const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
-      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
+      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHashStr, 'hex')).digest());
+      const sig = secp256k1.sign(msgHash, privateKey);
+      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
 
       return {
         txType: 'default',
@@ -166,10 +169,11 @@ export class PreSignedTxBuilder {
       // Mock: Create transaction hex for liquidation
       const txHex = this.generateMockTxHex('liquidation', escrowAddress, borrowerReturnAddress);
 
-      // Sign transaction - secp256k1 requires Uint8Array message
+      // Sign transaction - hash with sha256, then sign
       const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
-      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
+      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHashStr, 'hex')).digest());
+      const sig = secp256k1.sign(msgHash, privateKey);
+      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
 
       return {
         txType: 'liquidation',

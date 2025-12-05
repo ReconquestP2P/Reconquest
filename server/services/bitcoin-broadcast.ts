@@ -11,6 +11,7 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
+import { createHash } from 'crypto';
 import type { PreSignedTransaction } from '@shared/schema';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
@@ -230,9 +231,10 @@ export async function generatePlatformSignature(
     const { publicKey, privateKey } = PreSignedTxBuilder.generateEphemeralKeypair();
 
     try {
-      // Sign with ephemeral key - secp256k1 requires Uint8Array message
-      const txHashBytes = new Uint8Array(Buffer.from(txHash, 'hex'));
-      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
+      // Sign with ephemeral key - hash with sha256, then sign
+      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHash, 'hex')).digest());
+      const sig = secp256k1.sign(msgHash, privateKey);
+      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
 
       console.log(`✅ Platform signature generated (ephemeral key)`);
       console.log(`   Pubkey: ${publicKey.slice(0, 20)}...`);
