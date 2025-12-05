@@ -11,10 +11,22 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import type { PreSignedTransaction } from '@shared/schema';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
+
+// Configure secp256k1 v3 with Node.js crypto hash functions (if not already done)
+if (!secp256k1.hashes.sha256) {
+  secp256k1.hashes.sha256 = (message: Uint8Array): Uint8Array => {
+    return new Uint8Array(createHash('sha256').update(message).digest());
+  };
+}
+if (!secp256k1.hashes.hmacSha256) {
+  secp256k1.hashes.hmacSha256 = (key: Uint8Array, message: Uint8Array): Uint8Array => {
+    return new Uint8Array(createHmac('sha256', key).update(message).digest());
+  };
+}
 
 export interface SignatureAggregationResult {
   success: boolean;
@@ -174,8 +186,32 @@ async function verifySignature(
 }
 
 /**
+ * Broadcast transaction via public Mempool.space testnet API
+ * This is a fallback when local Bitcoin RPC is not available
+ */
+async function broadcastViaMempoolSpace(txHex: string): Promise<string> {
+  const axios = (await import('axios')).default;
+  
+  console.log('📡 Broadcasting via Mempool.space testnet API...');
+  
+  const response = await axios.post(
+    'https://mempool.space/testnet/api/tx',
+    txHex,
+    {
+      headers: { 'Content-Type': 'text/plain' },
+      timeout: 30000,
+    }
+  );
+  
+  // Mempool.space returns the txid as plain text
+  const txid = response.data;
+  console.log(`✅ Transaction broadcast via Mempool.space: ${txid}`);
+  return txid;
+}
+
+/**
  * Broadcast transaction to Bitcoin testnet
- * Uses real RPC if available, falls back to mock for development
+ * Priority: 1) Local RPC, 2) Mempool.space API, 3) Mock fallback
  */
 export async function broadcastTransaction(txHex: string): Promise<BroadcastResult> {
   console.log('📡 Broadcasting transaction to Bitcoin testnet...');
@@ -183,24 +219,36 @@ export async function broadcastTransaction(txHex: string): Promise<BroadcastResu
   try {
     const rpcClient = getBitcoinRpcClient();
 
-    // Try real broadcast if RPC is configured
+    // Try 1: Local Bitcoin RPC if configured
     if (process.env.BITCOIN_RPC_URL) {
       try {
         const txid = await rpcClient.broadcastTransaction(txHex);
-        console.log(`✅ Transaction broadcast successful: ${txid}`);
+        console.log(`✅ Transaction broadcast via local RPC: ${txid}`);
 
         return {
           success: true,
           txid,
         };
       } catch (rpcError) {
-        console.warn('⚠️  RPC broadcast failed, falling back to mock:', rpcError);
+        console.warn('⚠️  Local RPC failed, trying Mempool.space API...');
       }
     }
 
-    // Fallback to mock for development
+    // Try 2: Mempool.space public testnet API
+    try {
+      const txid = await broadcastViaMempoolSpace(txHex);
+      return {
+        success: true,
+        txid,
+      };
+    } catch (mempoolError) {
+      console.warn('⚠️  Mempool.space API failed, falling back to mock:', 
+        mempoolError instanceof Error ? mempoolError.message : 'Unknown error');
+    }
+
+    // Fallback 3: Mock for development
     const mockTxid = generateMockTxid(txHex);
-    console.log(`✅ Transaction broadcast (mock): ${mockTxid}`);
+    console.log(`✅ Transaction broadcast (mock fallback): ${mockTxid}`);
 
     return {
       success: true,
@@ -231,10 +279,10 @@ export async function generatePlatformSignature(
     const { publicKey, privateKey } = PreSignedTxBuilder.generateEphemeralKeypair();
 
     try {
-      // Sign with ephemeral key - hash with sha256, then sign
-      const msgHash = new Uint8Array(createHash('sha256').update(Buffer.from(txHash, 'hex')).digest());
-      const sig = secp256k1.sign(msgHash, privateKey);
-      const signature = Buffer.from(sig.toDERRawBytes()).toString('hex');
+      // Sign with ephemeral key - secp256k1.sign() returns Uint8Array (64-byte compact signature)
+      const msgBytes = Buffer.from(txHash, 'hex');
+      const sigBytes = secp256k1.sign(msgBytes, privateKey);
+      const signature = Buffer.from(sigBytes).toString('hex');
 
       console.log(`✅ Platform signature generated (ephemeral key)`);
       console.log(`   Pubkey: ${publicKey.slice(0, 20)}...`);

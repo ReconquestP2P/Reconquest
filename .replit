@@ -62,7 +62,7 @@ integrations = ["javascript_mem_db==1.0.0", "javascript_database==1.0.0", "javas
 [userenv]
 
 [userenv.shared]
-BITCOIN_RPC_URL = "=http://127.0.0.1:18332"
+BITCOIN_RPC_URL = "http://127.0.0.1:18332"
 BITCOIN_RPC_USER = "jorge_fest"
 BITCOIN_RPC_PASS = "testeando_Sparrow"
 BITCOIN_NETWORK = "testnet"
