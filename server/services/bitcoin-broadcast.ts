@@ -230,8 +230,9 @@ export async function generatePlatformSignature(
     const { publicKey, privateKey } = PreSignedTxBuilder.generateEphemeralKeypair();
 
     try {
-      // Sign with ephemeral key
-      const signature = secp256k1.sign(txHash, privateKey).toDERRawBytes('hex');
+      // Sign with ephemeral key - secp256k1 requires Uint8Array message
+      const txHashBytes = new Uint8Array(Buffer.from(txHash, 'hex'));
+      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
 
       console.log(`✅ Platform signature generated (ephemeral key)`);
       console.log(`   Pubkey: ${publicKey.slice(0, 20)}...`);

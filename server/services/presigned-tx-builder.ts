@@ -5,7 +5,8 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
-import { randomBytes } from 'crypto';
+import { getRandomValues } from 'crypto';
+import crypto from 'crypto';
 
 export interface TransactionTemplate {
   txType: 'recovery' | 'cooperative_close' | 'default' | 'liquidation';
@@ -27,7 +28,11 @@ export class PreSignedTxBuilder {
    * Returns pubkey (safe to store), destroys privkey after signing
    */
   static generateEphemeralKeypair(): { publicKey: string; privateKey: Uint8Array } {
-    const privateKey = secp256k1.utils.randomPrivateKey();
+    // Generate random 32-byte private key
+    const privateKey = new Uint8Array(32);
+    crypto.getRandomValues(privateKey);
+
+    // Get public key from private key
     const publicKey = secp256k1.getPublicKey(privateKey);
 
     // Return compressed pubkey format (33 bytes = 66 hex chars)
@@ -55,16 +60,17 @@ export class PreSignedTxBuilder {
       // Real implementation would use bitcoinjs-lib or similar
       const txHex = this.generateMockTxHex('recovery', escrowAddress, borrowerReturnAddress);
 
-      // Sign transaction
-      const txHash = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const signature = secp256k1.sign(txHash, privateKey).toDERRawBytes('hex');
+      // Sign transaction - secp256k1 requires Uint8Array message
+      const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
+      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
+      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
 
       return {
         txType: 'recovery',
         txHex,
         signature,
         pubkey: borrowerPubkey,
-        txHash: txHash.slice(0, 32),
+        txHash: txHashStr.slice(0, 32),
       };
     } finally {
       // CRITICAL: Wipe private key from memory
@@ -93,16 +99,17 @@ export class PreSignedTxBuilder {
         borrowerReturnAddress
       );
 
-      // Sign transaction
-      const txHash = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const signature = secp256k1.sign(txHash, privateKey).toDERRawBytes('hex');
+      // Sign transaction - secp256k1 requires Uint8Array message
+      const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
+      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
+      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
 
       return {
         txType: 'cooperative_close',
         txHex,
         signature,
-        pubkey: secp256k1.getPublicKey(privateKey).toString('hex'),
-        txHash: txHash.slice(0, 32),
+        pubkey: Buffer.from(secp256k1.getPublicKey(privateKey)).toString('hex'),
+        txHash: txHashStr.slice(0, 32),
       };
     } finally {
       // CRITICAL: Wipe private key from memory
@@ -125,16 +132,17 @@ export class PreSignedTxBuilder {
       // Mock: Create transaction hex for default
       const txHex = this.generateMockTxHex('default', escrowAddress, lenderRecoveryAddress);
 
-      // Sign transaction
-      const txHash = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const signature = secp256k1.sign(txHash, privateKey).toDERRawBytes('hex');
+      // Sign transaction - secp256k1 requires Uint8Array message
+      const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
+      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
+      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
 
       return {
         txType: 'default',
         txHex,
         signature,
         pubkey: borrowerPubkey,
-        txHash: txHash.slice(0, 32),
+        txHash: txHashStr.slice(0, 32),
       };
     } finally {
       // CRITICAL: Wipe private key from memory
@@ -158,16 +166,17 @@ export class PreSignedTxBuilder {
       // Mock: Create transaction hex for liquidation
       const txHex = this.generateMockTxHex('liquidation', escrowAddress, borrowerReturnAddress);
 
-      // Sign transaction
-      const txHash = Buffer.from(txHex).toString('hex').slice(0, 64);
-      const signature = secp256k1.sign(txHash, privateKey).toDERRawBytes('hex');
+      // Sign transaction - secp256k1 requires Uint8Array message
+      const txHashStr = Buffer.from(txHex).toString('hex').slice(0, 64);
+      const txHashBytes = new Uint8Array(Buffer.from(txHashStr, 'hex'));
+      const signature = secp256k1.sign(txHashBytes, privateKey).toDERRawBytes('hex');
 
       return {
         txType: 'liquidation',
         txHex,
         signature,
         pubkey: platformPubkey,
-        txHash: txHash.slice(0, 32),
+        txHash: txHashStr.slice(0, 32),
       };
     } finally {
       // CRITICAL: Wipe private key from memory
