@@ -35,6 +35,10 @@ externalPort = 3000
 localPort = 41137
 externalPort = 5000
 
+[[ports]]
+localPort = 45229
+externalPort = 4200
+
 [workflows]
 runButton = "Project"
 
@@ -57,7 +61,7 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_mem_db==1.0.0", "javascript_database==1.0.0", "javascript_log_in_with_replit==1.0.0", "javascript_sendgrid==1.0.0"]
+integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "javascript_sendgrid:1.0.0"]
 
 [userenv]
 
