@@ -11,7 +11,7 @@ import type { Loan, LoanOutcome, DisputeEvidence } from '@shared/schema';
 export interface OutcomeDecision {
   outcome: LoanOutcome;
   ruleFired: string;
-  txTypeToUse: 'repayment' | 'default' | 'liquidation' | 'cancellation' | 'recovery';
+  txTypeToUse: 'repayment' | 'default' | 'liquidation' | 'cancellation' | 'recovery' | null;
   reasoning: string;
 }
 
@@ -91,7 +91,7 @@ export function decideLoanOutcome(
       return {
         outcome: 'UNDER_REVIEW',
         ruleFired: 'RULE_5_DISPUTED_PAYMENT_CLAIM',
-        txTypeToUse: 'recovery', // Fallback - won't be used for UNDER_REVIEW
+        txTypeToUse: null, // No transaction for UNDER_REVIEW - dispute remains pending
         reasoning: 'Borrower claims payment was made but lender has not confirmed. Past due date - requires investigation.',
       };
     }
@@ -101,18 +101,23 @@ export function decideLoanOutcome(
   return {
     outcome: 'UNDER_REVIEW',
     ruleFired: 'RULE_0_INSUFFICIENT_EVIDENCE',
-    txTypeToUse: 'recovery', // Fallback - won't be used
+    txTypeToUse: null, // No transaction for UNDER_REVIEW - dispute remains pending
     reasoning: 'Loan is not yet due and no clear resolution criteria met. Keeping under review.',
   };
 }
 
 /**
  * Map outcome to the corresponding pre-signed transaction hex field
+ * Returns null for UNDER_REVIEW outcomes (txType === null)
  */
 export function getTransactionHexForOutcome(
   loan: Loan,
   txType: OutcomeDecision['txTypeToUse']
 ): string | null {
+  if (txType === null) {
+    return null; // No transaction for UNDER_REVIEW - dispute remains pending
+  }
+  
   switch (txType) {
     case 'repayment':
       return loan.txRepaymentHex;

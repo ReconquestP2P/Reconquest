@@ -183,3 +183,60 @@ BITCOIN_NETWORK=testnet                         # testnet or regtest
 - If BITCOIN_RPC_URL not set: Uses mock mode (returns mock TXIDs)
 - If RPC unreachable: Logs warning, continues in mock mode
 - Production-ready for switching between mock → real testnet → mainnet
+
+## Deterministic Outcome Engine (December 2025 - NEW)
+
+### Overview
+The platform NEVER "chooses a side" in disputes. Instead, a pure function maps objective facts to one of the pre-signed transaction types. This ensures fair, transparent, and auditable dispute resolution.
+
+### LoanOutcome Enum
+```typescript
+type LoanOutcome = 
+  | 'COOPERATIVE_CLOSE'  // Normal repayment - borrower paid, return collateral
+  | 'DEFAULT'            // Borrower failed to pay - collateral to lender
+  | 'LIQUIDATION'        // Price dropped below threshold - liquidate collateral
+  | 'CANCELLATION'       // Lender never funded - cancel and return
+  | 'RECOVERY'           // Platform recovery - emergency fund return
+  | 'UNDER_REVIEW';      // Insufficient evidence to decide
+```
+
+### Decision Rules (Priority Order)
+1. **RULE_1_LENDER_NEVER_FUNDED** → CANCELLATION
+   - If lender never funded the loan, borrower collateral (if any) is returned
+2. **RULE_2_PRICE_BELOW_LIQUIDATION** → LIQUIDATION
+   - If BTC price drops below 110% of loan amount, trigger liquidation
+3. **RULE_3_PAST_DUE_UNPAID** → DEFAULT
+   - If loan is overdue AND lender hasn't confirmed payment, collateral to lender
+4. **RULE_4_LENDER_CONFIRMED_PAID** → COOPERATIVE_CLOSE
+   - If lender confirmed payment received, return collateral to borrower
+5. **RULE_0_INSUFFICIENT_EVIDENCE** → UNDER_REVIEW
+   - Otherwise, keep under review
+
+### Key Files
+- `shared/schema.ts`: LoanOutcome enum, DisputeEvidence schema, audit log table
+- `server/services/outcome-engine.ts`: decideLoanOutcome() pure function
+- `server/services/price-service.ts`: Real-time BTC price from CoinGecko
+- `server/routes.ts`: POST /api/loans/:id/resolve-dispute endpoint
+
+### API Endpoint
+```
+POST /api/loans/:id/resolve-dispute
+Authorization: Bearer <admin_token>
+
+Response:
+{
+  "success": true,
+  "outcome": "DEFAULT",
+  "ruleFired": "RULE_3_PAST_DUE_UNPAID",
+  "txTypeUsed": "default",
+  "txid": "abc123...",
+  "reasoning": "Loan is 7 days overdue and lender has not confirmed payment..."
+}
+```
+
+### Audit Trail
+Every dispute resolution is logged to `dispute_audit_logs` table:
+- outcome, ruleFired, txTypeUsed
+- evidenceSnapshot (JSON of loan state at decision time)
+- broadcastTxid, broadcastSuccess
+- triggeredBy (admin user ID), triggeredByRole

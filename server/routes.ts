@@ -2410,8 +2410,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       console.log(`[OUTCOME ENGINE] Loan ${loanId}: ${decision.outcome} via ${decision.ruleFired}`);
       console.log(`[OUTCOME ENGINE] Reasoning: ${decision.reasoning}`);
 
-      // If outcome is UNDER_REVIEW, don't broadcast - need more evidence
-      if (decision.outcome === 'UNDER_REVIEW') {
+      // If outcome is UNDER_REVIEW (txType is null), don't broadcast - need more evidence
+      if (decision.outcome === 'UNDER_REVIEW' || decision.txTypeToUse === null) {
         await storage.createDisputeAuditLog({
           loanId,
           disputeId: null,
@@ -2434,7 +2434,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         });
       }
 
-      // Get the pre-signed transaction hex for this outcome
+      // Get the pre-signed transaction hex for this outcome (txTypeToUse is guaranteed non-null here)
       const txHex = getTransactionHexForOutcome(loan, decision.txTypeToUse);
 
       if (!txHex) {
