@@ -1,0 +1,77 @@
+“Please implement a deterministic outcome engine so the platform never ‘chooses a side’ manually but maps facts → one of the pre‑signed transactions:
+
+Outcome enum + mapping
+
+Add an enum in shared code, e.g.
+LoanOutcome = 'COOPERATIVE_CLOSE' | 'DEFAULT' | 'LIQUIDATION' | 'CANCELLATION' | 'RECOVERY'.
+
+In the loan record, keep the existing hex fields:
+txRepaymentHex, txDefaultHex, txLiquidationHex, txCancellationHex, txRecoveryHex.
+
+Decision function
+
+Implement a pure function, e.g. decideLoanOutcome(loan, evidence, now): LoanOutcome, that uses ONLY:
+
+due date vs current time
+
+whether lender received fiat (from evidence / oracle flag)
+
+collateral price (from Price Oracle)
+
+whether lender funded the loan
+
+Rules (you can hard‑code for now, later read from config/terms):
+
+if lender never funded loan → CANCELLATION
+
+else if price below liquidation threshold → LIQUIDATION
+
+else if now > dueDate and lender_not_paid → DEFAULT
+
+else if lender_confirmed_paid → COOPERATIVE_CLOSE
+
+else → keep dispute UNDER_REVIEW
+
+Wire into dispute resolution
+
+In POST /api/loans/:id/resolve-dispute:
+
+Load loan + dispute evidence.
+
+Call decideLoanOutcome(...).
+
+Select tx hex by outcome:
+
+COOPERATIVE_CLOSE → txRepaymentHex
+
+DEFAULT → txDefaultHex
+
+LIQUIDATION → txLiquidationHex
+
+CANCELLATION → txCancellationHex
+
+RECOVERY → txRecoveryHex
+
+Sign and broadcast that tx using the existing broadcast service.
+
+Store in audit log: outcome, rule that fired, evidence IDs, and TXID.
+
+Admin safety
+
+Ensure only platform/admin can call /resolve-dispute.
+
+Log who triggered it and the computed LoanOutcome.
+
+Return value
+
+API response should include: { outcome, txTypeUsed, txid }.
+
+Please implement this outcome engine and show me:
+
+the decideLoanOutcome function code,
+
+the updated /resolve-dispute handler,
+
+and one example dispute where it decides DEFAULT and broadcasts.”
+
+This gives Replit a precise spec to encode “who gets the funds” in a transparent, rule‑based way.

@@ -2,6 +2,37 @@ import { pgTable, text, serial, integer, decimal, timestamp, boolean } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// =====================================================
+// DETERMINISTIC OUTCOME ENGINE
+// =====================================================
+
+// Loan outcome types for deterministic dispute resolution
+export const LoanOutcomeEnum = z.enum([
+  'COOPERATIVE_CLOSE',  // Normal repayment - borrower paid, return collateral
+  'DEFAULT',            // Borrower failed to pay - collateral to lender
+  'LIQUIDATION',        // Price dropped below threshold - liquidate collateral
+  'CANCELLATION',       // Lender never funded - cancel and return
+  'RECOVERY',           // Platform recovery - emergency fund return
+  'UNDER_REVIEW',       // Insufficient evidence to decide
+]);
+
+export type LoanOutcome = z.infer<typeof LoanOutcomeEnum>;
+
+// Evidence structure for outcome decision
+export const DisputeEvidenceSchema = z.object({
+  lenderFunded: z.boolean(),
+  lenderConfirmedPaid: z.boolean(),
+  borrowerConfirmedReceipt: z.boolean(),
+  currentBtcPriceUsd: z.number(),
+  liquidationThresholdUsd: z.number(),
+  collateralBtc: z.number(),
+  dueDate: z.date().nullable(),
+  loanStatus: z.string(),
+  escrowState: z.string().nullable(),
+});
+
+export type DisputeEvidence = z.infer<typeof DisputeEvidenceSchema>;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -306,6 +337,37 @@ export const insertDisputeSchema = createInsertSchema(disputes).omit({
   broadcastTxid: true,
 });
 
+// Dispute Resolution Audit Log (tracks all deterministic outcome decisions)
+export const disputeAuditLogs = pgTable("dispute_audit_logs", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  disputeId: integer("dispute_id"), // Can be null if resolved without formal dispute
+  
+  // Decision Details
+  outcome: text("outcome").notNull(), // LoanOutcome enum value
+  ruleFired: text("rule_fired").notNull(), // Which rule triggered the decision
+  txTypeUsed: text("tx_type_used").notNull(), // "repayment", "default", "liquidation", etc.
+  
+  // Evidence at time of decision
+  evidenceSnapshot: text("evidence_snapshot").notNull(), // JSON blob of DisputeEvidence
+  
+  // Blockchain Result
+  broadcastTxid: text("broadcast_txid"), // TXID if transaction was broadcast
+  broadcastSuccess: boolean("broadcast_success"),
+  broadcastError: text("broadcast_error"),
+  
+  // Admin/Trigger Info
+  triggeredBy: integer("triggered_by").notNull(), // userId who triggered resolution
+  triggeredByRole: text("triggered_by_role").notNull(), // "admin" or "system"
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertDisputeAuditLogSchema = createInsertSchema(disputeAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // TypeScript Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -327,3 +389,7 @@ export type EscrowEvent = typeof escrowEvents.$inferSelect;
 export type InsertEscrowEvent = z.infer<typeof insertEscrowEventSchema>;
 export type PreSignedTransaction = typeof preSignedTransactions.$inferSelect;
 export type InsertPreSignedTransaction = z.infer<typeof insertPreSignedTransactionSchema>;
+
+// Dispute Audit Log Types
+export type DisputeAuditLog = typeof disputeAuditLogs.$inferSelect;
+export type InsertDisputeAuditLog = z.infer<typeof insertDisputeAuditLogSchema>;
