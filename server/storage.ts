@@ -1,5 +1,5 @@
 import { 
-  users, loans, loanOffers, disputes,
+  users, loans, loanOffers, disputes, disputeAuditLogs,
   escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
@@ -8,7 +8,8 @@ import {
   type SignatureExchange, type InsertSignatureExchange,
   type EscrowEvent, type InsertEscrowEvent,
   type PreSignedTransaction, type InsertPreSignedTransaction,
-  type Dispute, type InsertDispute
+  type Dispute, type InsertDispute,
+  type DisputeAuditLog, type InsertDisputeAuditLog
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -75,6 +76,10 @@ export interface IStorage {
   createDispute(dispute: InsertDispute): Promise<Dispute>;
   getDisputesByLoan(loanId: number): Promise<Dispute[]>;
   updateDispute(id: number, updates: Partial<Dispute>): Promise<Dispute | undefined>;
+
+  // Dispute Audit Log operations
+  createDisputeAuditLog(log: InsertDisputeAuditLog): Promise<DisputeAuditLog>;
+  getDisputeAuditLogs(loanId: number): Promise<DisputeAuditLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -721,6 +726,22 @@ export class DatabaseStorage implements IStorage {
       .where(eq(disputes.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Dispute Audit Log Operations
+  async createDisputeAuditLog(log: InsertDisputeAuditLog): Promise<DisputeAuditLog> {
+    const [auditLog] = await db
+      .insert(disputeAuditLogs)
+      .values(log)
+      .returning();
+    return auditLog;
+  }
+
+  async getDisputeAuditLogs(loanId: number): Promise<DisputeAuditLog[]> {
+    return await db
+      .select()
+      .from(disputeAuditLogs)
+      .where(eq(disputeAuditLogs.loanId, loanId));
   }
 }
 
