@@ -2367,69 +2367,167 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
-  // Resolve dispute (platform admin endpoint)
+  // Resolve dispute (platform admin endpoint) - DETERMINISTIC OUTCOME ENGINE
+  // Platform NEVER "chooses a side" - outcomes are determined by hard-coded rules
   app.post("/api/loans/:id/resolve-dispute", authenticateToken, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
-      const { resolution, txTypeToUse } = req.body; // "default" | "cancellation" | "liquidation"
+      const userId = (req as any).user.id;
+
+      // ADMIN CHECK: Only admins can resolve disputes
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ 
+          message: "Unauthorized. Only platform administrators can resolve disputes." 
+        });
+      }
 
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
 
-      // Fetch appropriate stored tx hex
-      let txHex: string | null = null;
-      if (txTypeToUse === "default" && loan.txDefaultHex) {
-        txHex = loan.txDefaultHex;
-      } else if (txTypeToUse === "cancellation" && loan.txCancellationHex) {
-        txHex = loan.txCancellationHex;
-      } else if (txTypeToUse === "liquidation" && loan.txLiquidationHex) {
-        txHex = loan.txLiquidationHex;
+      // Import outcome engine and price service
+      const { decideLoanOutcome, buildEvidenceFromLoan, getTransactionHexForOutcome } = await import("./services/outcome-engine.js");
+      const { getBtcPrice } = await import("./services/price-service.js");
+
+      // Fetch current BTC price for liquidation check
+      let currentBtcPriceUsd = 97000; // Fallback price
+      try {
+        const priceData = await getBtcPrice();
+        currentBtcPriceUsd = priceData.usd;
+      } catch (e) {
+        console.warn("Could not fetch BTC price, using fallback:", e);
       }
 
+      // Build evidence from loan state and external data
+      const evidence = buildEvidenceFromLoan(loan, currentBtcPriceUsd);
+      const now = new Date();
+
+      // DETERMINISTIC DECISION: Pure function maps facts → outcome
+      const decision = decideLoanOutcome(loan, evidence, now);
+
+      console.log(`[OUTCOME ENGINE] Loan ${loanId}: ${decision.outcome} via ${decision.ruleFired}`);
+      console.log(`[OUTCOME ENGINE] Reasoning: ${decision.reasoning}`);
+
+      // If outcome is UNDER_REVIEW, don't broadcast - need more evidence
+      if (decision.outcome === 'UNDER_REVIEW') {
+        await storage.createDisputeAuditLog({
+          loanId,
+          disputeId: null,
+          outcome: decision.outcome,
+          ruleFired: decision.ruleFired,
+          txTypeUsed: 'none',
+          evidenceSnapshot: JSON.stringify(evidence),
+          broadcastTxid: null,
+          broadcastSuccess: false,
+          broadcastError: 'Insufficient evidence for deterministic outcome',
+          triggeredBy: userId,
+          triggeredByRole: 'admin',
+        });
+
+        return res.status(400).json({
+          outcome: decision.outcome,
+          ruleFired: decision.ruleFired,
+          reasoning: decision.reasoning,
+          message: "Cannot resolve dispute - insufficient evidence for deterministic outcome. Loan remains under review.",
+        });
+      }
+
+      // Get the pre-signed transaction hex for this outcome
+      const txHex = getTransactionHexForOutcome(loan, decision.txTypeToUse);
+
       if (!txHex) {
-        return res.status(400).json({ message: `No ${txTypeToUse} transaction available` });
+        await storage.createDisputeAuditLog({
+          loanId,
+          disputeId: null,
+          outcome: decision.outcome,
+          ruleFired: decision.ruleFired,
+          txTypeUsed: decision.txTypeToUse,
+          evidenceSnapshot: JSON.stringify(evidence),
+          broadcastTxid: null,
+          broadcastSuccess: false,
+          broadcastError: `No ${decision.txTypeToUse} transaction available`,
+          triggeredBy: userId,
+          triggeredByRole: 'admin',
+        });
+
+        return res.status(400).json({ 
+          message: `No ${decision.txTypeToUse} transaction available for outcome ${decision.outcome}`,
+          outcome: decision.outcome,
+          ruleFired: decision.ruleFired,
+        });
       }
 
       // Import broadcast service
-      const { broadcastTransaction, generatePlatformSignature } = await import("./services/bitcoin-broadcast.js");
+      const { broadcastTransaction } = await import("./services/bitcoin-broadcast.js");
 
-      // Generate temp oracle multisig key and sign
-      const platformSig = await generatePlatformSignature(
-        `dispute_${loanId}`,
-        txTypeToUse
-      );
-
-      // Broadcast transaction
+      // Broadcast the deterministically selected transaction
       const broadcast = await broadcastTransaction(txHex);
 
-      if (!broadcast.success) {
-        return res.status(500).json({ message: broadcast.error || "Failed to broadcast" });
+      // Determine final loan status based on outcome
+      let finalLoanStatus: string;
+      switch (decision.outcome) {
+        case 'COOPERATIVE_CLOSE':
+          finalLoanStatus = 'completed';
+          break;
+        case 'DEFAULT':
+        case 'LIQUIDATION':
+          finalLoanStatus = 'defaulted';
+          break;
+        case 'CANCELLATION':
+          finalLoanStatus = 'cancelled';
+          break;
+        case 'RECOVERY':
+          finalLoanStatus = 'recovered';
+          break;
+        default:
+          finalLoanStatus = 'resolved';
       }
 
-      // Update dispute
+      // Update dispute if exists
       const disputes = await storage.getDisputesByLoan(loanId);
       if (disputes.length > 0) {
         await storage.updateDispute(disputes[0].id, {
           status: "resolved",
-          resolution,
-          broadcastTxid: broadcast.txid,
+          resolution: `${decision.outcome} - ${decision.reasoning}`,
+          broadcastTxid: broadcast.success ? broadcast.txid : null,
           resolvedAt: new Date(),
         });
       }
 
-      // Update loan
+      // Update loan status
       await storage.updateLoan(loanId, {
         disputeStatus: "resolved",
         disputeResolvedAt: new Date(),
-        status: "defaulted",
+        status: finalLoanStatus,
+      });
+
+      // Create audit log
+      await storage.createDisputeAuditLog({
+        loanId,
+        disputeId: disputes.length > 0 ? disputes[0].id : null,
+        outcome: decision.outcome,
+        ruleFired: decision.ruleFired,
+        txTypeUsed: decision.txTypeToUse,
+        evidenceSnapshot: JSON.stringify(evidence),
+        broadcastTxid: broadcast.success ? broadcast.txid : null,
+        broadcastSuccess: broadcast.success,
+        broadcastError: broadcast.success ? null : (broadcast.error || 'Unknown error'),
+        triggeredBy: userId,
+        triggeredByRole: 'admin',
       });
 
       res.json({ 
-        success: true, 
+        success: broadcast.success,
+        outcome: decision.outcome,
+        ruleFired: decision.ruleFired,
+        txTypeUsed: decision.txTypeToUse,
         txid: broadcast.txid,
-        message: `Dispute resolved. ${txTypeToUse} transaction broadcast: ${broadcast.txid}`
+        reasoning: decision.reasoning,
+        message: broadcast.success 
+          ? `Dispute resolved via ${decision.outcome}. Transaction broadcast: ${broadcast.txid}`
+          : `Decision made (${decision.outcome}) but broadcast failed: ${broadcast.error}`,
       });
     } catch (error) {
       console.error("Error resolving dispute:", error);
