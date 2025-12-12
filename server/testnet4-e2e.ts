@@ -12,7 +12,7 @@
  * Run: npx tsx server/testnet4-e2e.ts
  */
 
-import * as secp256k1 from '@noble/secp256k1';
+import * as tinysecp from 'tiny-secp256k1';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { TESTNET4_CONFIG } from './services/testnet4-config.js';
 import {
@@ -185,12 +185,25 @@ function createBIP143Sighash(
 }
 
 /**
- * Sign with secp256k1 and append SIGHASH_ALL byte
+ * Sign with tiny-secp256k1 and append SIGHASH_ALL byte
+ * tiny-secp256k1 returns compact format (64 bytes: r || s) and produces
+ * signatures that are Bitcoin-compatible (verified against Bitcoin Core)
  */
-async function signWithSighashAll(privateKeyHex: string, sighash: Uint8Array): Promise<Uint8Array> {
+function signWithSighashAll(privateKeyHex: string, sighash: Uint8Array): Uint8Array {
   const privateKey = hexToBytes(privateKeyHex);
-  const signature = await secp256k1.signAsync(sighash, privateKey);
-  const derSig = signature.toDERRawBytes();
+  
+  // tiny-secp256k1.sign returns compact signature (64 bytes: r || s)
+  const compactSig = tinysecp.sign(sighash, privateKey);
+  if (!compactSig) {
+    throw new Error('Failed to sign with tiny-secp256k1');
+  }
+  
+  // Extract r and s from compact format (each 32 bytes)
+  const r = compactSig.slice(0, 32);
+  const s = compactSig.slice(32, 64);
+  
+  // Convert to DER format
+  const derSig = compactToDER(r, s);
   
   // Append SIGHASH_ALL (0x01)
   const sigWithHashType = new Uint8Array(derSig.length + 1);
@@ -198,6 +211,52 @@ async function signWithSighashAll(privateKeyHex: string, sighash: Uint8Array): P
   sigWithHashType[derSig.length] = 0x01;
   
   return sigWithHashType;
+}
+
+/**
+ * Convert compact r,s bytes to DER format
+ */
+function compactToDER(r: Uint8Array, s: Uint8Array): Uint8Array {
+  // Remove leading zeros but keep at least one byte
+  let rTrimmed = trimLeadingZeros(r);
+  let sTrimmed = trimLeadingZeros(s);
+  
+  // Add leading zero if high bit is set (to prevent negative interpretation)
+  if (rTrimmed[0] >= 0x80) {
+    const padded = new Uint8Array(rTrimmed.length + 1);
+    padded[0] = 0;
+    padded.set(rTrimmed, 1);
+    rTrimmed = padded;
+  }
+  if (sTrimmed[0] >= 0x80) {
+    const padded = new Uint8Array(sTrimmed.length + 1);
+    padded[0] = 0;
+    padded.set(sTrimmed, 1);
+    sTrimmed = padded;
+  }
+  
+  // DER format: 0x30 [total-len] 0x02 [r-len] [r] 0x02 [s-len] [s]
+  const totalLen = 2 + rTrimmed.length + 2 + sTrimmed.length;
+  const der = new Uint8Array(2 + totalLen);
+  
+  let offset = 0;
+  der[offset++] = 0x30; // SEQUENCE tag
+  der[offset++] = totalLen;
+  der[offset++] = 0x02; // INTEGER tag for r
+  der[offset++] = rTrimmed.length;
+  der.set(rTrimmed, offset);
+  offset += rTrimmed.length;
+  der[offset++] = 0x02; // INTEGER tag for s
+  der[offset++] = sTrimmed.length;
+  der.set(sTrimmed, offset);
+  
+  return der;
+}
+
+function trimLeadingZeros(bytes: Uint8Array): Uint8Array {
+  let i = 0;
+  while (i < bytes.length - 1 && bytes[i] === 0) i++;
+  return bytes.slice(i);
 }
 
 /**
@@ -485,12 +544,12 @@ async function main() {
     console.log(`\n🔏 Sighash: ${bytesToHex(sighash)}`);
     
     // Sign with borrower and platform (2-of-3)
-    console.log('\n✍️ Signing with Borrower key...');
-    const sig1 = await signWithSighashAll(multisig.keypairs.borrower.privateKeyHex, sighash);
+    console.log('\n✍️ Signing with Borrower key (using tiny-secp256k1)...');
+    const sig1 = signWithSighashAll(multisig.keypairs.borrower.privateKeyHex, sighash);
     console.log(`   Signature 1: ${bytesToHex(sig1).slice(0, 40)}...`);
     
-    console.log('\n✍️ Signing with Platform key...');
-    const sig2 = await signWithSighashAll(multisig.keypairs.platform.privateKeyHex, sighash);
+    console.log('\n✍️ Signing with Platform key (using tiny-secp256k1)...');
+    const sig2 = signWithSighashAll(multisig.keypairs.platform.privateKeyHex, sighash);
     console.log(`   Signature 2: ${bytesToHex(sig2).slice(0, 40)}...`);
     
     // Build the complete transaction
@@ -503,11 +562,20 @@ async function main() {
     const borrowerIndex = sortedPubkeys.indexOf(borrowerPubkey);
     const platformIndex = sortedPubkeys.indexOf(platformPubkey);
     
+    console.log(`\n🔑 Pubkey ordering debug:`);
+    console.log(`   Borrower pubkey: ${borrowerPubkey}`);
+    console.log(`   Borrower index in sorted: ${borrowerIndex}`);
+    console.log(`   Platform pubkey: ${platformPubkey}`);
+    console.log(`   Platform index in sorted: ${platformIndex}`);
+    console.log(`   Sorted pubkeys: ${JSON.stringify(sortedPubkeys, null, 2)}`);
+    
     let orderedSig1: Uint8Array, orderedSig2: Uint8Array;
     if (borrowerIndex < platformIndex) {
+      console.log(`   Order: Borrower sig first, Platform sig second`);
       orderedSig1 = sig1;
       orderedSig2 = sig2;
     } else {
+      console.log(`   Order: Platform sig first, Borrower sig second`);
       orderedSig1 = sig2;
       orderedSig2 = sig1;
     }
