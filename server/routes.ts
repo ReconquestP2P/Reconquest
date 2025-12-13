@@ -924,13 +924,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(loan);
     } catch (error) {
+      console.error("❌ Loan creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error", 
           errors: error.errors 
         });
       }
-      res.status(500).json({ message: "Internal server error" });
+      res.status(500).json({ message: "Internal server error", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
