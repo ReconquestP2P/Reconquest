@@ -1086,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currency: updatedLoan.currency,
           collateralBtc: updatedLoan.collateralBtc,
           escrowAddress: updatedLoan.escrowAddress!,
-          dashboardUrl: `${baseUrl}/borrower-dashboard`,
+          dashboardUrl: `${baseUrl}/borrower`,
         });
         
         console.log(`📧 Sent deposit notification to borrower: ${borrower.email}`);
@@ -1158,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currency: updatedLoan.currency,
               interestRate: updatedLoan.interestRate,
               maturityDate: maturityDate,
-              dashboardUrl: `${baseUrl}/lender-dashboard`,
+              dashboardUrl: `${baseUrl}/lender`,
             });
             
             console.log(`📧 Sent funding notification to lender: ${lender.email}`);
@@ -1412,7 +1412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/lender-dashboard" 
+                <a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/lender" 
                    style="display: inline-block; background: #e74c3c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                   Transfer funds
                 </a>
