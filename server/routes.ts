@@ -1076,7 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (borrower && updatedLoan) {
         // Send email to borrower with deposit instructions
         const { sendBorrowerDepositNotification } = await import('./email.js');
-        const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 'https://your-app.replit.app';
+        const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
         
         await sendBorrowerDepositNotification({
           to: borrower.email,
@@ -1143,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (lender) {
             const { sendLenderFundingNotification } = await import('./email.js');
-            const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 'https://your-app.replit.app';
+            const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
             
             // Calculate maturity date from loan term
             const maturityDate = updatedLoan.dueDate 
@@ -1412,7 +1412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/lender" 
+                <a href="${process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`}/lender" 
                    style="display: inline-block; background: #e74c3c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                   Transfer funds
                 </a>
