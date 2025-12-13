@@ -195,7 +195,7 @@ export async function sendBorrowerDepositNotification(params: {
 
   return await sendEmail({
     to,
-    from: 'Reconquest <noreply@reconquest.app>',
+    from: 'Reconquest <onboarding@resend.dev>',
     subject: `🎉 Your Loan #${loanId} Has Been Funded - Deposit Your Collateral`,
     html,
   });
