@@ -1947,6 +1947,94 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // ========== ADMIN DISPUTE RESOLUTION ENDPOINTS ==========
+  // Deterministic outcome-based dispute resolution
+  
+  // Get all disputes under review
+  app.get("/api/admin/disputes", authenticateToken, async (req, res) => {
+    try {
+      // Verify admin role
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { getDisputesUnderReview } = await import('./services/dispute-resolution.js');
+      const disputesUnderReview = await getDisputesUnderReview();
+      
+      res.json(disputesUnderReview);
+    } catch (error) {
+      console.error("Error fetching disputes:", error);
+      res.status(500).json({ message: "Failed to fetch disputes" });
+    }
+  });
+
+  // Resolve a dispute with a decision
+  app.post("/api/admin/disputes/:loanId/resolve", authenticateToken, async (req, res) => {
+    try {
+      // Verify admin role
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      // Validate request body
+      const { resolveDisputeRequestSchema } = await import('@shared/schema');
+      const parseResult = resolveDisputeRequestSchema.safeParse(req.body);
+      
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid request", 
+          errors: parseResult.error.errors 
+        });
+      }
+      
+      const { decision, adminNotes } = parseResult.data;
+      
+      const { resolveDispute } = await import('./services/dispute-resolution.js');
+      const result = await resolveDispute(loanId, decision, req.user.id, adminNotes);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error resolving dispute:", error);
+      res.status(500).json({ message: "Failed to resolve dispute" });
+    }
+  });
+
+  // Set a loan to under_review status (for testing)
+  app.post("/api/admin/disputes/:loanId/set-under-review", authenticateToken, async (req, res) => {
+    try {
+      // Verify admin role
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const { setLoanUnderReview } = await import('./services/dispute-resolution.js');
+      const updatedLoan = await setLoanUnderReview(loanId);
+      
+      if (!updatedLoan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      res.json({ success: true, loan: updatedLoan });
+    } catch (error) {
+      console.error("Error setting loan under review:", error);
+      res.status(500).json({ message: "Failed to update loan status" });
+    }
+  });
+
   // Test email endpoint
   app.post("/api/test-email", async (req, res) => {
     try {

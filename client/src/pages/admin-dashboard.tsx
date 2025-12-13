@@ -1,14 +1,16 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail, Gavel, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import type { Loan, User } from "@shared/schema";
+import type { Loan, User, Dispute, DisputeDecision } from "@shared/schema";
+import { DECISION_LABELS } from "@shared/schema";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +25,18 @@ interface AdminStats {
 interface LoanWithLtv extends Loan {
   currentLtv?: number;
   ltvStatus?: "healthy" | "warning" | "critical";
+}
+
+interface LoanWithDispute extends Loan {
+  dispute?: Dispute;
+}
+
+interface ResolveDisputeResult {
+  success: boolean;
+  txid?: string;
+  decision: DisputeDecision;
+  error?: string;
+  auditLogId?: number;
 }
 
 const getStatusColor = (status: string) => {
@@ -63,7 +77,7 @@ export default function AdminDashboard() {
   const [adminPassword, setAdminPassword] = useState("");
   const [authError, setAuthError] = useState("");
 
-  const { data: adminStats, isLoading: statsLoading } = useQuery<AdminStats>({
+  const { data: adminStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     refetchInterval: 30000, // Refresh every 30 seconds
     enabled: isAuthenticated, // Only fetch when authenticated
@@ -81,13 +95,79 @@ export default function AdminDashboard() {
     enabled: isAuthenticated, // Only fetch when authenticated
   });
 
-  const { data: btcPrice } = useQuery({
+  const { data: btcPrice, refetch: refetchBtcPrice } = useQuery({
     queryKey: ["/api/btc-price"],
     refetchInterval: 30000,
-    enabled: isAuthenticated, // Only fetch when authenticated
+    enabled: isAuthenticated,
+  });
+
+  const { data: disputes, isLoading: disputesLoading, refetch: refetchDisputes } = useQuery<LoanWithDispute[]>({
+    queryKey: ["/api/admin/disputes"],
+    refetchInterval: 30000,
+    enabled: isAuthenticated,
   });
 
   const { toast } = useToast();
+  const [resolvingLoanId, setResolvingLoanId] = useState<number | null>(null);
+
+  // Refetch all admin data when authentication state changes to true
+  useEffect(() => {
+    if (isAuthenticated) {
+      refetchStats();
+      refetchLoans();
+      refetchUsers();
+      refetchBtcPrice();
+      refetchDisputes();
+    }
+  }, [isAuthenticated]);
+
+  const resolveDisputeMutation = useMutation({
+    mutationFn: async ({ loanId, decision }: { loanId: number; decision: DisputeDecision }): Promise<ResolveDisputeResult> => {
+      const response = await apiRequest(`/api/admin/disputes/${loanId}/resolve`, "POST", { decision });
+      return response.json();
+    },
+    onSuccess: (data: ResolveDisputeResult) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      setResolvingLoanId(null);
+      toast({
+        title: data.success ? "✅ Dispute Resolved" : "⚠️ Broadcast Failed",
+        description: data.success 
+          ? `Decision: ${data.decision}. TXID: ${data.txid?.substring(0, 16)}...`
+          : `Decision recorded. Error: ${data.error}`,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      setResolvingLoanId(null);
+      toast({
+        title: "❌ Resolution Failed",
+        description: error.message || "Failed to resolve dispute",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const setUnderReviewMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      return await apiRequest(`/api/admin/disputes/${loanId}/set-under-review`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      toast({
+        title: "✅ Loan Set Under Review",
+        description: "Loan is now ready for dispute resolution",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Failed",
+        description: error.message || "Failed to set loan under review",
+        variant: "destructive",
+      });
+    },
+  });
 
   const confirmBtcDepositMutation = useMutation({
     mutationFn: async (loanId: number) => {
@@ -112,18 +192,54 @@ export default function AdminDashboard() {
   const handleRefresh = () => {
     refetchLoans();
     refetchUsers();
+    refetchDisputes();
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoggingIn(true);
+    setAuthError("");
     
-    // Check if both email and password are correct
-    if (adminEmail === "admin@reconquestp2p.com" && adminPassword === "admin123") {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setAuthError(data.message || "Login failed. Please check your credentials.");
+        setIsLoggingIn(false);
+        return;
+      }
+      
+      // Check if user has admin role
+      if (data.user?.role !== "admin") {
+        setAuthError("Access denied. Admin privileges required.");
+        setIsLoggingIn(false);
+        return;
+      }
+      
+      // Store the JWT token for API requests
+      localStorage.setItem("auth_token", data.token);
+      // Set authenticated so UI shows dashboard - useEffect will trigger refetches
       setIsAuthenticated(true);
-      setAuthError("");
-    } else {
-      setAuthError("Invalid admin credentials. Please check your email and password.");
+    } catch (error: any) {
+      setAuthError(error.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
     }
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    setIsAuthenticated(false);
+    setAdminEmail("");
+    setAdminPassword("");
   };
 
   // Show login form if not authenticated
@@ -166,8 +282,8 @@ export default function AdminDashboard() {
                 {authError && (
                   <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
                 )}
-                <Button type="submit" className="w-full">
-                  Access Dashboard
+                <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                  {isLoggingIn ? "Logging in..." : "Access Dashboard"}
                 </Button>
               </form>
             </CardContent>
@@ -221,7 +337,7 @@ export default function AdminDashboard() {
             Refresh
           </Button>
           <Button 
-            onClick={() => setIsAuthenticated(false)} 
+            onClick={handleLogout} 
             variant="destructive" 
             className="gap-2"
           >
@@ -317,8 +433,15 @@ export default function AdminDashboard() {
 
       {/* Tabbed Interface for Loans and Users */}
       <Tabs defaultValue="escrow" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="escrow">Pending Escrow</TabsTrigger>
+          <TabsTrigger value="disputes" data-testid="tab-disputes">
+            <Gavel className="h-4 w-4 mr-1" />
+            Disputes
+            {disputes && disputes.length > 0 && (
+              <Badge className="ml-2 bg-red-500 text-white">{disputes.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="loans">All Loans</TabsTrigger>
           <TabsTrigger value="users">Users Management</TabsTrigger>
         </TabsList>
@@ -390,6 +513,137 @@ export default function AdminDashboard() {
                   <p className="text-muted-foreground">No loans pending BTC verification</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="disputes" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gavel className="h-5 w-5" />
+                Dispute Resolution
+              </CardTitle>
+              <CardDescription>
+                Resolve disputes by selecting a deterministic outcome. Each decision maps to a pre-signed transaction.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Loan ID</TableHead>
+                      <TableHead>Borrower</TableHead>
+                      <TableHead>Lender</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Collateral</TableHead>
+                      <TableHead>Dispute Type</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {disputes?.map((loan) => (
+                      <TableRow key={loan.id}>
+                        <TableCell className="font-medium">#{loan.id}</TableCell>
+                        <TableCell>{loan.borrowerId}</TableCell>
+                        <TableCell>{loan.lenderId || "N/A"}</TableCell>
+                        <TableCell>{formatCurrency(Number(loan.amount))} {loan.currency}</TableCell>
+                        <TableCell>{Number(loan.collateralBtc).toFixed(4)} BTC</TableCell>
+                        <TableCell>
+                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                            {loan.dispute?.disputeType || "under_review"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2 flex-wrap">
+                            {(["BORROWER_WINS", "LENDER_WINS", "TIMEOUT_DEFAULT"] as DisputeDecision[]).map((decision) => (
+                              <AlertDialog key={decision}>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant={decision === "BORROWER_WINS" ? "default" : decision === "LENDER_WINS" ? "secondary" : "outline"}
+                                    data-testid={`button-resolve-${loan.id}-${decision}`}
+                                    disabled={resolveDisputeMutation.isPending}
+                                  >
+                                    {DECISION_LABELS[decision].icon} {DECISION_LABELS[decision].title}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                                      Confirm Dispute Resolution
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      <div className="space-y-3">
+                                        <p>You are about to resolve dispute for <strong>Loan #{loan.id}</strong>.</p>
+                                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                          <p className="font-semibold">{DECISION_LABELS[decision].icon} {DECISION_LABELS[decision].title}</p>
+                                          <p className="text-sm text-muted-foreground">{DECISION_LABELS[decision].description}</p>
+                                        </div>
+                                        <p className="text-red-600 dark:text-red-400 font-medium">
+                                          This action will broadcast a Bitcoin transaction and cannot be undone.
+                                        </p>
+                                      </div>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => resolveDisputeMutation.mutate({ loanId: loan.id, decision })}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Confirm Resolution
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {(!disputes || disputes.length === 0) && (
+                <div className="text-center py-8">
+                  <Gavel className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No disputes currently under review</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Disputes will appear here when loans are flagged for resolution.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Testing section - Set loans under review */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Testing: Set Loan Under Review</CardTitle>
+              <CardDescription>For testing purposes, set an active loan to under_review status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {loans?.filter(l => l.status === "active" && l.disputeStatus !== "under_review").slice(0, 3).map((loan) => (
+                  <Button
+                    key={loan.id}
+                    size="sm"
+                    variant="outline"
+                    data-testid={`button-set-under-review-${loan.id}`}
+                    onClick={() => setUnderReviewMutation.mutate(loan.id)}
+                    disabled={setUnderReviewMutation.isPending}
+                  >
+                    Set Loan #{loan.id} Under Review
+                  </Button>
+                ))}
+                {(!loans || loans.filter(l => l.status === "active" && l.disputeStatus !== "under_review").length === 0) && (
+                  <p className="text-sm text-muted-foreground">No eligible loans to set under review</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
