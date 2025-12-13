@@ -207,31 +207,13 @@ export async function sendLenderFundingNotification(params: {
   loanId: number;
   loanAmount: string;
   currency: string;
-  collateralBtc: string;
-  borrowerBankName?: string;
-  borrowerAccountNumber?: string;
-  borrowerRoutingNumber?: string;
+  interestRate: string;
+  maturityDate: string;
   dashboardUrl: string;
 }): Promise<boolean> {
   const { 
-    to, lenderName, loanId, loanAmount, currency, collateralBtc,
-    borrowerBankName, borrowerAccountNumber, borrowerRoutingNumber, dashboardUrl 
+    to, lenderName, loanId, loanAmount, currency, interestRate, maturityDate, dashboardUrl 
   } = params;
-
-  const bankDetailsHtml = borrowerBankName ? `
-    <div style="background-color: #fff; border: 2px solid #3498DB; padding: 15px; margin: 15px 0; border-radius: 5px;">
-      <h4 style="margin-top: 0; color: #2C3E50;">🏦 Borrower's Bank Details</h4>
-      ${borrowerBankName ? `<p style="margin: 5px 0;"><strong>Bank Name:</strong> ${borrowerBankName}</p>` : ''}
-      ${borrowerAccountNumber ? `<p style="margin: 5px 0;"><strong>Account Number:</strong> ${borrowerAccountNumber}</p>` : ''}
-      ${borrowerRoutingNumber ? `<p style="margin: 5px 0;"><strong>Routing/SWIFT:</strong> ${borrowerRoutingNumber}</p>` : ''}
-    </div>
-  ` : `
-    <div style="background-color: #FEF9E7; border: 2px solid #F39C12; padding: 15px; margin: 15px 0; border-radius: 5px;">
-      <p style="margin: 0; color: #856404;">
-        <strong>⚠️ Note:</strong> Bank details will be provided by the borrower. Please check your dashboard for the latest information.
-      </p>
-    </div>
-  `;
 
   const html = `
     <!DOCTYPE html>
@@ -240,62 +222,40 @@ export async function sendLenderFundingNotification(params: {
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
-      <div style="background-color: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background-color: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
         ${getEmailHeader()}
         
-        <h2 style="color: #2C3E50; margin-top: 0;">💰 Borrower Has Deposited Collateral!</h2>
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">Funds transfer confirmation</h2>
         
-        <p style="font-size: 16px; color: #555;">Hi ${lenderName},</p>
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Dear ${lenderName},</p>
         
-        <p style="font-size: 16px; color: #555;">Great news! The borrower has deposited their Bitcoin collateral to the escrow address. <strong>It's now your turn to send the loan funds.</strong></p>
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          We noticed you haven't sent the funds (loan amount) to the borrower yet. The borrower has successfully completed the escrow setup process, and we kindly request your attention to <strong>initiate the transfer of funds</strong> to the borrower's bank account.
+        </p>
         
-        <div style="background-color: #E8F8F5; border-left: 4px solid #27AE60; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="margin-top: 0; color: #27AE60;">📋 Loan Details</h3>
-          <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loanId}</p>
-          <p style="margin: 5px 0;"><strong>Loan Amount to Send:</strong> ${loanAmount} ${currency}</p>
-          <p style="margin: 5px 0;"><strong>Collateral Secured:</strong> ${collateralBtc} BTC</p>
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          Please follow the instructions on the platform. Once you confirm the transfer, the borrower will be notified to validate the transaction on their end.
+        </p>
+        
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> ${loanId}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${loanAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Maturity Date:</strong> ${maturityDate}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${interestRate} % p.a.</p>
         </div>
 
-        <div style="background-color: #FEF9E7; border-left: 4px solid #F39C12; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="margin-top: 0; color: #F39C12;">🔐 Your Action Required: Send Fiat Funds</h3>
-          
-          <p style="font-size: 16px; color: #555;">Please transfer <strong>${loanAmount} ${currency}</strong> to the borrower's bank account:</p>
-          
-          ${bankDetailsHtml}
-        </div>
-
-        <div style="background-color: #EBF5FB; border-left: 4px solid #3498DB; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h3 style="margin-top: 0; color: #3498DB;">📝 What Happens Next?</h3>
-          <ol style="margin: 10px 0; padding-left: 20px; color: #555;">
-            <li>Send ${loanAmount} ${currency} to the borrower's bank account</li>
-            <li>Go to your <a href="${dashboardUrl}" style="color: #3498DB; text-decoration: none; font-weight: bold;">Lender Dashboard</a></li>
-            <li>Click "<strong>Confirm Fiat Sent</strong>" for Loan #${loanId}</li>
-            <li>Both parties will generate security keys</li>
-            <li>The loan becomes active with your Bitcoin collateral secured</li>
-          </ol>
-        </div>
-
-        <div style="background-color: #FADBD8; border-left: 4px solid #E74C3C; padding: 15px; margin: 20px 0; border-radius: 5px;">
-          <h4 style="margin-top: 0; color: #E74C3C;">⚠️ Important Reminders</h4>
-          <ul style="margin: 10px 0; padding-left: 20px; color: #555;">
-            <li>The borrower's Bitcoin is securely locked in escrow until the loan is repaid</li>
-            <li>Only send funds after verifying the collateral deposit</li>
-            <li>Keep records of your bank transfer for reference</li>
-          </ul>
-        </div>
-
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="${dashboardUrl}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
-            View My Dashboard →
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}" style="display: inline-block; background-color: #E74C3C; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            Confirm transfer
           </a>
         </div>
 
-        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ECF0F1;">
-          If you have any questions or need assistance, please contact our support team.
+        <p style="font-size: 14px; color: #666; line-height: 1.7; margin-top: 25px;">
+          Please note that it's crucial to complete the funds transfer within the agreed-upon timeframe mentioned in the loan agreement. This ensures a smooth and efficient lending process for both parties involved.
         </p>
 
-        <p style="font-size: 14px; color: #7F8C8D; margin-top: 10px;">
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
           <strong>— The Reconquest Team 👑</strong>
         </p>
       </div>
@@ -306,7 +266,7 @@ export async function sendLenderFundingNotification(params: {
   return await sendEmail({
     to,
     from: 'Reconquest <onboarding@resend.dev>',
-    subject: `💰 Action Required: Loan #${loanId} - Send Funds to Borrower`,
+    subject: `👑🪙 Your Investment: Time to Transfer Your Funds`,
     html,
   });
 }

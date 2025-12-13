@@ -1095,11 +1095,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (loan.lenderId && updatedLoan) {
         try {
           const lender = await storage.getUser(loan.lenderId);
-          const borrower = await storage.getUser(loan.borrowerId);
           
           if (lender) {
             const { sendLenderFundingNotification } = await import('./email.js');
             const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 'https://your-app.replit.app';
+            
+            // Calculate maturity date from loan term
+            const maturityDate = updatedLoan.dueDate 
+              ? new Date(updatedLoan.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'To be determined';
             
             await sendLenderFundingNotification({
               to: lender.email,
@@ -1107,10 +1111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               loanId: updatedLoan.id,
               loanAmount: updatedLoan.amount,
               currency: updatedLoan.currency,
-              collateralBtc: updatedLoan.collateralBtc,
-              borrowerBankName: borrower?.bankName || undefined,
-              borrowerAccountNumber: borrower?.bankAccountNumber || undefined,
-              borrowerRoutingNumber: borrower?.bankRoutingNumber || undefined,
+              interestRate: updatedLoan.interestRate,
+              maturityDate: maturityDate,
               dashboardUrl: `${baseUrl}/lender-dashboard`,
             });
             
