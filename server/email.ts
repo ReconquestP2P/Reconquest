@@ -54,7 +54,8 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
       return false;
     }
 
-    console.log('Email sent successfully:', data?.id);
+    console.log('Email sent successfully:', data?.id, 'to:', params.to);
+    console.log('Full Resend response:', JSON.stringify(data));
     // Add small delay after successful send to prevent rate limiting
     await delay(600); // 600ms delay = ~1.6 requests per second, under the 2/sec limit
     return true;
