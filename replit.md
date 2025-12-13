@@ -38,11 +38,11 @@ Preferred communication style: Simple, everyday language.
 - **UI/UX**: Responsive design, dedicated borrower/lender dashboards, "How it works" section, FAQs, About page, and consistent branding.
 - **Gamification**: Blockchain-themed achievement badge system.
 - **Bitcoin Multisig Escrow**: Automated 2-of-3 multisig Bitcoin testnet escrow address generation.
-- **Firefish Ephemeral Key Model**: Maximum security Bitcoin key management where private keys are generated client-side, used to pre-sign recovery transactions, then immediately discarded from memory. Users NEVER see their private keys.
+- **Ephemeral Key Model**: Maximum security Bitcoin key management where private keys are generated client-side, used to pre-sign recovery transactions, then immediately discarded from memory. Users NEVER see their private keys.
 - **Deterministic Outcome Engine**: A pure function maps objective facts to one of the pre-signed transaction types (COOPERATIVE_CLOSE, DEFAULT, LIQUIDATION, CANCELLATION, RECOVERY, UNDER_REVIEW) for fair and transparent dispute resolution.
 
 ### Security Architecture
-- **Firefish Ephemeral Key Model**: Private keys are generated client-side, used to pre-sign all necessary transactions (recovery, cooperative close, default), and then immediately wiped from memory. Keys are never stored or displayed. Users download pre-signed recovery transaction files, not private keys.
+- **Ephemeral Key Model**: Private keys are generated client-side, used to pre-sign all necessary transactions (recovery, cooperative close, default), and then immediately wiped from memory. Keys are never stored or displayed. Users download pre-signed recovery transaction files, not private keys.
 - **Signing Library Compatibility**: `tiny-secp256k1` is used for all Bitcoin transaction signing to ensure compatibility with Bitcoin Core.
 - **Bitcoin Testnet Integration**: Real Bitcoin RPC support for multisig, pre-signed transaction building with ephemeral keys, and broadcasting to the testnet. Includes a graceful fallback to mock mode if RPC is unavailable.
 

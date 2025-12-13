@@ -118,7 +118,7 @@ export default function BorrowerKeyGenerationModal({
           <Alert className="bg-blue-50 border-blue-200">
             <Shield className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-sm space-y-2">
-              <p className="font-semibold text-blue-900">Firefish Ephemeral Key Model</p>
+              <p className="font-semibold text-blue-900">Reconquest Ephemeral Key Model</p>
               <ul className="list-disc ml-4 space-y-1 text-blue-800">
                 <li>Keys are generated in your browser and immediately discarded</li>
                 <li>You will download pre-signed recovery transactions (NOT private keys)</li>

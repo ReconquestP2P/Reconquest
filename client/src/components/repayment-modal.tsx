@@ -121,7 +121,7 @@ export default function RepaymentModal({
               <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
                 <Rocket className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-sm space-y-2">
-                  <p className="font-semibold">🔐 What Happens Next (Firefish Model):</p>
+                  <p className="font-semibold">🔐 What Happens Next:</p>
                   <ol className="list-decimal ml-4 space-y-1">
                     <li>Platform aggregates your pre-signed transaction + lender's signature + platform signature (2-of-3 multisig)</li>
                     <li>Combined transaction is broadcast to Bitcoin testnet</li>

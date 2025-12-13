@@ -118,7 +118,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
             Generate Recovery Plan
           </DialogTitle>
           <DialogDescription>
-            Firefish Ephemeral Key Security Model
+            Reconquest Ephemeral Key Security Model
           </DialogDescription>
         </DialogHeader>
 

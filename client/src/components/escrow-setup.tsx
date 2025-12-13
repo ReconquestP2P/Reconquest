@@ -150,7 +150,7 @@ export default function EscrowSetup({ loanId, role, onEscrowCreated }: EscrowSet
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Firefish WASM Escrow Setup
+            Reconquest Escrow Setup
           </CardTitle>
           <CardDescription>
             Client-side Bitcoin key generation and multisig escrow creation

@@ -144,7 +144,7 @@ export default function LenderFundingModal({
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-sm">
                 <p className="font-semibold">✅ No Transaction Signing Yet</p>
-                <p className="mt-1">At this stage, we're only creating the escrow address. Firefish's ephemeral key signing happens AFTER the borrower deposits collateral, ensuring maximum security.</p>
+                <p className="mt-1">At this stage, we're only creating the escrow address. Reconquest's ephemeral key signing happens AFTER the borrower deposits collateral, ensuring maximum security.</p>
               </AlertDescription>
             </Alert>
 
