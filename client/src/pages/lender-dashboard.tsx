@@ -298,38 +298,20 @@ export default function LenderDashboard() {
                             <h4 className="font-semibold mb-3 text-yellow-800 dark:text-yellow-200">
                               📤 Send Funds To:
                             </h4>
-                            {loan.borrower?.bankAccountHolder || loan.borrower?.bankAccountNumber ? (
-                              <div className="grid grid-cols-2 gap-3 text-sm">
-                                {loan.borrower?.bankAccountHolder && (
-                                  <div>
-                                    <p className="text-muted-foreground">Account Holder</p>
-                                    <p className="font-medium">{loan.borrower.bankAccountHolder}</p>
-                                  </div>
-                                )}
-                                {loan.borrower?.bankAccountNumber && (
-                                  <div>
-                                    <p className="text-muted-foreground">Account Number</p>
-                                    <p className="font-medium font-mono">{loan.borrower.bankAccountNumber}</p>
-                                  </div>
-                                )}
-                                {loan.borrower?.bankName && (
-                                  <div>
-                                    <p className="text-muted-foreground">Bank Name</p>
-                                    <p className="font-medium">{loan.borrower.bankName}</p>
-                                  </div>
-                                )}
-                                {loan.borrower?.bankRoutingNumber && (
-                                  <div>
-                                    <p className="text-muted-foreground">Routing/SWIFT</p>
-                                    <p className="font-medium font-mono">{loan.borrower.bankRoutingNumber}</p>
-                                  </div>
-                                )}
-                                {loan.borrower?.bankCountry && (
-                                  <div>
-                                    <p className="text-muted-foreground">Country</p>
-                                    <p className="font-medium">{loan.borrower.bankCountry}</p>
-                                  </div>
-                                )}
+                            {(loan.borrower?.bankAccountHolder && loan.borrower?.iban) ? (
+                              <div className="space-y-3 text-sm">
+                                <div>
+                                  <p className="text-muted-foreground">Account Holder</p>
+                                  <p className="font-medium text-base">{loan.borrower.bankAccountHolder}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">IBAN</p>
+                                  <p className="font-medium font-mono text-base">{loan.borrower.iban}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Reference</p>
+                                  <p className="font-medium font-mono text-base">Loan #{String(loan.id).padStart(6, '0')}</p>
+                                </div>
                               </div>
                             ) : (
                               <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
@@ -337,7 +319,7 @@ export default function LenderDashboard() {
                                   ⚠️ Borrower has not provided bank account details yet
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Please contact the borrower ({loan.borrower?.email}) to provide their bank information
+                                  The borrower needs to update their bank details in their account settings before you can proceed.
                                 </p>
                               </div>
                             )}

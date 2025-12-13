@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -89,13 +89,26 @@ export default function Navigation() {
             <div className="hidden md:flex items-center space-x-6">
               <ThemeToggle />
               {isAuthenticated ? (
-                <Button 
-                  onClick={logout}
-                  variant="outline"
-                  className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
-                >
-                  Logout
-                </Button>
+                <>
+                  <Link href="/my-account">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2"
+                      data-testid="link-my-account"
+                    >
+                      <User className="h-4 w-4" />
+                      My Account
+                    </Button>
+                  </Link>
+                  <Button 
+                    onClick={logout}
+                    variant="outline"
+                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
+                  >
+                    Logout
+                  </Button>
+                </>
               ) : (
                 <>
                     <Link href="/login">
@@ -203,15 +216,29 @@ export default function Navigation() {
               
               {/* Mobile Auth Buttons */}
               {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    logout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                >
-                  Logout
-                </button>
+                <>
+                  <Link
+                    href="/my-account"
+                    className={`block px-3 py-2 text-base font-medium transition-colors ${
+                      location === "/my-account"
+                        ? "text-primary bg-primary/10"
+                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    data-testid="mobile-link-my-account"
+                  >
+                    My Account
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                  >
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <Link

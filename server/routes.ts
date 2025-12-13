@@ -466,6 +466,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Update user profile
+  app.patch("/api/auth/profile", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      const profileSchema = z.object({
+        firstName: z.string().max(50).optional(),
+        lastName: z.string().max(50).optional(),
+        phonePrefix: z.string().max(5).optional(),
+        phoneNumber: z.string().max(20).optional(),
+        iban: z.string().max(34).optional(),
+        bankAccountHolder: z.string().max(100).optional(),
+      });
+      
+      const profileData = profileSchema.parse(req.body);
+      
+      const updatedUser = await storage.updateUser(userId, profileData);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = updatedUser;
+      
+      res.json({
+        success: true,
+        message: "Profile updated successfully",
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to update profile. Please try again." 
+      });
+    }
+  });
+
   // User registration
   app.post("/api/auth/register", async (req, res) => {
     try {
