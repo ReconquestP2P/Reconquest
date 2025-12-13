@@ -368,6 +368,72 @@ export const insertDisputeAuditLogSchema = createInsertSchema(disputeAuditLogs).
   createdAt: true,
 });
 
+// ============================================================================
+// DISPUTE RESOLUTION TYPES - Deterministic Outcome Engine
+// ============================================================================
+
+/**
+ * FINITE SET OF DISPUTE DECISIONS
+ * Admin can ONLY choose from these pre-defined outcomes.
+ * Each maps to a specific pre-signed transaction template.
+ */
+export const DisputeDecisionEnum = z.enum([
+  'BORROWER_WINS',     // Return collateral to borrower (uses txRepaymentHex/recovery)
+  'LENDER_WINS',       // Send collateral to lender (uses txDefaultHex/liquidation)
+  'TIMEOUT_DEFAULT',   // Follow default timeout rule (uses txLiquidationHex)
+]);
+
+export type DisputeDecision = z.infer<typeof DisputeDecisionEnum>;
+
+/**
+ * Mapping from decision to transaction field
+ * This guarantees deterministic payout - admin cannot invent new addresses
+ */
+export const DECISION_TO_TX_FIELD: Record<DisputeDecision, keyof Loan> = {
+  'BORROWER_WINS': 'txRepaymentHex',    // Cooperative close returning to borrower
+  'LENDER_WINS': 'txDefaultHex',         // Default tx sending to lender
+  'TIMEOUT_DEFAULT': 'txLiquidationHex', // Liquidation after timeout
+};
+
+/**
+ * Human-readable labels for UI
+ */
+export const DECISION_LABELS: Record<DisputeDecision, { title: string; description: string; icon: string }> = {
+  'BORROWER_WINS': {
+    title: 'Borrower Wins',
+    description: 'Return collateral to borrower address',
+    icon: '✅',
+  },
+  'LENDER_WINS': {
+    title: 'Lender Wins', 
+    description: 'Send collateral to lender address',
+    icon: '💰',
+  },
+  'TIMEOUT_DEFAULT': {
+    title: 'Timeout / Default Rule',
+    description: 'Apply default timeout liquidation',
+    icon: '⏰',
+  },
+};
+
+// API Request/Response schemas
+export const resolveDisputeRequestSchema = z.object({
+  decision: DisputeDecisionEnum,
+  adminNotes: z.string().optional(),
+});
+
+export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>;
+
+export const resolveDisputeResponseSchema = z.object({
+  success: z.boolean(),
+  txid: z.string().optional(),
+  decision: DisputeDecisionEnum.optional(),
+  error: z.string().optional(),
+  auditLogId: z.number().optional(),
+});
+
+export type ResolveDisputeResponse = z.infer<typeof resolveDisputeResponseSchema>;
+
 // TypeScript Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
