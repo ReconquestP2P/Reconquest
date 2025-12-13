@@ -834,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { to, subject, message } = req.body;
       const success = await sendEmail({
         to: to || "jfestrada93@gmail.com",
-        from: "onboarding@resend.dev",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: subject || "🧪 Test Email from Reconquest",
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; padding: 20px;">
@@ -1626,7 +1626,7 @@ async function sendLoanFundedNotification(loan: any, lender: any) {
 
     await sendEmail({
       to: borrower.email,
-      from: "onboarding@resend.dev", 
+      from: "Reconquest <noreply@reconquestp2p.com>", 
       subject: `🎉 Your Loan Has Been Funded! - Loan #${loan.id}`,
       html: `
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -1733,7 +1733,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Admin notification for new loan posting
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "onboarding@resend.dev",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
@@ -1772,7 +1772,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Borrower notification
       await sendEmail({
         to: borrower.email, // Send to borrower, not admin
-        from: "onboarding@resend.dev",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">

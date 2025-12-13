@@ -323,7 +323,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       if (borrower?.email) {
         await sendEmail({
           to: borrower.email,
-          from: 'onboarding@resend.dev',
+          from: 'Reconquest <noreply@reconquestp2p.com>',
           subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
           html: `
             <h2>Your loan has been funded! Time to deposit collateral.</h2>

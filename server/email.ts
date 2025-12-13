@@ -195,7 +195,7 @@ export async function sendBorrowerDepositNotification(params: {
 
   return await sendEmail({
     to,
-    from: 'Reconquest <onboarding@resend.dev>',
+    from: 'Reconquest <noreply@reconquestp2p.com>',
     subject: `🎉 Your Loan #${loanId} Has Been Funded - Deposit Your Collateral`,
     html,
   });
@@ -265,7 +265,7 @@ export async function sendLenderFundingNotification(params: {
 
   return await sendEmail({
     to,
-    from: 'Reconquest <onboarding@resend.dev>',
+    from: 'Reconquest <noreply@reconquestp2p.com>',
     subject: `👑🪙 Your Investment: Time to Transfer Your Funds`,
     html,
   });
