@@ -78,11 +78,11 @@ export default function LenderFundingModal({
       // Private key is wiped immediately after deriving public key
       const secp256k1 = await import('@noble/secp256k1');
       
-      const privKeyBytes = secp256k1.utils.randomPrivateKey();
+      const privKeyBytes = secp256k1.utils.randomSecretKey();
       const pubKeyBytes = secp256k1.getPublicKey(privKeyBytes, true);
       const lenderPubkey = Buffer.from(pubKeyBytes).toString('hex');
       
-      // CRITICAL: Wipe private key from memory (Firefish security model)
+      // CRITICAL: Wipe private key from memory (Reconquest security model)
       privKeyBytes.fill(0);
       
       console.log("🔐 Generated lender pubkey (private key discarded):", lenderPubkey.slice(0, 20) + '...');
