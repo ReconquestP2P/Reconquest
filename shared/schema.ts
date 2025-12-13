@@ -47,11 +47,18 @@ export const users = pgTable("users", {
   passwordResetToken: text("password_reset_token"),
   passwordResetExpires: timestamp("password_reset_expires"),
   
+  // Personal Details
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phonePrefix: text("phone_prefix"), // e.g., "+34", "+1"
+  phoneNumber: text("phone_number"),
+  
   // Bank Account Details (for receiving loan funds)
   bankAccountHolder: text("bank_account_holder"),
   bankAccountNumber: text("bank_account_number"),
   bankName: text("bank_name"),
-  bankRoutingNumber: text("bank_routing_number"), // For US banks or SWIFT/IBAN
+  bankRoutingNumber: text("bank_routing_number"), // For US banks
+  iban: text("iban"), // For European banks
   bankCountry: text("bank_country"),
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
