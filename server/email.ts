@@ -216,6 +216,8 @@ export async function sendLenderFundingNotification(params: {
     to, lenderName, loanId, loanAmount, currency, interestRate, maturityDate, dashboardUrl 
   } = params;
 
+  const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+
   const html = `
     <!DOCTYPE html>
     <html>
@@ -225,14 +227,16 @@ export async function sendLenderFundingNotification(params: {
     </head>
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
       <div style="background-color: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        ${getEmailHeader()}
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+        </div>
         
         <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">Funds transfer confirmation</h2>
         
         <p style="font-size: 16px; color: #333; margin-top: 20px;">Dear ${lenderName},</p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
-          We noticed you haven't sent the funds (loan amount) to the borrower yet. The borrower has successfully completed the escrow setup process, and we kindly request your attention to <strong>initiate the transfer of funds</strong> to the borrower's bank account.
+          The borrower has successfully completed the escrow setup process, and we kindly request your attention to <strong>initiate the transfer of funds</strong> to the borrower's bank account.
         </p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
