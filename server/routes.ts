@@ -1091,6 +1091,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`✅ Loan #${loanId}: Borrower confirmed BTC deposit to ${loan.escrowAddress}`);
       
+      // Send email notification to lender that borrower deposited BTC
+      if (loan.lenderId && updatedLoan) {
+        try {
+          const lender = await storage.getUser(loan.lenderId);
+          const borrower = await storage.getUser(loan.borrowerId);
+          
+          if (lender) {
+            const { sendLenderFundingNotification } = await import('./email.js');
+            const baseUrl = process.env.REPLIT_DEPLOYMENT_URL || 'https://your-app.replit.app';
+            
+            await sendLenderFundingNotification({
+              to: lender.email,
+              lenderName: lender.username,
+              loanId: updatedLoan.id,
+              loanAmount: updatedLoan.amount,
+              currency: updatedLoan.currency,
+              collateralBtc: updatedLoan.collateralBtc,
+              borrowerBankName: borrower?.bankName || undefined,
+              borrowerAccountNumber: borrower?.bankAccountNumber || undefined,
+              borrowerRoutingNumber: borrower?.bankRoutingNumber || undefined,
+              dashboardUrl: `${baseUrl}/lender-dashboard`,
+            });
+            
+            console.log(`📧 Sent funding notification to lender: ${lender.email}`);
+          }
+        } catch (emailError) {
+          console.error('Failed to send lender notification email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
+      
       res.json(updatedLoan);
     } catch (error) {
       console.error('Error confirming deposit:', error);
