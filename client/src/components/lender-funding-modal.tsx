@@ -78,9 +78,12 @@ export default function LenderFundingModal({
       // Private key is wiped immediately after deriving public key
       const secp256k1 = await import('@noble/secp256k1');
       
-      const privKeyBytes = secp256k1.utils.randomSecretKey();
+      // Generate random 32-byte private key using Web Crypto API
+      const privKeyBytes = new Uint8Array(32);
+      crypto.getRandomValues(privKeyBytes);
+      
       const pubKeyBytes = secp256k1.getPublicKey(privKeyBytes, true);
-      const lenderPubkey = Buffer.from(pubKeyBytes).toString('hex');
+      const lenderPubkey = Array.from(pubKeyBytes).map((b: number) => b.toString(16).padStart(2, '0')).join('');
       
       // CRITICAL: Wipe private key from memory (Reconquest security model)
       privKeyBytes.fill(0);
