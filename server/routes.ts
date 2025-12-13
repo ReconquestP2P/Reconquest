@@ -1150,7 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? new Date(updatedLoan.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
               : 'To be determined';
             
-            await sendLenderFundingNotification({
+            const emailSent = await sendLenderFundingNotification({
               to: lender.email,
               lenderName: lender.username,
               loanId: updatedLoan.id,
@@ -1161,7 +1161,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dashboardUrl: `${baseUrl}/lender`,
             });
             
-            console.log(`📧 Sent funding notification to lender: ${lender.email}`);
+            if (emailSent) {
+              console.log(`📧 Sent funding notification to lender: ${lender.email}`);
+            } else {
+              console.error(`❌ Failed to send funding notification to lender: ${lender.email}`);
+            }
           }
         } catch (emailError) {
           console.error('Failed to send lender notification email:', emailError);
