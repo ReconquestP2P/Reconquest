@@ -1159,6 +1159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               interestRate: updatedLoan.interestRate,
               maturityDate: maturityDate,
               dashboardUrl: `${baseUrl}/lender`,
+              escrowAddress: loan.escrowAddress || undefined,
             });
             
             if (emailSent) {

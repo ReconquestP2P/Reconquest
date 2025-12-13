@@ -211,12 +211,14 @@ export async function sendLenderFundingNotification(params: {
   interestRate: string;
   maturityDate: string;
   dashboardUrl: string;
+  escrowAddress?: string;
 }): Promise<boolean> {
   const { 
-    to, lenderName, loanId, loanAmount, currency, interestRate, maturityDate, dashboardUrl 
+    to, lenderName, loanId, loanAmount, currency, interestRate, maturityDate, dashboardUrl, escrowAddress 
   } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+  const mempoolUrl = escrowAddress ? `https://mempool.space/testnet/address/${escrowAddress}` : '';
 
   const html = `
     <!DOCTYPE html>
@@ -236,11 +238,11 @@ export async function sendLenderFundingNotification(params: {
         <p style="font-size: 16px; color: #333; margin-top: 20px;">Dear ${lenderName},</p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
-          The borrower has successfully completed the escrow setup process, and we kindly request your attention to <strong>initiate the transfer of funds</strong> to the borrower's bank account.
+          The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="${mempoolUrl}" style="color: #E74C3C; text-decoration: none; font-weight: 600;">designated address</a>.
         </p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
-          Please follow the instructions on the platform. Once you confirm the transfer, the borrower will be notified to validate the transaction on their end.
+          You can now proceed with the bank transfer. Please follow the instructions on the platform to send the loan amount to the borrower's bank account. Once you confirm the transfer, the borrower will be notified to validate the transaction on their end.
         </p>
         
         <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
