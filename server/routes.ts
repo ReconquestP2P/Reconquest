@@ -1680,6 +1680,56 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Send notification to borrower that their loan has been funded
       await sendLoanFundedNotification(loan, lender);
 
+      // Send confirmation email to lender
+      const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      await sendEmail({
+        to: lender.email,
+        from: "Reconquest <noreply@reconquestp2p.com>",
+        subject: `✅ You've Funded Loan #${loan.id} - Awaiting Collateral`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="color: white; margin: 0; text-align: center;">Funding Confirmed!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Hello ${lender.username},</h2>
+              
+              <p style="color: #333; font-size: 16px;">
+                Thank you for funding Loan #${loan.id}! Your commitment has been recorded.
+              </p>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
+                <p><strong>Term:</strong> ${loan.termMonths} months</p>
+              </div>
+              
+              <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #0c5460; margin-top: 0;">What Happens Next?</h3>
+                <ol style="color: #0c5460; margin: 0; padding-left: 20px;">
+                  <li>The borrower will deposit ${loan.collateralBtc} BTC as collateral to the escrow address</li>
+                  <li>You'll receive an email when the collateral is confirmed</li>
+                  <li>You can then transfer the ${loan.amount} ${loan.currency} to the borrower</li>
+                </ol>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${baseUrl}/lender" style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; display: inline-block;">View Your Dashboard</a>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;">Thank you for using Reconquest!</p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+      console.log(`📧 Funding confirmation sent to lender: ${lender.email}`);
+
       // Send admin notification
       await sendEmail({
         to: "admin@reconquestp2p.com",
