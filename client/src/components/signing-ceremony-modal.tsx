@@ -58,17 +58,14 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
       // Store each signed transaction in the backend
       for (const tx of result.signedTransactions) {
-        await apiRequest(`/api/loans/${loan.id}/transactions/store`, {
-          method: 'POST',
-          body: JSON.stringify({
-            partyRole: role,
-            partyPubkey: result.publicKey,
-            txType: tx.type,
-            psbt: tx.psbt,
-            signature: tx.signature,
-            txHash: tx.txHash,
-            validAfter: tx.validAfter,
-          }),
+        await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
+          partyRole: role,
+          partyPubkey: result.publicKey,
+          txType: tx.type,
+          psbt: tx.psbt,
+          signature: tx.signature,
+          txHash: tx.txHash,
+          validAfter: tx.validAfter,
         });
       }
 
@@ -80,10 +77,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
       console.log(`📥 Recovery file downloaded`);
 
       // Mark signing ceremony complete
-      const response = await apiRequest(`/api/loans/${loan.id}/complete-signing`, {
-        method: 'POST',
-        body: JSON.stringify({ role }),
-      });
+      const response = await apiRequest(`/api/loans/${loan.id}/complete-signing`, 'POST', { role });
 
       const data = await response.json();
 
