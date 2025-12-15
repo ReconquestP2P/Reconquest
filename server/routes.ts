@@ -478,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phoneNumber: z.string().max(20).optional(),
         iban: z.string().max(34).optional(),
         bankAccountHolder: z.string().max(100).optional(),
+        btcAddress: z.string().max(100).optional(),
       });
       
       const profileData = profileSchema.parse(req.body);
@@ -2456,6 +2457,17 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       if (role === 'lender' && loan.lenderId !== userId) {
         return res.status(403).json({ message: "Not authorized as lender" });
+      }
+
+      // Get user to check for BTC address requirement
+      const currentUser = await storage.getUser(userId);
+      
+      // Require BTC address for borrowers before they can generate recovery plan
+      if (role === 'borrower' && (!currentUser?.btcAddress || currentUser.btcAddress.trim() === '')) {
+        return res.status(400).json({ 
+          message: "Bitcoin address required",
+          error: "Please add your Bitcoin address in My Account before generating your recovery plan. This address will be used for collateral returns and recovery."
+        });
       }
 
       // Update the appropriate timestamp

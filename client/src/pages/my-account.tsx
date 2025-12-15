@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { User, CreditCard, Phone, Save } from "lucide-react";
+import { User, CreditCard, Phone, Save, Bitcoin } from "lucide-react";
 
 export default function MyAccount() {
   const { user, isAuthenticated, token } = useAuth();
@@ -22,6 +22,7 @@ export default function MyAccount() {
     phoneNumber: user?.phoneNumber || "",
     iban: user?.iban || "",
     bankAccountHolder: user?.bankAccountHolder || "",
+    btcAddress: user?.btcAddress || "",
   });
 
   if (!isAuthenticated || !user) {
@@ -231,11 +232,42 @@ export default function MyAccount() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bitcoin className="h-5 w-5 text-orange-500" />
+                Bitcoin Address
+              </CardTitle>
+              <CardDescription>
+                Your Bitcoin address for receiving collateral returns, recovery funds, and refunds.
+                <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
+                  Required for borrowers before generating a recovery plan.
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="btcAddress">BTC Address</Label>
+                <Input
+                  id="btcAddress"
+                  placeholder="bc1q... or 3... or 1..."
+                  value={formData.btcAddress}
+                  onChange={handleChange("btcAddress")}
+                  className="font-mono"
+                  data-testid="input-btc-address"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter a valid Bitcoin address (mainnet or testnet). This is where your Bitcoin will be sent in case of loan completion, cancellation, or recovery.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end gap-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={() => window.history.back()}
               data-testid="button-cancel"
             >
               Cancel

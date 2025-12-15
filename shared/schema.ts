@@ -61,6 +61,9 @@ export const users = pgTable("users", {
   iban: text("iban"), // For European banks
   bankCountry: text("bank_country"),
   
+  // Bitcoin Address (for recovery, returns, etc.)
+  btcAddress: text("btc_address"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
