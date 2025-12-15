@@ -238,9 +238,19 @@ export default function LenderDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {lenderLoans.filter(loan => loan.status === "funding" && loan.escrowAddress).length > 0 ? (
+              {lenderLoans.filter(loan => 
+                loan.depositConfirmedAt && 
+                loan.borrowerKeysGeneratedAt && 
+                loan.lenderKeysGeneratedAt &&
+                loan.borrower?.iban
+              ).length > 0 ? (
                 <div className="space-y-4">
-                  {lenderLoans.filter(loan => loan.status === "funding" && loan.escrowAddress).map((loan) => (
+                  {lenderLoans.filter(loan => 
+                    loan.depositConfirmedAt && 
+                    loan.borrowerKeysGeneratedAt && 
+                    loan.lenderKeysGeneratedAt &&
+                    loan.borrower?.iban
+                  ).map((loan) => (
                     <Card key={loan.id} className="border-2 border-yellow-200 dark:border-yellow-800">
                       <CardContent className="p-6">
                         <div className="space-y-4">
