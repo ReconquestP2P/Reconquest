@@ -64,6 +64,11 @@ export const users = pgTable("users", {
   // Bitcoin Address (for recovery, returns, etc.)
   btcAddress: text("btc_address"),
   
+  // Pending Personal Details Changes (requires email confirmation)
+  pendingDetailsChange: text("pending_details_change"), // JSON blob with pending changes
+  detailsChangeToken: text("details_change_token"),
+  detailsChangeExpires: timestamp("details_change_expires"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

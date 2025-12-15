@@ -353,3 +353,72 @@ export async function sendLenderKeyGenerationNotification(params: {
   });
 }
 
+export async function sendDetailsChangeConfirmation(params: {
+  to: string;
+  userName: string;
+  confirmUrl: string;
+  changesDescription: string;
+}): Promise<boolean> {
+  const { to, userName, confirmUrl, changesDescription } = params;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background-color: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          ${getEmailHeader()}
+        </div>
+        
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">🔐 Confirm Your Personal Details Change</h2>
+        
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Hi ${userName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          We received a request to update your personal details. For your security, please confirm this change by clicking the button below.
+        </p>
+        
+        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #856404;">
+            <strong>⚠️ Security Notice:</strong> If you did not request this change, please ignore this email. 
+            Your account information will remain unchanged.
+          </p>
+        </div>
+        
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #333;">Requested Changes:</h3>
+          <div style="font-size: 14px; color: #555;">
+            ${changesDescription}
+          </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${confirmUrl}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            ✓ Confirm Changes
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; line-height: 1.7; margin-top: 25px;">
+          This confirmation link will expire in <strong>24 hours</strong>. After that, you'll need to request the change again.
+        </p>
+
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to,
+    from: 'Reconquest <noreply@reconquestp2p.com>',
+    subject: `🔐 Confirm Your Personal Details Change - Reconquest`,
+    html,
+  });
+}
+

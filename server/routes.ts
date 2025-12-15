@@ -7,7 +7,8 @@ import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
-import { sendEmail, sendLenderKeyGenerationNotification } from "./email";
+import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation } from "./email";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { EmailVerificationService } from "./services/EmailVerificationService";
@@ -466,10 +467,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Update user profile
+  // Update user profile - sensitive fields require email confirmation
   app.patch("/api/auth/profile", authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = req.user;
       
       const profileSchema = z.object({
         firstName: z.string().max(50).optional(),
@@ -483,10 +485,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const profileData = profileSchema.parse(req.body);
       
-      const updatedUser = await storage.updateUser(userId, profileData);
+      // Sensitive fields that require email confirmation
+      const sensitiveFields = ['iban', 'bankAccountHolder', 'btcAddress'];
+      const sensitiveChanges: Record<string, string> = {};
+      const immediateChanges: Record<string, string> = {};
       
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
+      // Separate sensitive and non-sensitive changes
+      for (const [key, value] of Object.entries(profileData)) {
+        if (value !== undefined && value !== null) {
+          if (sensitiveFields.includes(key)) {
+            // Only add if it's actually different from current value
+            const currentValue = (user as any)[key];
+            if (value !== currentValue) {
+              sensitiveChanges[key] = value;
+            }
+          } else {
+            immediateChanges[key] = value;
+          }
+        }
+      }
+      
+      // Apply non-sensitive changes immediately
+      let updatedUser = user;
+      if (Object.keys(immediateChanges).length > 0) {
+        updatedUser = await storage.updateUser(userId, immediateChanges);
+        if (!updatedUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+      
+      // If there are sensitive changes, require email confirmation
+      if (Object.keys(sensitiveChanges).length > 0) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        
+        // Store pending changes in database
+        await storage.updateUser(userId, {
+          pendingDetailsChange: JSON.stringify(sensitiveChanges),
+          detailsChangeToken: token,
+          detailsChangeExpires: expires,
+        });
+        
+        // Build changes description for email
+        const changesList = Object.entries(sensitiveChanges).map(([key, value]) => {
+          const fieldName = key === 'iban' ? 'IBAN' : 
+                           key === 'bankAccountHolder' ? 'Bank Account Holder' :
+                           key === 'btcAddress' ? 'Bitcoin Address' : key;
+          const maskedValue = value.length > 8 ? 
+            value.substring(0, 4) + '****' + value.substring(value.length - 4) : 
+            '****';
+          return `<p><strong>${fieldName}:</strong> ${maskedValue}</p>`;
+        }).join('');
+        
+        // Send confirmation email
+        const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+        const confirmUrl = `${baseUrl}/confirm-details-change?token=${token}`;
+        
+        await sendDetailsChangeConfirmation({
+          to: user.email,
+          userName: user.firstName || user.username,
+          confirmUrl,
+          changesDescription: changesList,
+        });
+        
+        const { password: _, ...userWithoutPassword } = updatedUser;
+        
+        return res.json({
+          success: true,
+          requiresConfirmation: true,
+          message: "Basic info updated. A confirmation email has been sent for your bank/Bitcoin address changes. Please check your inbox.",
+          user: userWithoutPassword
+        });
       }
       
       const { password: _, ...userWithoutPassword } = updatedUser;
@@ -509,6 +578,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         message: "Failed to update profile. Please try again." 
       });
+    }
+  });
+
+  // Confirm personal details change via email token
+  app.post("/api/auth/confirm-details-change", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Confirmation token is required" });
+      }
+      
+      // Find user with this token
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find((u: any) => u.detailsChangeToken === token);
+      
+      if (!user) {
+        return res.status(400).json({ message: "Invalid confirmation token" });
+      }
+      
+      // Check if token is expired
+      if (user.detailsChangeExpires && new Date(user.detailsChangeExpires) < new Date()) {
+        // Clear expired token
+        await storage.updateUser(user.id, {
+          pendingDetailsChange: null,
+          detailsChangeToken: null,
+          detailsChangeExpires: null,
+        });
+        return res.status(400).json({ message: "Confirmation link has expired. Please request the change again." });
+      }
+      
+      // Parse and apply pending changes
+      if (!user.pendingDetailsChange) {
+        return res.status(400).json({ message: "No pending changes found" });
+      }
+      
+      const pendingChanges = JSON.parse(user.pendingDetailsChange);
+      
+      // Apply the changes
+      const updatedUser = await storage.updateUser(user.id, {
+        ...pendingChanges,
+        pendingDetailsChange: null,
+        detailsChangeToken: null,
+        detailsChangeExpires: null,
+      });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to apply changes" });
+      }
+      
+      res.json({
+        success: true,
+        message: "Your personal details have been updated successfully!"
+      });
+    } catch (error) {
+      console.error("Confirm details change error:", error);
+      res.status(500).json({ message: "Failed to confirm changes. Please try again." });
+    }
+  });
+
+  // Get pending details change status
+  app.get("/api/auth/pending-details-change", authenticateToken, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user.pendingDetailsChange || !user.detailsChangeExpires) {
+        return res.json({ hasPendingChanges: false });
+      }
+      
+      // Check if expired
+      if (new Date(user.detailsChangeExpires) < new Date()) {
+        return res.json({ hasPendingChanges: false, expired: true });
+      }
+      
+      const pendingChanges = JSON.parse(user.pendingDetailsChange);
+      const fields = Object.keys(pendingChanges).map(key => {
+        return key === 'iban' ? 'IBAN' : 
+               key === 'bankAccountHolder' ? 'Bank Account Holder' :
+               key === 'btcAddress' ? 'Bitcoin Address' : key;
+      });
+      
+      res.json({
+        hasPendingChanges: true,
+        fields,
+        expiresAt: user.detailsChangeExpires
+      });
+    } catch (error) {
+      console.error("Get pending changes error:", error);
+      res.status(500).json({ message: "Failed to check pending changes" });
     }
   });
 

@@ -16,6 +16,7 @@ import BorrowerDashboard from "@/pages/borrower-dashboard";
 import LenderDashboard from "@/pages/lender-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import MyAccount from "@/pages/my-account";
+import ConfirmDetailsChange from "@/pages/confirm-details-change";
 import Navigation from "@/components/navigation";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
         <Route path="/borrower" component={BorrowerDashboard} />
         <Route path="/lender" component={LenderDashboard} />
         <Route path="/my-account" component={MyAccount} />
+        <Route path="/confirm-details-change" component={ConfirmDetailsChange} />
 
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin-dashboard" component={AdminDashboard} />
