@@ -17,7 +17,20 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
+import { sha256 } from '@noble/hashes/sha256.js';
+import { hmac } from '@noble/hashes/hmac.js';
 import * as Firefish from './firefish-wasm-mock';
+
+// Configure secp256k1 v3.0.0 to use sha256 and hmac for ECDSA signing
+// The library requires both sha256Sync and hmacSha256Sync to be set
+secp256k1.etc.sha256Sync = (...messages: Uint8Array[]): Uint8Array => {
+  const concatenated = secp256k1.etc.concatBytes(...messages);
+  return sha256(concatenated);
+};
+
+secp256k1.etc.hmacSha256Sync = (key: Uint8Array, ...messages: Uint8Array[]): Uint8Array => {
+  return hmac(sha256, key, secp256k1.etc.concatBytes(...messages));
+};
 
 export interface SignedTransaction {
   type: 'recovery' | 'cooperative_close' | 'default';
@@ -163,9 +176,12 @@ export async function generateAndSignTransactions(params: {
  * This is only called within the ephemeral scope
  */
 async function signTransaction(messageHash: string, privateKey: string): Promise<string> {
-  // secp256k1.sign returns a Signature object (TypeScript types may be wrong)
-  // @ts-ignore - secp256k1 types don't match runtime behavior
-  const signature = await secp256k1.sign(messageHash, privateKey);
+  // Convert hex strings to Uint8Array - secp256k1.sign expects Uint8Array inputs
+  const messageBytes = hexToBytes(messageHash);
+  const privateKeyBytes = hexToBytes(privateKey);
+  
+  // secp256k1.sign returns a Signature object
+  const signature = await secp256k1.sign(messageBytes, privateKeyBytes);
   
   // Signature object has toCompactHex() method
   // @ts-ignore - Runtime has this method even if types don't show it
@@ -213,7 +229,7 @@ async function buildRecoveryTransaction(params: {
   const messageHash = generateMessageHash(txData);
   
   return {
-    psbt: Buffer.from(mockPSBT).toString('base64'),
+    psbt: btoa(mockPSBT),
     messageHash,
     txHash: `recovery_tx_${params.borrowerPubkey.slice(0, 8)}`,
   };
@@ -234,7 +250,7 @@ async function buildCooperativeCloseTransaction(params: {
   const messageHash = generateMessageHash(txData);
   
   return {
-    psbt: Buffer.from(mockPSBT).toString('base64'),
+    psbt: btoa(mockPSBT),
     messageHash,
     txHash: `cooperative_tx_${params.publicKey.slice(0, 8)}`,
   };
@@ -254,7 +270,7 @@ async function buildDefaultTransaction(params: {
   const messageHash = generateMessageHash(txData);
   
   return {
-    psbt: Buffer.from(mockPSBT).toString('base64'),
+    psbt: btoa(mockPSBT),
     messageHash,
     txHash: `default_tx_${params.lenderPubkey.slice(0, 8)}`,
   };
