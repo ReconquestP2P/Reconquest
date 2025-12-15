@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Shield, CheckCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 
 interface LenderFundingModalProps {
@@ -123,11 +124,62 @@ export default function LenderFundingModal({
         {step === 'confirm' && (
           <>
             <DialogHeader>
-              <DialogTitle>Commit to Funding Loan</DialogTitle>
+              <DialogTitle>Investment Details</DialogTitle>
               <DialogDescription>
                 You are committing to fund {loan.amount} {loan.currency}. A secure escrow address will be created for the borrower to deposit collateral.
               </DialogDescription>
             </DialogHeader>
+
+            {/* Investment Details Section */}
+            <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground">Amount to invest</p>
+                  <p className="text-lg font-semibold" data-testid="text-invest-amount">
+                    {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Period</p>
+                  <p className="text-lg font-semibold" data-testid="text-period">
+                    {loan.termMonths} months
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground">Interest rate (p.a.)</p>
+                  <p className="text-lg font-semibold" data-testid="text-interest-rate">
+                    {parseFloat(loan.interestRate).toFixed(1)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">You will earn</p>
+                  <p className="text-lg font-semibold text-green-600" data-testid="text-earnings">
+                    {loan.currency} {formatCurrency(
+                      parseFloat(loan.amount) * (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12)
+                    ).replace('€', '').replace('$', '')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground">Start date</p>
+                  <p className="text-lg font-semibold" data-testid="text-start-date">
+                    {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">End date</p>
+                  <p className="text-lg font-semibold" data-testid="text-end-date">
+                    {new Date(Date.now() + loan.termMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+
+            </div>
             
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <Shield className="h-4 w-4 text-blue-600" />
