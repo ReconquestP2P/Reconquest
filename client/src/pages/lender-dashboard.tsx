@@ -176,9 +176,10 @@ export default function LenderDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
+          <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
@@ -351,18 +352,20 @@ export default function LenderDashboard() {
             </CardContent>
           </Card>
 
-          {/* Signing Ceremony - Loans needing ephemeral key generation */}
-          {lenderLoans.filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt).length > 0 && (
-            <Card className="border-purple-200 dark:border-purple-800">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
-                <CardTitle className="flex items-center gap-2">
-                  🔐 Generate Recovery Plan (Firefish Security)
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Borrower has deposited BTC! Complete the signing ceremony to activate the loan. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
+        </TabsContent>
+
+        <TabsContent value="recovery" className="space-y-6">
+          <Card className="border-purple-200 dark:border-purple-800">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+              <CardTitle className="flex items-center gap-2">
+                🔐 Generate Recovery Plan (Firefish Security)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Complete the signing ceremony to activate loans. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {lenderLoans.filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt).length > 0 ? (
                 <div className="space-y-4">
                   {lenderLoans
                     .filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt)
@@ -393,9 +396,15 @@ export default function LenderDashboard() {
                       </div>
                     ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No loans awaiting recovery plan generation. Once a borrower deposits BTC and generates their recovery plan, you can generate yours here.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">
