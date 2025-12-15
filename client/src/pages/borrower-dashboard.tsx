@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro } from "lucide-react";
+import { Coins, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/stats-card";
 import LoanCalculator from "@/components/loan-calculator";
@@ -197,8 +197,8 @@ export default function BorrowerDashboard() {
             />
             <StatsCard
               title="Total Borrowed"
-              value={formatCurrency(totalBorrowed)}
-              icon={DollarSign}
+              value={formatCurrency(totalBorrowed, "EUR")}
+              icon={Euro}
               iconColor="text-secondary"
             />
             <StatsCard
