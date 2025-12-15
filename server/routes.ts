@@ -537,8 +537,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return `<p><strong>${fieldName}:</strong> ${maskedValue}</p>`;
         }).join('');
         
-        // Send confirmation email
-        const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+        // Send confirmation email - use request origin for correct URL in dev/prod
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['host'] || 'www.reconquestp2p.com';
+        const baseUrl = `${protocol}://${host}`;
         const confirmUrl = `${baseUrl}/confirm-details-change?token=${token}`;
         
         await sendDetailsChangeConfirmation({

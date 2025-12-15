@@ -46,11 +46,26 @@ export default function MyAccount() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Profile Updated",
-        description: "Your account details have been saved successfully.",
-      });
+    onSuccess: (response) => {
+      if (response.requiresConfirmation) {
+        toast({
+          title: "Email Confirmation Required",
+          description: "Basic info updated. Please check your email to confirm your bank/Bitcoin address changes.",
+          duration: 8000,
+        });
+        // Reset sensitive fields to their original values since they weren't applied yet
+        setFormData((prev) => ({
+          ...prev,
+          iban: user?.iban || "",
+          bankAccountHolder: user?.bankAccountHolder || "",
+          btcAddress: user?.btcAddress || "",
+        }));
+      } else {
+        toast({
+          title: "Profile Updated",
+          description: "Your account details have been saved successfully.",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
     onError: (error: Error) => {
