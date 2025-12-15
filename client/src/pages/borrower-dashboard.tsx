@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy, RefreshCw } from "lucide-react";
+import { Coins, DollarSign, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatsCard from "@/components/stats-card";
 import LoanCalculator from "@/components/loan-calculator";
@@ -18,6 +18,7 @@ import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import type { Loan } from "@shared/schema";
 
 export default function BorrowerDashboard() {
@@ -42,7 +43,12 @@ export default function BorrowerDashboard() {
   });
 
   const borrowerLoans = userLoans.filter(loan => loan.borrowerId === userId);
-  const activeLoans = borrowerLoans.filter(loan => loan.status === "active");
+  // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
+  const activeLoans = borrowerLoans.filter((loan: any) => 
+    loan.status === "active" && 
+    loan.fiatTransferConfirmed === true && 
+    loan.borrowerConfirmedReceipt === true
+  );
   
   const totalBorrowed = activeLoans.reduce((sum, loan) => sum + parseFloat(loan.amount), 0);
   const totalCollateral = activeLoans.reduce((sum, loan) => sum + parseFloat(loan.collateralBtc), 0);
@@ -99,6 +105,32 @@ export default function BorrowerDashboard() {
     },
   });
 
+  // Mutation for confirming receipt of fiat funds from lender
+  const confirmReceiptMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      return apiRequest(`/api/loans/${loanId}/receipt/confirm`, "POST");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+      toast({
+        title: "✅ Funds Received Confirmed!",
+        description: "Your loan is now active. The countdown has started.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm receipt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Filter loans where lender has sent funds but borrower hasn't confirmed receipt
+  const pendingReceiptLoans = borrowerLoans.filter(
+    (loan: any) => loan.fiatTransferConfirmed === true && loan.borrowerConfirmedReceipt !== true
+  );
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -145,10 +177,11 @@ export default function BorrowerDashboard() {
         </div>
 
         <Tabs defaultValue="request" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="request">Request Loan</TabsTrigger>
           <TabsTrigger value="escrow">Escrow Pending</TabsTrigger>
           <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
+          <TabsTrigger value="confirm-funds">Confirm Funds</TabsTrigger>
           <TabsTrigger value="loans">Active Loans</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
@@ -187,6 +220,83 @@ export default function BorrowerDashboard() {
           <div className="mt-8">
             <LoanCalculator />
           </div>
+        </TabsContent>
+
+        <TabsContent value="confirm-funds" className="space-y-6">
+          <Card className="border-green-200 dark:border-green-800">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
+              <div className="flex items-center gap-2">
+                <Euro className="h-6 w-6 text-green-600" />
+                <CardTitle>Confirm Receipt of Funds</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                The lender has sent funds to your bank account. Please confirm receipt to activate your loan.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {pendingReceiptLoans.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingReceiptLoans.map((loan: any) => (
+                    <Card key={loan.id} className="border-2 border-green-200 dark:border-green-800">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-lg font-semibold">Loan #{loan.id.toString().padStart(6, '0')}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Lender has confirmed they transferred funds
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-green-600">
+                                {formatCurrency(Number(loan.amount), "EUR")}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {parseFloat(loan.interestRate).toFixed(2)}% APY
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-green-600 dark:text-green-400 font-semibold">✓ Lender Sent Funds</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Check your bank account for a transfer of {formatCurrency(Number(loan.amount), "EUR")} 
+                              with reference "Loan #{loan.id.toString().padStart(6, '0')}"
+                            </p>
+                          </div>
+
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-300 dark:border-yellow-800">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                              ⚠️ <strong>Important:</strong> Only confirm if you have received the funds in your bank account.
+                              Once confirmed, your loan will become active and the repayment countdown begins.
+                            </p>
+                          </div>
+
+                          <Button 
+                            onClick={() => confirmReceiptMutation.mutate(loan.id)}
+                            disabled={confirmReceiptMutation.isPending}
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                            data-testid={`button-confirm-receipt-${loan.id}`}
+                          >
+                            {confirmReceiptMutation.isPending ? "Confirming..." : "✓ I've Received the Funds"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No pending fund confirmations</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    When a lender transfers funds to your bank account, you'll confirm receipt here.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">

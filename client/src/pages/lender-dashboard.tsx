@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,34 @@ export default function LenderDashboard() {
   });
 
   const lenderLoans = userLoans.filter(loan => loan.lenderId === userId);
-  const activeInvestments = lenderLoans.filter(loan => loan.status === "active");
+  
+  // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
+  const activeInvestments = lenderLoans.filter(loan => 
+    loan.status === "active" && 
+    loan.fiatTransferConfirmed === true && 
+    loan.borrowerConfirmedReceipt === true
+  );
+
+  // Mutation for confirming fiat transfer sent
+  const confirmFiatMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      return apiRequest(`/api/loans/${loanId}/fiat/confirm`, "POST", { lenderId: userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
+      toast({
+        title: "Funds Transfer Confirmed",
+        description: "The borrower will be notified to confirm receipt of the funds.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm transfer",
+        variant: "destructive",
+      });
+    },
+  });
   
   const totalInvested = activeInvestments.reduce((sum, loan) => sum + parseFloat(loan.amount), 0);
   const avgAPY = activeInvestments.length > 0 
@@ -382,12 +410,20 @@ export default function LenderDashboard() {
 
                           {/* Action Button */}
                           <div className="pt-2">
-                            <Button 
-                              className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white"
-                              data-testid={`button-confirm-transfer-${loan.id}`}
-                            >
-                              ✓ I've Sent the Funds
-                            </Button>
+                            {loan.fiatTransferConfirmed ? (
+                              <div className="w-full text-center py-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg font-medium">
+                                ✓ Funds Sent - Awaiting Borrower Confirmation
+                              </div>
+                            ) : (
+                              <Button 
+                                onClick={() => confirmFiatMutation.mutate(loan.id)}
+                                disabled={confirmFiatMutation.isPending}
+                                className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white"
+                                data-testid={`button-confirm-transfer-${loan.id}`}
+                              >
+                                {confirmFiatMutation.isPending ? "Confirming..." : "✓ I've Sent the Funds"}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
