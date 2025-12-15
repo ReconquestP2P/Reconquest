@@ -92,12 +92,17 @@ export async function generateAndSignTransactions(params: {
     
     // 1. Recovery Transaction (for borrower)
     // This allows borrower to recover collateral if platform disappears
+    // LENDER PRIORITY: Borrower's recovery activates 14 days AFTER loan term ends
+    // This gives lender first chance to claim if they weren't repaid
     if (params.role === 'borrower' && params.escrowAddress) {
+      const borrowerGracePeriodDays = 14; // Borrower must wait 14 days after term ends
+      const borrowerTimelock = (params.term * 30 + borrowerGracePeriodDays) * 24 * 60 * 60; // seconds
+      
       const recoveryTx = await buildRecoveryTransaction({
         escrowAddress: params.escrowAddress,
         borrowerPubkey: publicKey,
         collateralBtc: params.collateralBtc,
-        timelock: params.term * 30 * 24 * 60 * 60, // Term in months converted to seconds
+        timelock: borrowerTimelock,
       });
       
       const recoverySignature = await signTransaction(recoveryTx.messageHash, privateKeyHex);
@@ -107,7 +112,7 @@ export async function generateAndSignTransactions(params: {
         psbt: recoveryTx.psbt,
         signature: recoverySignature,
         txHash: recoveryTx.txHash,
-        validAfter: Date.now() + (params.term * 30 * 24 * 60 * 60 * 1000),
+        validAfter: Date.now() + (borrowerTimelock * 1000),
       });
     }
     
@@ -133,11 +138,10 @@ export async function generateAndSignTransactions(params: {
     
     // 3. Default Transaction (for lender protection)
     // This allows lender to claim collateral if borrower defaults
-    // LENDER PRIORITY: Lender's timelock activates 14 days BEFORE borrower's recovery
-    // This ensures lender can claim first if platform disappears mid-loan
+    // LENDER PRIORITY: Lender's timelock activates when loan term ends
+    // Borrower can only recover 14 days later, giving lender first claim
     if (params.role === 'lender' && params.escrowAddress) {
-      const gracePeriodDays = 14; // Lender has 14-day head start over borrower
-      const lenderTimelock = (params.term * 30 - gracePeriodDays) * 24 * 60 * 60; // seconds
+      const lenderTimelock = params.term * 30 * 24 * 60 * 60; // Activates at loan term end
       
       const defaultTx = await buildDefaultTransaction({
         escrowAddress: params.escrowAddress,
