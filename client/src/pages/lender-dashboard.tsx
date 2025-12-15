@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -238,7 +238,7 @@ export default function LenderDashboard() {
             <StatsCard
               title="Total Invested"
               value={formatCurrency(totalInvested, "EUR")}
-              icon={DollarSign}
+              icon={Euro}
               iconColor="text-green-600"
             />
             <StatsCard
