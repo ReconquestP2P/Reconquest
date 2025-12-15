@@ -17,19 +17,19 @@
  */
 
 import * as secp256k1 from '@noble/secp256k1';
-import { sha256 } from '@noble/hashes/sha256.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { hmac } from '@noble/hashes/hmac.js';
 import * as Firefish from './firefish-wasm-mock';
 
 // Configure secp256k1 v3.0.0 to use sha256 and hmac for ECDSA signing
-// The library requires both sha256Sync and hmacSha256Sync to be set
-secp256k1.etc.sha256Sync = (...messages: Uint8Array[]): Uint8Array => {
-  const concatenated = secp256k1.etc.concatBytes(...messages);
-  return sha256(concatenated);
+// In v3.0.0, these are on the 'hashes' object, not 'etc'
+secp256k1.hashes.sha256 = (msg: Uint8Array): Uint8Array => {
+  return sha256(msg);
 };
 
-secp256k1.etc.hmacSha256Sync = (key: Uint8Array, ...messages: Uint8Array[]): Uint8Array => {
-  return hmac(sha256, key, secp256k1.etc.concatBytes(...messages));
+secp256k1.hashes.hmacSha256 = (key: Uint8Array, ...msgs: Uint8Array[]): Uint8Array => {
+  const concatenated = secp256k1.etc.concatBytes(...msgs);
+  return hmac(sha256, key, concatenated);
 };
 
 export interface SignedTransaction {
