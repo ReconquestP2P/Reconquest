@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy } from "lucide-react";
+import { TrendingUp, DollarSign, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -39,6 +39,10 @@ export default function LenderDashboard() {
   const [statusFilter, setStatusFilter] = useState("available"); // "available" or "matched"
   const [selectedTerms, setSelectedTerms] = useState<number[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState("all");
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<"amount" | "period" | "yield">("amount");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Funding modal state
   const [fundingModalOpen, setFundingModalOpen] = useState(false);
@@ -112,8 +116,25 @@ export default function LenderDashboard() {
       filtered = filtered.filter(loan => selectedTerms.includes(loan.termMonths));
     }
 
+    // Sort loans
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "amount":
+          comparison = parseFloat(a.amount) - parseFloat(b.amount);
+          break;
+        case "period":
+          comparison = a.termMonths - b.termMonths;
+          break;
+        case "yield":
+          comparison = parseFloat(a.interestRate) - parseFloat(b.interestRate);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
     return filtered;
-  }, [allLoans, statusFilter, minAmount, maxAmount, selectedCurrency, selectedTerms]);
+  }, [allLoans, statusFilter, minAmount, maxAmount, selectedCurrency, selectedTerms, sortField, sortDirection]);
 
   // Helper functions for filter controls
   const handleTermToggle = (term: number) => {
@@ -131,6 +152,22 @@ export default function LenderDashboard() {
     setStatusFilter("available");
     setSelectedTerms([]);
     setSelectedCurrency("all");
+  };
+
+  const handleSort = (field: "amount" | "period" | "yield") => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: "amount" | "period" | "yield" }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    return sortDirection === "asc" 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-primary" />
+      : <ArrowDown className="h-4 w-4 ml-1 text-primary" />;
   };
 
   const handleFundLoan = (loanId: number) => {
@@ -572,16 +609,68 @@ export default function LenderDashboard() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {filteredLoans.map((loan) => (
-                        <LoanCard
-                          key={loan.id}
-                          loan={loan}
-                          onFund={handleFundLoan}
-                          showFundButton={statusFilter === "available"}
-                        />
-                      ))}
-                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort("amount")}
+                            data-testid="sort-amount"
+                          >
+                            <div className="flex items-center">
+                              Loan Amount
+                              <SortIcon field="amount" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort("period")}
+                            data-testid="sort-period"
+                          >
+                            <div className="flex items-center">
+                              Period
+                              <SortIcon field="period" />
+                            </div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort("yield")}
+                            data-testid="sort-yield"
+                          >
+                            <div className="flex items-center">
+                              Interest Rate
+                              <SortIcon field="yield" />
+                            </div>
+                          </TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredLoans.map((loan) => (
+                          <TableRow key={loan.id} data-testid={`loan-row-${loan.id}`}>
+                            <TableCell className="font-medium">
+                              {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
+                            </TableCell>
+                            <TableCell>{loan.termMonths} months</TableCell>
+                            <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
+                            <TableCell>
+                              {statusFilter === "available" ? (
+                                <Button
+                                  variant="link"
+                                  className="text-primary p-0 h-auto"
+                                  onClick={() => handleFundLoan(loan.id)}
+                                  data-testid={`button-fund-loan-${loan.id}`}
+                                >
+                                  Investment details
+                                </Button>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">View details</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
