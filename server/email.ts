@@ -278,3 +278,78 @@ export async function sendLenderFundingNotification(params: {
   });
 }
 
+export async function sendLenderKeyGenerationNotification(params: {
+  to: string;
+  lenderName: string;
+  borrowerName: string;
+  loanId: number;
+  loanAmount: string;
+  currency: string;
+  dashboardUrl: string;
+}): Promise<boolean> {
+  const { to, lenderName, borrowerName, loanId, loanAmount, currency, dashboardUrl } = params;
+
+  const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background-color: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          ${getEmailHeader()}
+        </div>
+        
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">🔐 Action Required: Generate Your Recovery Plan</h2>
+        
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Dear ${lenderName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          Great news! The borrower <strong>${borrowerName}</strong> has completed their recovery plan for Loan #${loanId}. 
+          To finalize the security setup, you now need to generate your own recovery plan.
+        </p>
+        
+        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #856404;">
+            <strong>⚠️ Important:</strong> Both parties must generate their recovery plans before the loan can be fully activated. 
+            This dual-signing process ensures maximum security for the Bitcoin collateral.
+          </p>
+        </div>
+        
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> #${loanId}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${loanAmount} ${currency}</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            🔐 Generate My Recovery Plan
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; line-height: 1.7; margin-top: 25px;">
+          When you click the button above, your browser will generate a secure Bitcoin keypair. 
+          The private key is used only to sign transactions and is immediately discarded - you will never see it. 
+          Instead, you'll download a recovery file containing pre-signed transactions for emergencies.
+        </p>
+
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to,
+    from: 'Reconquest <noreply@reconquestp2p.com>',
+    subject: `🔐 Action Required: Generate Your Recovery Plan for Loan #${loanId}`,
+    html,
+  });
+}
+
