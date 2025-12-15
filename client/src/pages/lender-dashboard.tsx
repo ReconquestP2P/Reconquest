@@ -237,13 +237,13 @@ export default function LenderDashboard() {
             />
             <StatsCard
               title="Total Invested"
-              value={formatCurrency(totalInvested)}
+              value={formatCurrency(totalInvested, "EUR")}
               icon={DollarSign}
               iconColor="text-green-600"
             />
             <StatsCard
               title="Interest Earned"
-              value={formatCurrency(interestEarned)}
+              value={formatCurrency(interestEarned, "EUR")}
               icon={PiggyBank}
               iconColor="text-primary"
               valueColor="text-green-600"
