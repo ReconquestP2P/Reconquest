@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,6 +51,9 @@ export default function LenderDashboard() {
   
   // Signing ceremony modal state
   const [signingLoan, setSigningLoan] = useState<Loan | null>(null);
+  
+  // Active loan details modal state
+  const [activeDetailLoan, setActiveDetailLoan] = useState<any | null>(null);
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
@@ -682,38 +686,60 @@ export default function LenderDashboard() {
         <TabsContent value="active" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Active Investments</CardTitle>
+              <CardTitle>My Investments</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Loans that are fully activated and earning interest
+                Track the status and details of your investments
               </p>
             </CardHeader>
             <CardContent>
               {lenderLoans.filter(loan => loan.status === 'active').length > 0 ? (
-                <div className="space-y-4">
-                  {lenderLoans
-                    .filter(loan => loan.status === 'active')
-                    .map((loan) => (
-                      <div key={loan.id} className="border rounded-lg p-4 bg-gradient-to-br from-green-50/50 to-blue-50/50 dark:from-green-950/20 dark:to-blue-950/20">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold">Loan #{loan.id}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months · {parseFloat(loan.interestRate).toFixed(2)}% APY
-                            </p>
-                            <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                              Active
-                            </Badge>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-green-600">
-                              {formatCurrency(parseFloat(loan.amount), loan.currency)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Earning interest</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Loan Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Interest Rate (p.a.)</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Maturity Date</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lenderLoans
+                      .filter(loan => loan.status === 'active')
+                      .map((loan) => {
+                        const startDate = loan.activatedAt ? new Date(loan.activatedAt) : new Date();
+                        const maturityDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+                        return (
+                          <TableRow key={loan.id} data-testid={`active-loan-row-${loan.id}`}>
+                            <TableCell className="font-medium">
+                              {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                Active
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
+                            <TableCell>{loan.termMonths} months</TableCell>
+                            <TableCell>
+                              {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="link"
+                                className="text-primary p-0 h-auto"
+                                onClick={() => setActiveDetailLoan(loan)}
+                                data-testid={`button-view-active-${loan.id}`}
+                              >
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
@@ -762,6 +788,125 @@ export default function LenderDashboard() {
           role="lender"
           userId={userId}
         />
+      )}
+
+      {/* Active Loan Details Modal */}
+      {activeDetailLoan && (
+        <Dialog open={!!activeDetailLoan} onOpenChange={() => setActiveDetailLoan(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Investment Details</DialogTitle>
+            </DialogHeader>
+            
+            {(() => {
+              const loan = activeDetailLoan;
+              const startDate = loan.activatedAt ? new Date(loan.activatedAt) : new Date();
+              const maturityDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+              const daysRemaining = Math.max(0, Math.ceil((maturityDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+              const totalOwed = parseFloat(loan.amount) * (1 + (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12));
+              const liquidationPrice = parseFloat(loan.collateralBtc) > 0 
+                ? parseFloat(loan.amount) / parseFloat(loan.collateralBtc) 
+                : 0;
+              
+              return (
+                <div className="space-y-4">
+                  {/* Header Card */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-4 border">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-green-100 text-green-700 mb-2">
+                          ACTIVE INVESTMENT
+                        </Badge>
+                        <p className="text-2xl font-bold">
+                          {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Maturity Date</p>
+                        <p className="font-semibold">
+                          {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">Period & Interest</p>
+                        <p className="font-semibold">
+                          {loan.termMonths} months / {parseFloat(loan.interestRate).toFixed(1)}% p.a.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details Section */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Investment details</span>
+                      <span className="font-mono text-xs">ID: {loan.id.toString().slice(0, 8)}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Collateral</span>
+                      <span className="font-semibold text-orange-500" data-testid="text-collateral">
+                        {parseFloat(loan.collateralBtc).toFixed(5)} BTC
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Bitcoin Liquidation Price</span>
+                      <span className="font-semibold text-red-500" data-testid="text-liquidation-price">
+                        {loan.currency} {formatCurrency(liquidationPrice).replace('€', '').replace('$', '')}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Investment Start Date</span>
+                      <span className="font-semibold" data-testid="text-start-date">
+                        {startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Days Remaining</span>
+                      <span className="font-semibold" data-testid="text-days-remaining">
+                        {daysRemaining}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Amount Owed</span>
+                      <span className="font-semibold text-green-600" data-testid="text-amount-owed">
+                        {loan.currency} {formatCurrency(totalOwed).replace('€', '').replace('$', '')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Escrow Link */}
+                  {loan.escrowAddress && (
+                    <div className="text-center">
+                      <a 
+                        href={`https://mempool.space/testnet/address/${loan.escrowAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        data-testid="link-escrow-mempool"
+                      >
+                        🔍 View Escrow on Mempool →
+                      </a>
+                    </div>
+                  )}
+
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setActiveDetailLoan(null)}
+                    data-testid="button-back-to-list"
+                  >
+                    ← Back to list
+                  </Button>
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
       )}
     </FirefishWASMProvider>
   );
