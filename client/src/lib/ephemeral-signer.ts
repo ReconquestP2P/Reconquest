@@ -133,11 +133,17 @@ export async function generateAndSignTransactions(params: {
     
     // 3. Default Transaction (for lender protection)
     // This allows lender to claim collateral if borrower defaults
+    // LENDER PRIORITY: Lender's timelock activates 14 days BEFORE borrower's recovery
+    // This ensures lender can claim first if platform disappears mid-loan
     if (params.role === 'lender' && params.escrowAddress) {
+      const gracePeriodDays = 14; // Lender has 14-day head start over borrower
+      const lenderTimelock = (params.term * 30 - gracePeriodDays) * 24 * 60 * 60; // seconds
+      
       const defaultTx = await buildDefaultTransaction({
         escrowAddress: params.escrowAddress,
         lenderPubkey: publicKey,
         collateralBtc: params.collateralBtc,
+        timelock: lenderTimelock,
       });
       
       const defaultSignature = await signTransaction(defaultTx.messageHash, privateKeyHex);
@@ -147,6 +153,7 @@ export async function generateAndSignTransactions(params: {
         psbt: defaultTx.psbt,
         signature: defaultSignature,
         txHash: defaultTx.txHash,
+        validAfter: Date.now() + (lenderTimelock * 1000),
       });
     }
     
@@ -258,15 +265,17 @@ async function buildCooperativeCloseTransaction(params: {
 
 /**
  * Build default transaction (lender claims collateral on default)
+ * Includes timelock that activates BEFORE borrower's recovery for lender priority
  */
 async function buildDefaultTransaction(params: {
   escrowAddress: string;
   lenderPubkey: string;
   collateralBtc: number;
+  timelock: number; // seconds - activates 14 days before borrower's recovery
 }): Promise<{ psbt: string; messageHash: string; txHash: string }> {
   // Mock implementation
   const mockPSBT = `default_psbt_${params.escrowAddress}_${Date.now()}`;
-  const txData = `default_${params.escrowAddress}_${params.lenderPubkey}_${params.collateralBtc}`;
+  const txData = `default_${params.escrowAddress}_${params.lenderPubkey}_${params.collateralBtc}_${params.timelock}`;
   const messageHash = generateMessageHash(txData);
   
   return {
