@@ -176,11 +176,12 @@ export default function LenderDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
-          <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
+          <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
+          <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
+          <TabsTrigger value="active">Active Loans</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -576,6 +577,52 @@ export default function LenderDashboard() {
             </div>
           </div>
 
+        </TabsContent>
+
+        <TabsContent value="active" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Investments</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Loans that are fully activated and earning interest
+              </p>
+            </CardHeader>
+            <CardContent>
+              {lenderLoans.filter(loan => loan.status === 'active').length > 0 ? (
+                <div className="space-y-4">
+                  {lenderLoans
+                    .filter(loan => loan.status === 'active')
+                    .map((loan) => (
+                      <div key={loan.id} className="border rounded-lg p-4 bg-gradient-to-br from-green-50/50 to-blue-50/50 dark:from-green-950/20 dark:to-blue-950/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold">Loan #{loan.id}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months · {parseFloat(loan.interestRate).toFixed(2)}% APY
+                            </p>
+                            <Badge className="mt-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                              Active
+                            </Badge>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-green-600">
+                              {formatCurrency(parseFloat(loan.amount), loan.currency)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Earning interest</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No active investments yet. Complete the loan flow to see active loans here.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="achievements" className="space-y-6">
