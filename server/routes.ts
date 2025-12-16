@@ -1074,17 +1074,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       loans.map(async (loan) => {
         if (loan.borrowerId) {
           const borrower = await storage.getUser(loan.borrowerId);
+          // Only include bank details if both parties have generated their recovery plans
+          const showBankDetails = loan.borrowerKeysGeneratedAt && loan.lenderKeysGeneratedAt;
           return {
             ...loan,
             borrower: {
               id: borrower?.id,
               username: borrower?.username,
+              firstName: borrower?.firstName,
+              lastName: borrower?.lastName,
               email: borrower?.email,
-              bankAccountHolder: borrower?.bankAccountHolder,
-              bankAccountNumber: borrower?.bankAccountNumber,
-              bankName: borrower?.bankName,
-              bankRoutingNumber: borrower?.bankRoutingNumber,
-              bankCountry: borrower?.bankCountry,
+              // Only expose sensitive bank details after both parties have completed key generation
+              bankAccountHolder: showBankDetails ? borrower?.bankAccountHolder : null,
+              iban: showBankDetails ? borrower?.iban : null,
             }
           };
         }
