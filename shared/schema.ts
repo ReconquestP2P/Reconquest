@@ -117,6 +117,10 @@ export const loans = pgTable("loans", {
   lenderKeysGeneratedAt: timestamp("lender_keys_generated_at"), // When lender generated ephemeral keys
   loanStartedAt: timestamp("loan_started_at"),
   
+  // Repayment Confirmation
+  repaymentConfirmedByBorrower: boolean("repayment_confirmed_by_borrower").default(false),
+  repaymentConfirmedAt: timestamp("repayment_confirmed_at"),
+  
   // Dispute Resolution (Platform Intermediary)
   disputeStatus: text("dispute_status").default("none"), // none, under_review, resolved
   disputeResolvedAt: timestamp("dispute_resolved_at"),
