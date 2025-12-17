@@ -1,6 +1,4 @@
 import { Resend } from 'resend';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY environment variable must be set");
@@ -65,45 +63,16 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
   }
 }
 
-// Create logo data URI from PNG file with size optimization for emails
-function getLogoDataURI(): string {
-  try {
-    const logoPath = join(process.cwd(), 'attached_assets', 'Reconquest logo 2_1752025456549.png');
-    console.log('Loading logo from:', logoPath);
-    const logoBuffer = readFileSync(logoPath);
-    console.log('Logo loaded successfully, size:', logoBuffer.length, 'bytes');
-    
-    // If logo is too large (>500KB), return empty to use text fallback
-    if (logoBuffer.length > 500000) {
-      console.log('Logo too large for email, using text fallback');
-      return '';
-    }
-    
-    const logoBase64 = logoBuffer.toString('base64');
-    return `data:image/png;base64,${logoBase64}`;
-  } catch (error) {
-    console.error('Failed to load logo:', error);
-    return ''; // Return empty string if logo fails to load
-  }
+// Get public logo URL for emails
+function getLogoUrl(): string {
+  const appUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+  return `${appUrl}/public/logo.png`;
 }
 
-// Create email header with logo or text fallback
+// Create email header with logo
 function getEmailHeader(): string {
-  const logoDataURI = getLogoDataURI();
-  
-  if (logoDataURI) {
-    return `<img src="${logoDataURI}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />`;
-  } else {
-    // Fallback to styled text logo
-    return `
-      <div style="margin-bottom: 15px;">
-        <h1 style="color: #D4AF37; font-size: 28px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
-          👑 RECONQUEST
-        </h1>
-        <p style="color: #5DADE2; font-size: 12px; margin: 3px 0 0 0; letter-spacing: 1px;">BITCOIN LENDING PLATFORM</p>
-      </div>
-    `;
-  }
+  const logoUrl = getLogoUrl();
+  return `<img src="${logoUrl}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />`;
 }
 
 export async function sendBorrowerDepositNotification(params: {
