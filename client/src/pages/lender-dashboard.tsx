@@ -323,14 +323,18 @@ export default function LenderDashboard() {
                 loan.depositConfirmedAt && 
                 loan.borrowerKeysGeneratedAt && 
                 loan.lenderKeysGeneratedAt &&
-                loan.borrower?.iban
+                loan.borrower?.iban &&
+                loan.status !== 'completed' &&
+                !loan.borrowerConfirmedReceipt
               ).length > 0 ? (
                 <div className="space-y-4">
                   {lenderLoans.filter(loan => 
                     loan.depositConfirmedAt && 
                     loan.borrowerKeysGeneratedAt && 
                     loan.lenderKeysGeneratedAt &&
-                    loan.borrower?.iban
+                    loan.borrower?.iban &&
+                    loan.status !== 'completed' &&
+                    !loan.borrowerConfirmedReceipt
                   ).map((loan) => (
                     <Card key={loan.id} className="border-2 border-yellow-200 dark:border-yellow-800">
                       <CardContent className="p-6">
