@@ -3016,6 +3016,118 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // Lender confirms receipt of repayment and triggers cooperative close
+  app.post("/api/loans/:id/confirm-receipt", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only lender can confirm receipt
+      if (loan.lenderId !== userId) {
+        return res.status(403).json({ message: "Only the lender can confirm receipt" });
+      }
+
+      // Loan must be in repayment_pending status
+      if (loan.status !== 'repayment_pending') {
+        return res.status(400).json({ message: "Loan must be awaiting repayment confirmation" });
+      }
+
+      // Get cooperative_close transactions
+      const transactions = await storage.getPreSignedTransactions(loanId, 'cooperative_close');
+
+      if (transactions.length < 2) {
+        // If not enough signatures, just mark as completed without blockchain tx
+        await storage.updateLoan(loanId, {
+          status: 'completed',
+          repaidAt: new Date(),
+        });
+        
+        console.log(`✅ Loan #${loanId} marked as completed (no blockchain tx - missing signatures)`);
+        return res.json({ 
+          success: true, 
+          message: "Loan completed. Collateral return may need manual processing.",
+          blockchainTx: false
+        });
+      }
+
+      // Import broadcast service
+      const { aggregateSignatures, broadcastTransaction, generatePlatformSignature } = await import("./services/bitcoin-broadcast.js");
+
+      // Add platform signature
+      const platformSig = await generatePlatformSignature(
+        transactions[0].txHash,
+        `cooperative_close_${loanId}`
+      );
+
+      // Store platform signature
+      const platformTx = await storage.storePreSignedTransaction({
+        loanId,
+        partyRole: 'platform',
+        partyPubkey: platformSig.publicKey,
+        txType: 'cooperative_close',
+        psbt: transactions[0].psbt,
+        signature: platformSig.signature,
+        txHash: transactions[0].txHash,
+      });
+
+      // Aggregate signatures (2-of-3)
+      const allTransactions = [...transactions, platformTx];
+      const aggregation = await aggregateSignatures(allTransactions);
+
+      if (!aggregation.success || !aggregation.txHex) {
+        // Mark completed even if broadcast fails
+        await storage.updateLoan(loanId, {
+          status: 'completed',
+          repaidAt: new Date(),
+        });
+        
+        return res.json({ 
+          success: true,
+          message: "Loan completed. Bitcoin transaction aggregation failed - manual review needed.",
+          blockchainTx: false,
+          error: aggregation.error
+        });
+      }
+
+      // Broadcast to Bitcoin testnet
+      const broadcast = await broadcastTransaction(aggregation.txHex);
+
+      // Update all transactions with broadcast status
+      for (const tx of allTransactions) {
+        await storage.updateTransactionBroadcastStatus(tx.id, {
+          broadcastStatus: broadcast.success ? 'broadcasting' : 'failed',
+          broadcastTxid: broadcast.txid,
+          broadcastedAt: new Date(),
+        });
+      }
+
+      // Update loan status
+      await storage.updateLoan(loanId, {
+        status: 'completed',
+        repaidAt: new Date(),
+      });
+
+      console.log(`✅ Loan #${loanId} completed! Txid: ${broadcast.txid || 'N/A'}`);
+      res.json({ 
+        success: true, 
+        txid: broadcast.txid,
+        blockchainTx: broadcast.success,
+        message: broadcast.success 
+          ? "Loan completed. Collateral is being returned to borrower."
+          : "Loan completed. Bitcoin broadcast may need manual processing."
+      });
+
+    } catch (error) {
+      console.error("Error processing lender confirmation:", error);
+      res.status(500).json({ message: "Failed to process confirmation" });
+    }
+  });
+
   // Trigger cooperative close broadcast (when borrower repays loan)
   app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
     try {
