@@ -187,6 +187,18 @@ export default function BorrowerDashboard() {
         </TabsList>
 
         <TabsContent value="request" className="space-y-6">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="flex items-center gap-2"
+              data-testid="button-refresh-request"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatsCard
@@ -225,9 +237,21 @@ export default function BorrowerDashboard() {
         <TabsContent value="confirm-funds" className="space-y-6">
           <Card className="border-green-200 dark:border-green-800">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-              <div className="flex items-center gap-2">
-                <Euro className="h-6 w-6 text-green-600" />
-                <CardTitle>Confirm Receipt of Funds</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Euro className="h-6 w-6 text-green-600" />
+                  <CardTitle>Confirm Receipt of Funds</CardTitle>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-confirm-funds"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 The lender has sent funds to your bank account. Please confirm receipt to activate your loan.
@@ -415,9 +439,21 @@ export default function BorrowerDashboard() {
         <TabsContent value="recovery" className="space-y-6">
           <Card className="border-purple-200 dark:border-purple-800">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
-              <CardTitle className="flex items-center gap-2">
-                🔐 Generate Recovery Plan (Firefish Security)
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  🔐 Generate Recovery Plan (Firefish Security)
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-recovery"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Complete the signing ceremony to activate your loan. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
               </p>

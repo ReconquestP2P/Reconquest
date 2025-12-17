@@ -255,6 +255,18 @@ export default function LenderDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="flex items-center gap-2"
+              data-testid="button-refresh-overview"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatsCard
@@ -534,9 +546,21 @@ export default function LenderDashboard() {
         <TabsContent value="recovery" className="space-y-6">
           <Card className="border-purple-200 dark:border-purple-800">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
-              <CardTitle className="flex items-center gap-2">
-                🔐 Generate Recovery Plan (Firefish Security)
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  🔐 Generate Recovery Plan (Firefish Security)
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-recovery"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Complete the signing ceremony to activate loans. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
               </p>
@@ -810,10 +834,24 @@ export default function LenderDashboard() {
         <TabsContent value="active" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>My Investments</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Track the status and details of your investments
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>My Investments</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Track the status and details of your investments
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                  data-testid="button-refresh-active"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {lenderLoans.filter(loan => loan.status === 'active').length > 0 ? (
