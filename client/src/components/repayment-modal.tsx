@@ -34,8 +34,12 @@ export default function RepaymentModal({
   const { data: bankDetails, isLoading: isLoadingBank } = useQuery<LenderBankDetails>({
     queryKey: ['/api/loans', loan.id, 'lender-bank-details'],
     queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`/api/loans/${loan.id}/lender-bank-details`, {
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       if (!res.ok) {
         throw new Error('Failed to fetch lender bank details');
