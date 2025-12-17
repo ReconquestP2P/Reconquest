@@ -2935,6 +2935,87 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // Get lender bank details for repayment (borrower only)
+  app.get("/api/loans/:id/lender-bank-details", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can view lender's bank details
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only the borrower can view lender bank details" });
+      }
+
+      // Loan must be active
+      if (loan.status !== 'active') {
+        return res.status(400).json({ message: "Loan must be active to view repayment details" });
+      }
+
+      if (!loan.lenderId) {
+        return res.status(400).json({ message: "No lender assigned to this loan" });
+      }
+
+      // Get lender details
+      const lender = await storage.getUser(loan.lenderId);
+      if (!lender) {
+        return res.status(404).json({ message: "Lender not found" });
+      }
+
+      res.json({
+        iban: lender.iban || null,
+        bankAccountHolder: lender.bankAccountHolder || null,
+        bankCountry: lender.bankCountry || null,
+      });
+    } catch (error) {
+      console.error("Error fetching lender bank details:", error);
+      res.status(500).json({ message: "Failed to fetch lender bank details" });
+    }
+  });
+
+  // Confirm repayment sent by borrower (simple confirmation, no Bitcoin transaction)
+  app.post("/api/loans/:id/confirm-repayment", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = (req as any).user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can confirm repayment
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only the borrower can confirm repayment" });
+      }
+
+      // Loan must be active
+      if (loan.status !== 'active') {
+        return res.status(400).json({ message: "Loan must be active to confirm repayment" });
+      }
+
+      // Update loan with confirmation
+      await storage.updateLoan(loanId, {
+        repaymentConfirmedByBorrower: true,
+        repaymentConfirmedAt: new Date(),
+        status: 'repayment_pending',
+      });
+
+      console.log(`✅ Borrower confirmed repayment for loan #${loanId}`);
+      res.json({ 
+        success: true, 
+        message: "Repayment confirmation recorded. The lender will be notified."
+      });
+    } catch (error) {
+      console.error("Error confirming repayment:", error);
+      res.status(500).json({ message: "Failed to confirm repayment" });
+    }
+  });
+
   // Trigger cooperative close broadcast (when borrower repays loan)
   app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
     try {
