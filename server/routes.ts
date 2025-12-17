@@ -3005,6 +3005,36 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         status: 'repayment_pending',
       });
 
+      // Send email notification to lender
+      if (loan.lenderId) {
+        const lender = await storage.getUser(loan.lenderId);
+        const borrower = await storage.getUser(loan.borrowerId);
+        if (lender && lender.email) {
+          const principal = parseFloat(loan.amount);
+          const interest = (principal * parseFloat(loan.interestRate)) / 100;
+          const totalExpected = principal + interest;
+          
+          await sendEmail({
+            to: lender.email,
+            from: 'noreply@reconquestp2p.com',
+            subject: `💰 Repayment Received - Loan #${loanId}`,
+            html: `
+              <h2>Borrower Has Sent Your Repayment!</h2>
+              <p>Hi ${lender.username || 'Lender'},</p>
+              <p>Great news! The borrower (${borrower?.username || 'Unknown'}) has confirmed sending the repayment for Loan #${loanId}.</p>
+              <p><strong>Expected Amount:</strong> ${totalExpected.toFixed(2)} ${loan.currency}</p>
+              <ul>
+                <li>Principal: ${principal.toFixed(2)} ${loan.currency}</li>
+                <li>Interest: ${interest.toFixed(2)} ${loan.currency}</li>
+              </ul>
+              <p><strong>Please log in to your dashboard</strong> to confirm you received the funds and release the borrower's Bitcoin collateral.</p>
+              <p>Go to: Lender Dashboard → Pending Transfers tab → Pending Repayment Confirmations</p>
+            `
+          });
+          console.log(`📧 Email sent to lender ${lender.email} about repayment for loan #${loanId}`);
+        }
+      }
+
       console.log(`✅ Borrower confirmed repayment for loan #${loanId}`);
       res.json({ 
         success: true, 
