@@ -168,13 +168,13 @@ export default function LenderFundingModal({
                 <div>
                   <p className="text-sm text-muted-foreground">Start date</p>
                   <p className="text-lg font-semibold" data-testid="text-start-date">
-                    {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">End date</p>
                   <p className="text-lg font-semibold" data-testid="text-end-date">
-                    {new Date(Date.now() + loan.termMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + loan.termMonths * 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
               </div>
