@@ -248,6 +248,7 @@ async function buildRecoveryTransaction(params: {
 
 /**
  * Build cooperative close transaction (normal loan repayment)
+ * IMPORTANT: txHash uses escrowAddress so borrower and lender produce the same hash
  */
 async function buildCooperativeCloseTransaction(params: {
   escrowAddress: string;
@@ -255,15 +256,18 @@ async function buildCooperativeCloseTransaction(params: {
   loanAmount: number;
   collateralBtc: number;
 }): Promise<{ psbt: string; messageHash: string; txHash: string }> {
-  // Mock implementation
-  const mockPSBT = `cooperative_psbt_${params.escrowAddress}_${Date.now()}`;
-  const txData = `cooperative_${params.escrowAddress}_${params.publicKey}_${params.loanAmount}_${params.collateralBtc}`;
+  // Mock implementation - use escrowAddress for consistent PSBT across parties
+  const mockPSBT = `cooperative_psbt_${params.escrowAddress}`;
+  const txData = `cooperative_${params.escrowAddress}_${params.loanAmount}_${params.collateralBtc}`;
   const messageHash = generateMessageHash(txData);
+  
+  // Use escrowAddress hash for consistent txHash between borrower and lender
+  const escrowHash = params.escrowAddress.slice(-8);
   
   return {
     psbt: btoa(mockPSBT),
     messageHash,
-    txHash: `cooperative_tx_${params.publicKey.slice(0, 8)}`,
+    txHash: `cooperative_tx_${escrowHash}`,
   };
 }
 
