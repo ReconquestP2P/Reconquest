@@ -28,9 +28,11 @@ export default function LenderFundingModal({
   const [signedPublicKey, setSignedPublicKey] = useState<string | null>(null);
 
   const fundLoan = useMutation({
-    mutationFn: async (data: { lenderPubkey: string }) => {
+    mutationFn: async (data: { lenderPubkey: string; plannedStartDate: string; plannedEndDate: string }) => {
       const response = await apiRequest(`/api/loans/${loan.id}/fund`, "POST", {
-        lenderPubkey: data.lenderPubkey
+        lenderPubkey: data.lenderPubkey,
+        plannedStartDate: data.plannedStartDate,
+        plannedEndDate: data.plannedEndDate
       });
       const loanResponse = await response.json();
       return loanResponse;
@@ -93,9 +95,17 @@ export default function LenderFundingModal({
       
       setSignedPublicKey(lenderPubkey);
       
+      // Calculate planned dates: start = today + 7 days, end = start + term months
+      const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const endDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+      
       // Submit public key to backend to create escrow and notify borrower
       // Transaction signing will happen AFTER borrower deposits collateral
-      fundLoan.mutate({ lenderPubkey });
+      fundLoan.mutate({ 
+        lenderPubkey,
+        plannedStartDate: startDate.toISOString(),
+        plannedEndDate: endDate.toISOString()
+      });
       
     } catch (error) {
       console.error('Failed to generate public key:', error);

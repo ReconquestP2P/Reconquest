@@ -1169,7 +1169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Extract and validate lender's Bitcoin public key (NO transaction signing yet)
-      const { lenderPubkey } = req.body;
+      const { lenderPubkey, plannedStartDate, plannedEndDate } = req.body;
       
       // Validate public key format
       if (!lenderPubkey || typeof lenderPubkey !== 'string') {
@@ -1232,6 +1232,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         escrowState: "escrow_created", // New state: escrow created, awaiting borrower deposit
         status: "funded", // Lender has committed
         fundedAt: new Date(),
+        plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + loan.termMonths * 30 * 24 * 60 * 60 * 1000),
       });
 
       // Get borrower details for email notification
