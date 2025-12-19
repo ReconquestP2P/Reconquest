@@ -7,7 +7,7 @@ import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { LtvValidationService } from "./services/LtvValidationService";
-import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation } from "./email";
+import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -3016,22 +3016,30 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           const interest = (principal * parseFloat(loan.interestRate)) / 100;
           const totalExpected = principal + interest;
           
+          const baseUrl = getBaseUrl();
+          const html = createBrandedEmailHtml({
+            title: '💰 Borrower Has Sent Your Repayment!',
+            greeting: `Hi ${lender.username || 'Lender'},`,
+            content: `
+              <p>Great news! The borrower (${borrower?.username || 'Unknown'}) has confirmed sending the repayment for <strong>Loan #${loanId}</strong>.</p>
+              
+              <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 5px 0; font-size: 18px;"><strong>Expected Amount:</strong> €${totalExpected.toFixed(2)} ${loan.currency}</p>
+                <p style="margin: 5px 0;">Principal: €${principal.toFixed(2)} ${loan.currency}</p>
+                <p style="margin: 5px 0;">Interest: €${interest.toFixed(2)} ${loan.currency}</p>
+              </div>
+              
+              <p><strong>Please log in to your dashboard</strong> to confirm you received the funds and release the borrower's Bitcoin collateral.</p>
+            `,
+            buttonText: 'Confirm Receipt & Release Collateral',
+            buttonUrl: `${baseUrl}/lender-dashboard`
+          });
+          
           await sendEmail({
             to: lender.email,
-            from: 'noreply@reconquestp2p.com',
+            from: 'Reconquest <noreply@reconquestp2p.com>',
             subject: `💰 Repayment Received - Loan #${loanId}`,
-            html: `
-              <h2>Borrower Has Sent Your Repayment!</h2>
-              <p>Hi ${lender.username || 'Lender'},</p>
-              <p>Great news! The borrower (${borrower?.username || 'Unknown'}) has confirmed sending the repayment for Loan #${loanId}.</p>
-              <p><strong>Expected Amount:</strong> ${totalExpected.toFixed(2)} ${loan.currency}</p>
-              <ul>
-                <li>Principal: ${principal.toFixed(2)} ${loan.currency}</li>
-                <li>Interest: ${interest.toFixed(2)} ${loan.currency}</li>
-              </ul>
-              <p><strong>Please log in to your dashboard</strong> to confirm you received the funds and release the borrower's Bitcoin collateral.</p>
-              <p>Go to: Lender Dashboard → Active Loans tab</p>
-            `
+            html
           });
           console.log(`📧 Email sent to lender ${lender.email} about repayment for loan #${loanId}`);
         }

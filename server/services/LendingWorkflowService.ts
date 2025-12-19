@@ -3,7 +3,7 @@ import { IBitcoinEscrowService } from './BitcoinEscrowService';
 import { ILtvValidationService, LtvValidationResult } from './LtvValidationService';
 import { IStorage } from '../storage';
 import { Loan } from '@shared/schema';
-import { sendEmail } from '../email';
+import { sendEmail, createBrandedEmailHtml, getBaseUrl } from '../email';
 
 export interface ILendingWorkflowService {
   initiateLoan(borrowerId: number, collateralBtc: number, loanAmount: number): Promise<LoanInitiationResult>;
@@ -321,38 +321,40 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const borrower = await this.storage.getUser(loan.borrowerId);
       
       if (borrower?.email) {
+        const baseUrl = getBaseUrl();
+        const html = createBrandedEmailHtml({
+          title: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
+          greeting: `Hello ${borrower.username},`,
+          content: `
+            <p>Great news! A lender has agreed to fund your €${loan.amount} ${loan.currency} loan request.</p>
+            
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <h3 style="color: #856404; margin-top: 0;">Next Step: Deposit Bitcoin Collateral</h3>
+              <p><strong>Bitcoin Testnet Escrow Address:</strong></p>
+              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowAddress}</code>
+              <p style="margin-top: 10px;"><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
+              <p><strong>Network:</strong> Bitcoin Testnet</p>
+              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address. Do not send mainnet Bitcoin to this address.</p>
+            </div>
+            
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 5px 0;"><strong>Loan Amount:</strong> €${loan.amount} ${loan.currency}</p>
+              <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% per year</p>
+              <p style="margin: 5px 0;"><strong>Term:</strong> ${loan.termMonths} months</p>
+              <p style="margin: 5px 0;"><strong>Collateral Required:</strong> ${collateralBtc} BTC</p>
+            </div>
+            
+            <p>Once you send the Bitcoin to the escrow address above, the lender will transfer the ${loan.currency} to your account.</p>
+          `,
+          buttonText: 'Go to My Dashboard',
+          buttonUrl: `${baseUrl}/borrower-dashboard`
+        });
+        
         await sendEmail({
           to: borrower.email,
           from: 'Reconquest <noreply@reconquestp2p.com>',
           subject: '🔐 Bitcoin Escrow Address Generated - Deposit Required',
-          html: `
-            <h2>Your loan has been funded! Time to deposit collateral.</h2>
-            <p>Hello ${borrower.username},</p>
-            <p>Great news! A lender has agreed to fund your ${loan.amount} ${loan.currency} loan request.</p>
-            
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #d4af37;">Next Step: Deposit Bitcoin Collateral</h3>
-              <p><strong>Bitcoin Testnet Escrow Address:</strong></p>
-              <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowAddress}</code>
-              <p><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
-              <p><strong>Network:</strong> Bitcoin Testnet</p>
-              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address starting with "tb1". Lower fees, enhanced security. Do not send mainnet Bitcoin to this address.</p>
-            </div>
-            
-            <p><strong>Loan Details:</strong></p>
-            <ul>
-              <li><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</li>
-              <li><strong>Interest Rate:</strong> ${loan.interestRate}% per year</li>
-              <li><strong>Term:</strong> ${loan.termMonths} months</li>
-              <li><strong>Collateral Required:</strong> ${collateralBtc} BTC</li>
-            </ul>
-            
-            <p>Once you send the Bitcoin to the escrow address above, the lender will transfer the ${loan.currency} to your account.</p>
-            
-            <p><strong>Important:</strong> Only send Bitcoin to this exact address. Do not send any other cryptocurrency.</p>
-            
-            <p>Best regards,<br>The Reconquest Team</p>
-          `
+          html
         });
         console.log(`📧 Escrow instructions sent to borrower: ${borrower.email}`);
       }
@@ -542,21 +544,29 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     const borrower = await this.storage.getUser(loan.borrowerId);
     if (!borrower) return;
 
-    const emailHtml = `
-      <h2>Fiat Transfer Completed</h2>
-      <p>Hi ${borrower.username},</p>
-      <p>Your lender has confirmed they've sent €${loan.amount} ${loan.currency} to you.</p>
-      <p>Please confirm receipt of the funds to activate your loan.</p>
-      <p><strong>Loan ID:</strong> ${loan.id}</p>
-      <p><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
-      <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
-    `;
+    const baseUrl = getBaseUrl();
+    const html = createBrandedEmailHtml({
+      title: '💰 Fiat Transfer Completed',
+      greeting: `Hi ${borrower.username},`,
+      content: `
+        <p>Your lender has confirmed they've sent <strong>€${loan.amount} ${loan.currency}</strong> to you.</p>
+        <p>Please confirm receipt of the funds to activate your loan.</p>
+        
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loan.id}</p>
+          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+        </div>
+      `,
+      buttonText: 'Confirm Receipt of Funds',
+      buttonUrl: `${baseUrl}/borrower-dashboard`
+    });
 
     await sendEmail({
       to: borrower.email,
-      from: 'noreply@reconquestp2p.com',
-      subject: 'Please Confirm Receipt of Loan Funds',
-      html: emailHtml
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: '💰 Please Confirm Receipt of Loan Funds',
+      html
     });
   }
 
@@ -570,27 +580,56 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     const lender = await this.storage.getUser(loan.lenderId);
     if (!lender) return;
 
-    const emailHtml = `
-      <h2>Loan Activated</h2>
-      <p>Loan ${loan.id} is now active!</p>
-      <p><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
-      <p><strong>Due Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
-      <p>The countdown has begun. Make sure to repay on time to avoid liquidation.</p>
-    `;
+    const baseUrl = getBaseUrl();
+    
+    const borrowerHtml = createBrandedEmailHtml({
+      title: '🎉 Loan Activated!',
+      greeting: `Hi ${borrower.username},`,
+      content: `
+        <p>Great news! Loan #${loan.id} is now <strong>active</strong>!</p>
+        
+        <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Due Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
+        </div>
+        
+        <p>The countdown has begun. Make sure to repay on time to avoid liquidation of your Bitcoin collateral.</p>
+      `,
+      buttonText: 'View My Loan',
+      buttonUrl: `${baseUrl}/borrower-dashboard`
+    });
+    
+    const lenderHtml = createBrandedEmailHtml({
+      title: '🎉 Loan Activated!',
+      greeting: `Hi ${lender.username},`,
+      content: `
+        <p>Great news! Your investment in Loan #${loan.id} is now <strong>active</strong>!</p>
+        
+        <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% APY</p>
+          <p style="margin: 5px 0;"><strong>Maturity Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
+        </div>
+        
+        <p>Your investment is now earning returns. You'll be notified when the borrower repays the loan.</p>
+      `,
+      buttonText: 'View My Investment',
+      buttonUrl: `${baseUrl}/lender-dashboard`
+    });
 
     // Notify both parties
     await Promise.all([
       sendEmail({
         to: borrower.email,
-        from: 'noreply@reconquestp2p.com',
-        subject: 'Your Loan is Now Active',
-        html: emailHtml
+        from: 'Reconquest <noreply@reconquestp2p.com>',
+        subject: '🎉 Your Loan is Now Active',
+        html: borrowerHtml
       }),
       sendEmail({
         to: lender.email,
-        from: 'noreply@reconquestp2p.com',
-        subject: 'Loan Successfully Funded',
-        html: emailHtml
+        from: 'Reconquest <noreply@reconquestp2p.com>',
+        subject: '🎉 Loan Successfully Funded',
+        html: lenderHtml
       })
     ]);
   }

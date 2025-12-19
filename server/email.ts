@@ -66,13 +66,70 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 // Get public logo URL for emails
 function getLogoUrl(): string {
   const appUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-  return `${appUrl}/public/logo.png`;
+  return `${appUrl}/logo.png`;
 }
 
 // Create email header with logo
 function getEmailHeader(): string {
   const logoUrl = getLogoUrl();
   return `<img src="${logoUrl}" alt="Reconquest Logo" style="width: 250px; height: auto; margin-bottom: 20px;" />`;
+}
+
+// Get base URL for dashboard links
+export function getBaseUrl(): string {
+  return process.env.APP_URL || 'https://www.reconquestp2p.com';
+}
+
+// Create a properly branded email template with logo and optional dashboard button
+export function createBrandedEmailHtml(params: {
+  title: string;
+  greeting?: string;
+  content: string;
+  buttonText?: string;
+  buttonUrl?: string;
+  footer?: string;
+}): string {
+  const { title, greeting, content, buttonText, buttonUrl, footer } = params;
+  const logoUrl = getLogoUrl();
+  
+  const buttonHtml = buttonText && buttonUrl ? `
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${buttonUrl}" style="display: inline-block; background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+        ${buttonText}
+      </a>
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+      <div style="background-color: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="Reconquest" style="max-width: 200px; height: auto;" />
+        </div>
+        
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">${title}</h2>
+        
+        ${greeting ? `<p style="font-size: 16px; color: #333; margin-top: 20px;">${greeting}</p>` : ''}
+        
+        <div style="font-size: 15px; color: #555; line-height: 1.7;">
+          ${content}
+        </div>
+        
+        ${buttonHtml}
+        
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          ${footer || '<strong>— The Reconquest Team 👑</strong>'}
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
 }
 
 export async function sendBorrowerDepositNotification(params: {
