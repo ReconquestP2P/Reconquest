@@ -1448,10 +1448,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Borrower confirms they've sent BTC to escrow
+  // Borrower confirms they've sent BTC to escrow - starts automated monitoring
   app.post("/api/loans/:id/confirm-btc-sent", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
+    const { txid } = req.body; // Optional txid from borrower
     
     try {
       const loan = await storage.getLoan(loanId);
@@ -1469,87 +1470,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Loan is not awaiting BTC deposit" });
       }
       
-      // Check if already notified
-      if (loan.btcDepositNotifiedAt) {
-        return res.status(400).json({ message: "BTC deposit already confirmed. Awaiting admin verification." });
+      // Check if already monitoring
+      if (loan.escrowMonitoringActive) {
+        // Do a manual check to see current status
+        const checkResult = await blockchainMonitoring.manualDepositCheck(loanId);
+        return res.json({ 
+          success: true, 
+          message: checkResult.message,
+          status: 'monitoring',
+          depositFound: checkResult.found,
+          confirmations: checkResult.confirmations
+        });
       }
       
-      // Get borrower details
-      const borrower = await storage.getUser(borrowerId);
-      if (!borrower) {
-        return res.status(404).json({ message: "Borrower not found" });
-      }
+      // Register loan for automated blockchain monitoring
+      await blockchainMonitoring.registerLoanForMonitoring(loanId, txid);
       
-      // Update loan with notification timestamp
-      await storage.updateLoan(loanId, {
-        btcDepositNotifiedAt: new Date(),
-      });
+      // Do an immediate check
+      const checkResult = await blockchainMonitoring.manualDepositCheck(loanId);
       
-      // Send email to admin
-      await sendEmail({
-        to: 'admin@reconquestp2p.com', // Admin email
-        from: 'noreply@reconquestp2p.com',
-        subject: `🔔 BTC Deposit Confirmation - Loan #${loan.id}`,
-        html: `
-          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
-              <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
-            </div>
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
-              <h1 style="color: white; margin: 0; text-align: center;">BTC Deposit Confirmation</h1>
-            </div>
-            
-            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              <h2 style="color: #333; margin-top: 0;">Borrower Claims BTC Sent</h2>
-              
-              <p style="color: #666; line-height: 1.6;">
-                Borrower <strong>${borrower.username}</strong> (${borrower.email}) has confirmed they sent Bitcoin to the escrow address for Loan #${loan.id}.
-              </p>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
-                <p><strong>Loan ID:</strong> #${loan.id}</p>
-                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
-                <p><strong>Term:</strong> ${loan.termMonths} months</p>
-                <p><strong>Required Collateral:</strong> ${loan.collateralBtc} BTC</p>
-              </div>
-              
-              <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; color: #856404;">
-                  <strong>⚠️ Action Required:</strong> Please verify the BTC deposit on the blockchain before proceeding.
-                </p>
-              </div>
-              
-              <div style="background: #e9ecef; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0 0 10px 0; color: #333;"><strong>Escrow Address (Testnet):</strong></p>
-                <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 4px; margin: 0;">
-                  ${loan.escrowAddress}
-                </p>
-              </div>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="https://mempool.space/testnet4/address/${loan.escrowAddress}" 
-                   target="_blank"
-                   style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                  🔍 Verify on Blockchain
-                </a>
-              </div>
-              
-              <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                This is an automated notification from Reconquest P2P Lending Platform.
-              </p>
-            </div>
-          </div>
-        `
-      });
+      console.log(`[ConfirmBTCSent] Loan ${loanId} registered for monitoring. Initial check: ${checkResult.message}`);
       
       res.json({ 
         success: true, 
-        message: "Admin has been notified to verify your BTC deposit" 
+        message: checkResult.found 
+          ? checkResult.message
+          : "Thank you! We're now monitoring the blockchain for your deposit. You'll be notified automatically when it's confirmed.",
+        status: 'monitoring_started',
+        depositFound: checkResult.found,
+        confirmations: checkResult.confirmations,
+        escrowAddress: loan.escrowAddress
       });
     } catch (error) {
       console.error("Error confirming BTC sent:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Check deposit status for a loan (polling endpoint for frontend)
+  app.get("/api/loans/:id/deposit-status", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Check if user is borrower or lender
+      if (loan.borrowerId !== req.user.id && loan.lenderId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to view this loan" });
+      }
+      
+      // If monitoring is active, do a fresh check
+      if (loan.escrowMonitoringActive) {
+        const checkResult = await blockchainMonitoring.manualDepositCheck(loanId);
+        
+        // Get fresh loan data after check
+        const updatedLoan = await storage.getLoan(loanId);
+        
+        return res.json({
+          status: updatedLoan?.escrowState || loan.escrowState,
+          depositFound: checkResult.found,
+          confirmations: checkResult.confirmations,
+          message: checkResult.message,
+          txid: checkResult.txid,
+          escrowAddress: loan.escrowAddress,
+          monitoringActive: updatedLoan?.escrowMonitoringActive || false
+        });
+      }
+      
+      // Not actively monitoring - return current state
+      res.json({
+        status: loan.escrowState,
+        depositFound: !!loan.depositConfirmedAt,
+        confirmations: loan.depositConfirmations || 0,
+        message: loan.depositConfirmedAt 
+          ? 'Deposit confirmed - ready for signing ceremony'
+          : loan.btcDepositNotifiedAt 
+            ? 'Waiting for blockchain confirmation'
+            : 'Waiting for borrower to send BTC',
+        txid: loan.fundingTxid,
+        escrowAddress: loan.escrowAddress,
+        monitoringActive: false
+      });
+    } catch (error) {
+      console.error("Error checking deposit status:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -3538,5 +3544,112 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   const httpServer = createServer(app);
+  
+  // Start automated blockchain monitoring for pending deposits
+  blockchainMonitoring.startBackgroundMonitoring(async (loan, result) => {
+    console.log(`[DepositConfirmed] Loan ${loan.id} deposit confirmed! Sending notifications...`);
+    
+    // Get fresh loan and user data
+    const updatedLoan = await storage.getLoan(loan.id);
+    if (!updatedLoan) return;
+    
+    const borrower = await storage.getUser(updatedLoan.borrowerId);
+    const lender = updatedLoan.lenderId ? await storage.getUser(updatedLoan.lenderId) : null;
+    
+    if (!borrower) return;
+    
+    const baseUrl = getBaseUrl();
+    
+    // Send notification to borrower
+    await sendEmail({
+      to: borrower.email,
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: `✅ BTC Deposit Confirmed - Loan #${loan.id}`,
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+          <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+            <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+          </div>
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px;">
+            <h1 style="color: white; margin: 0; text-align: center;">BTC Deposit Confirmed!</h1>
+          </div>
+          
+          <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h2 style="color: #333; margin-top: 0;">Great news, ${borrower.username}!</h2>
+            
+            <p style="color: #666; line-height: 1.6;">
+              Your Bitcoin deposit has been confirmed on the blockchain. You can now proceed to the next step: generating your recovery plan.
+            </p>
+            
+            <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #155724; margin-top: 0;">✅ Deposit Verified</h3>
+              <p style="color: #155724; margin: 5px 0;"><strong>Transaction:</strong> ${result.txid}</p>
+              <p style="color: #155724; margin: 5px 0;"><strong>Amount:</strong> ${(result.amountSats || 0) / 100000000} BTC</p>
+              <p style="color: #155724; margin: 5px 0;"><strong>Confirmations:</strong> ${result.confirmations}</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${baseUrl}/borrower" 
+                 style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                Generate Recovery Plan
+              </a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+            </div>
+          </div>
+        </div>
+      `
+    });
+    
+    // Send notification to lender if exists
+    if (lender) {
+      await sendEmail({
+        to: lender.email,
+        from: 'Reconquest <noreply@reconquestp2p.com>',
+        subject: `✅ Borrower Collateral Confirmed - Loan #${loan.id}`,
+        html: `
+          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px;">
+              <h1 style="color: white; margin: 0; text-align: center;">Collateral Secured!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <h2 style="color: #333; margin-top: 0;">Good news, ${lender.username}!</h2>
+              
+              <p style="color: #666; line-height: 1.6;">
+                The borrower's Bitcoin collateral has been confirmed in escrow. You can now proceed to generate your recovery plan.
+              </p>
+              
+              <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #155724; margin-top: 0;">✅ Escrow Funded</h3>
+                <p style="color: #155724; margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
+                <p style="color: #155724; margin: 5px 0;"><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</p>
+                <p style="color: #155724; margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${baseUrl}/lender" 
+                   style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                  Generate Recovery Plan
+                </a>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+              </div>
+            </div>
+          </div>
+        `
+      });
+    }
+    
+    console.log(`[DepositConfirmed] Notifications sent for loan ${loan.id}`);
+  });
+  
   return httpServer;
 }
