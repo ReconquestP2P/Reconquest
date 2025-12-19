@@ -371,13 +371,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const user = await this.storage.getUser(loan.borrowerId);
       if (!user) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">New Loan Posted</h1>
             </div>
             
@@ -388,8 +394,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
-                <p><strong>Amount Requested:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Amount Requested:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
                 <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
@@ -402,7 +408,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>
@@ -422,13 +428,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const lender = await this.storage.getUser(lenderId);
       if (!borrower || !lender) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Initiated</h1>
             </div>
             
@@ -440,8 +452,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
                 <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
-                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
               </div>
@@ -453,7 +465,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>
@@ -472,13 +484,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const user = await this.storage.getUser(loan.borrowerId);
       if (!user) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `🔄 Loan Funding Alert - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Alert</h1>
             </div>
             
@@ -489,8 +507,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${user.username} (${user.email})</p>
-                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
                 <p><strong>Collateral Required:</strong> ${loan.collateralBtc} BTC</p>
@@ -503,7 +521,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>
@@ -545,16 +563,20 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     if (!borrower) return;
 
     const baseUrl = getBaseUrl();
+    const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
     const html = createBrandedEmailHtml({
       title: '💰 Fiat Transfer Completed',
       greeting: `Hi ${borrower.username},`,
       content: `
-        <p>Your lender has confirmed they've sent <strong>€${loan.amount} ${loan.currency}</strong> to you.</p>
+        <p>Your lender has confirmed they've sent <strong>${formattedAmount} ${loan.currency}</strong> to you.</p>
         <p>Please confirm receipt of the funds to activate your loan.</p>
         
         <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">
           <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loan.id}</p>
-          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
+          <p style="margin: 5px 0;"><strong>Term:</strong> ${loan.termMonths} months</p>
           <p style="margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
         </div>
       `,
@@ -581,6 +603,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     if (!lender) return;
 
     const baseUrl = getBaseUrl();
+    const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
     const borrowerHtml = createBrandedEmailHtml({
       title: '🎉 Loan Activated!',
@@ -589,7 +612,11 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         <p>Great news! Loan #${loan.id} is now <strong>active</strong>!</p>
         
         <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loan.id}</p>
+          <p style="margin: 5px 0;"><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
+          <p style="margin: 5px 0;"><strong>Term:</strong> ${loan.termMonths} months</p>
+          <p style="margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
           <p style="margin: 5px 0;"><strong>Due Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
         </div>
         
@@ -606,8 +633,11 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         <p>Great news! Your investment in Loan #${loan.id} is now <strong>active</strong>!</p>
         
         <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 5px 0;"><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
-          <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% APY</p>
+          <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loan.id}</p>
+          <p style="margin: 5px 0;"><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+          <p style="margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
+          <p style="margin: 5px 0;"><strong>Term:</strong> ${loan.termMonths} months</p>
+          <p style="margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
           <p style="margin: 5px 0;"><strong>Maturity Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
         </div>
         
@@ -642,13 +672,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const borrower = await this.storage.getUser(loan.borrowerId);
       if (!borrower) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: borrower.email,
-        from: 'noreply@reconquestp2p.com',
-        subject: 'Loan Matched! Time to Deposit your BTC!',
+        from: 'Reconquest <noreply@reconquestp2p.com>',
+        subject: '🎯 Loan Matched! Time to Deposit your BTC!',
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Matched!</h1>
             </div>
             
@@ -666,13 +702,14 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; color: #155724;">
-                  <strong>Loan Amount:</strong> ${loan.amount} ${loan.currency} at ${loan.interestRate}% for ${loan.termMonths} months
-                </p>
+                <p style="margin: 5px 0; color: #155724;"><strong>Loan ID:</strong> #${loan.id}</p>
+                <p style="margin: 5px 0; color: #155724;"><strong>Loan Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p style="margin: 5px 0; color: #155724;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
+                <p style="margin: 5px 0; color: #155724;"><strong>Term:</strong> ${loan.termMonths} months</p>
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/borrower" 
+                <a href="${baseUrl}/borrower" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   ✅ BTC Deposit Confirmation
                 </a>
@@ -687,6 +724,10 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p style="margin: 0; color: #856404; font-size: 14px;">
                   <strong>⚡ After Depositing BTC:</strong> Click "BTC Deposit Confirmation" above to confirm your deposit on your dashboard.
                 </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>
@@ -706,13 +747,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const lender = await this.storage.getUser(loan.lenderId);
       if (!lender) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: lender.email,
-        from: 'noreply@reconquestp2p.com',
+        from: 'Reconquest <noreply@reconquestp2p.com>',
         subject: '🎯 Loan Offer Accepted!',
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Offer Accepted!</h1>
             </div>
             
@@ -723,8 +770,9 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="color: #333; margin-top: 0;">Loan Details</h3>
-                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Loan ID:</strong> #${loan.id}</p>
+                <p><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
                 <p><strong>Escrow Address (Testnet):</strong></p>
@@ -738,7 +786,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://${process.env.REPLIT_DEV_DOMAIN || 'reconquest.repl.co'}/lender" 
+                <a href="${baseUrl}/lender" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   📊 View Dashboard
                 </a>
@@ -753,6 +801,10 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p style="margin: 0; color: #155724; font-size: 14px;">
                   <strong>✅ Stay Updated:</strong> You'll receive notifications when the borrower deposits Bitcoin. Track real-time status on your dashboard.
                 </p>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>
@@ -773,13 +825,19 @@ export class LendingWorkflowService implements ILendingWorkflowService {
       const lender = await this.storage.getUser(loan.lenderId);
       if (!lender) return;
 
+      const baseUrl = getBaseUrl();
+      const formattedAmount = parseFloat(String(loan.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       await sendEmail({
         to: "admin@reconquestp2p.com",
-        from: "noreply@reconquestp2p.com",
+        from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `🎯 [ADMIN ALERT] Loan Matched - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Successfully Matched</h1>
             </div>
             
@@ -791,8 +849,8 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                 <p><strong>Loan ID:</strong> #${loan.id}</p>
                 <p><strong>Borrower:</strong> ${borrower.username} (${borrower.email})</p>
                 <p><strong>Lender:</strong> ${lender.username} (${lender.email})</p>
-                <p><strong>Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p><strong>Interest Rate:</strong> ${loan.interestRate}%</p>
+                <p><strong>Amount:</strong> ${formattedAmount} ${loan.currency}</p>
+                <p><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
                 <p><strong>Term:</strong> ${loan.termMonths} months</p>
                 <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
                 <p><strong>Status:</strong> ${loan.status}</p>
@@ -805,7 +863,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
               </div>
             </div>
           </div>

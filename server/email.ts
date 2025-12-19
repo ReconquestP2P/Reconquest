@@ -318,11 +318,16 @@ export async function sendLenderKeyGenerationNotification(params: {
   loanId: number;
   loanAmount: string;
   currency: string;
+  interestRate: string;
+  termMonths: number;
+  collateralBtc: string;
   dashboardUrl: string;
 }): Promise<boolean> {
-  const { to, lenderName, borrowerName, loanId, loanAmount, currency, dashboardUrl } = params;
+  const { to, lenderName, borrowerName, loanId, loanAmount, currency, interestRate, termMonths, collateralBtc, dashboardUrl } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+  const formattedAmount = parseFloat(loanAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedInterestRate = parseFloat(interestRate).toFixed(2);
 
   const html = `
     <!DOCTYPE html>
@@ -355,7 +360,10 @@ export async function sendLenderKeyGenerationNotification(params: {
         
         <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
           <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> #${loanId}</p>
-          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${loanAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${formattedAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${formattedInterestRate}% p.a.</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Term:</strong> ${termMonths} months</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Collateral:</strong> ${collateralBtc} BTC</p>
         </div>
 
         <div style="text-align: center; margin: 30px 0;">

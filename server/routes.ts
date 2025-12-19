@@ -730,13 +730,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Always send admin notification for new registrations
       try {
+        const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
         await sendEmail({
           to: "admin@reconquestp2p.com",
-          from: "noreply@reconquestp2p.com",
+          from: "Reconquest <noreply@reconquestp2p.com>",
           subject: `🔔 [ADMIN ALERT] New User Registration - ${newUser.username}`,
           html: `
             <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-              <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+              <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+              </div>
+              <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
                 <h1 style="color: white; margin: 0; text-align: center;">New User Registration</h1>
               </div>
               
@@ -760,7 +764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px;">
-                  <p style="color: #666; margin: 0;">This is an automated notification from Reconquest Admin System</p>
+                  <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
                 </div>
               </div>
             </div>
@@ -1419,6 +1423,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               loanId: loan.id,
               loanAmount: String(loan.amount),
               currency: loan.currency,
+              interestRate: String(loan.interestRate),
+              termMonths: loan.termMonths,
+              collateralBtc: String(loan.collateralBtc),
               dashboardUrl: `${baseUrl}/lender`,
             });
             
@@ -2771,6 +2778,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               loanId: loan.id,
               loanAmount: String(loan.amount),
               currency: loan.currency,
+              interestRate: String(loan.interestRate),
+              termMonths: loan.termMonths,
+              collateralBtc: String(loan.collateralBtc),
               dashboardUrl: `${baseUrl}/lender`,
             });
             console.log(`📧 Sent key generation notification to lender: ${lender.email}`);
