@@ -518,7 +518,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
   private async notifyLendersOfEscrow(loan: Loan, txHash: string, transactionUrl: string): Promise<void> {
     const emailHtml = `
       <h2>New Loan Available for Funding</h2>
-      <p>A borrower has deposited ${loan.collateralBtc} BTC as collateral for a $${loan.amount} loan.</p>
+      <p>A borrower has deposited ${loan.collateralBtc} BTC as collateral for a €${loan.amount} ${loan.currency} loan.</p>
       <p><strong>Transaction Hash:</strong> ${txHash}</p>
       <p><strong>View Transaction:</strong> <a href="${transactionUrl}">Testnet Explorer</a></p>
       <p><strong>LTV Ratio:</strong> ${(parseFloat(loan.ltvRatio) * 100).toFixed(1)}%</p>
@@ -545,10 +545,10 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     const emailHtml = `
       <h2>Fiat Transfer Completed</h2>
       <p>Hi ${borrower.username},</p>
-      <p>Your lender has confirmed they've sent $${loan.amount} to you.</p>
+      <p>Your lender has confirmed they've sent €${loan.amount} ${loan.currency} to you.</p>
       <p>Please confirm receipt of the funds to activate your loan.</p>
       <p><strong>Loan ID:</strong> ${loan.id}</p>
-      <p><strong>Amount:</strong> $${loan.amount}</p>
+      <p><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
       <p><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
     `;
 
@@ -573,7 +573,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     const emailHtml = `
       <h2>Loan Activated</h2>
       <p>Loan ${loan.id} is now active!</p>
-      <p><strong>Amount:</strong> $${loan.amount}</p>
+      <p><strong>Amount:</strong> €${loan.amount} ${loan.currency}</p>
       <p><strong>Due Date:</strong> ${loan.dueDate?.toLocaleDateString()}</p>
       <p>The countdown has begun. Make sure to repay on time to avoid liquidation.</p>
     `;
