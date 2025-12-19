@@ -347,7 +347,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
             <p>Once you send the Bitcoin to the escrow address above, the lender will transfer the ${loan.currency} to your account.</p>
           `,
           buttonText: 'Go to My Dashboard',
-          buttonUrl: `${baseUrl}/borrower-dashboard`
+          buttonUrl: `${baseUrl}/borrower`
         });
         
         await sendEmail({
@@ -581,7 +581,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         </div>
       `,
       buttonText: 'Confirm Receipt of Funds',
-      buttonUrl: `${baseUrl}/borrower-dashboard`
+      buttonUrl: `${baseUrl}/borrower`
     });
 
     await sendEmail({
@@ -623,7 +623,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         <p>The countdown has begun. Make sure to repay on time to avoid liquidation of your Bitcoin collateral.</p>
       `,
       buttonText: 'View My Loan',
-      buttonUrl: `${baseUrl}/borrower-dashboard`
+      buttonUrl: `${baseUrl}/borrower`
     });
     
     const lenderHtml = createBrandedEmailHtml({
@@ -644,7 +644,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
         <p>Your investment is now earning returns. You'll be notified when the borrower repays the loan.</p>
       `,
       buttonText: 'View My Investment',
-      buttonUrl: `${baseUrl}/lender-dashboard`
+      buttonUrl: `${baseUrl}/lender`
     });
 
     // Notify both parties

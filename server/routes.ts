@@ -3156,7 +3156,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               <p><strong>Please log in to your dashboard</strong> to confirm you received the funds and release the borrower's Bitcoin collateral.</p>
             `,
             buttonText: 'Confirm Receipt & Release Collateral',
-            buttonUrl: `${baseUrl}/lender-dashboard`
+            buttonUrl: `${baseUrl}/lender`
           });
           
           await sendEmail({
@@ -3230,7 +3230,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
             `,
             buttonText: 'View My Dashboard',
-            buttonUrl: `${baseUrl}/borrower-dashboard`
+            buttonUrl: `${baseUrl}/borrower`
           });
           
           await sendEmail({
@@ -3357,7 +3357,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
             <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
           `,
           buttonText: 'View My Dashboard',
-          buttonUrl: `${baseUrl}/borrower-dashboard`
+          buttonUrl: `${baseUrl}/borrower`
         });
         
         await sendEmail({
