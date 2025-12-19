@@ -1,6 +1,6 @@
 import { 
   users, loans, loanOffers, disputes, disputeAuditLogs,
-  escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions,
+  escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions, psbtTemplates,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
   type LoanOffer, type InsertLoanOffer,
@@ -9,7 +9,8 @@ import {
   type EscrowEvent, type InsertEscrowEvent,
   type PreSignedTransaction, type InsertPreSignedTransaction,
   type Dispute, type InsertDispute,
-  type DisputeAuditLog, type InsertDisputeAuditLog
+  type DisputeAuditLog, type InsertDisputeAuditLog,
+  type PsbtTemplate, type InsertPsbtTemplate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -80,6 +81,10 @@ export interface IStorage {
   // Dispute Audit Log operations
   createDisputeAuditLog(log: InsertDisputeAuditLog): Promise<DisputeAuditLog>;
   getDisputeAuditLogs(loanId: number): Promise<DisputeAuditLog[]>;
+
+  // PSBT Template operations (Security: canonical template storage)
+  storePsbtTemplate(template: InsertPsbtTemplate): Promise<PsbtTemplate>;
+  getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -433,6 +438,14 @@ export class MemStorage implements IStorage {
   async getEscrowEvents(escrowSessionId: string): Promise<EscrowEvent[]> {
     return [];
   }
+
+  async storePsbtTemplate(template: InsertPsbtTemplate): Promise<PsbtTemplate> {
+    throw new Error('PSBT templates not supported in MemStorage');
+  }
+
+  async getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined> {
+    return undefined;
+  }
 }
 
 // Database storage implementation
@@ -742,6 +755,34 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(disputeAuditLogs)
       .where(eq(disputeAuditLogs.loanId, loanId));
+  }
+
+  // PSBT Template Operations (Security: canonical template storage)
+  async storePsbtTemplate(template: InsertPsbtTemplate): Promise<PsbtTemplate> {
+    const [stored] = await db.insert(psbtTemplates).values(template).returning();
+    return stored;
+  }
+
+  async getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(psbtTemplates)
+      .where(
+        eq(psbtTemplates.loanId, loanId)
+      );
+    
+    // Filter by txType since we may need AND condition
+    if (template && template.txType === txType) {
+      return template;
+    }
+    
+    // Try to find with exact txType
+    const templates = await db
+      .select()
+      .from(psbtTemplates)
+      .where(eq(psbtTemplates.loanId, loanId));
+    
+    return templates.find(t => t.txType === txType);
   }
 }
 

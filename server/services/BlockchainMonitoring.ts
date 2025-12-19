@@ -29,7 +29,8 @@ interface FundingCheckResult {
 }
 
 export class BlockchainMonitoringService {
-  private baseUrl = 'https://blockstream.info/testnet/api';
+  // Use mempool.space testnet4 API
+  private baseUrl = 'https://mempool.space/testnet4/api';
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTTL = 5000; // 5 seconds cache
 

@@ -242,7 +242,39 @@ export const preSignedTransactions = pgTable("pre_signed_transactions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Canonical PSBT Templates (Security: stores authoritative template metadata)
+// Used to validate submitted PSBTs against server-generated templates
+export const psbtTemplates = pgTable("psbt_templates", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  txType: text("tx_type").notNull(), // "recovery" | "cooperative_close" | "default"
+  
+  // Canonical Transaction Data (derived from server-generated template)
+  canonicalTxid: text("canonical_txid").notNull(), // Derived from PSBT
+  
+  // Input (escrow UTXO)
+  inputTxid: text("input_txid").notNull(),
+  inputVout: integer("input_vout").notNull(),
+  inputValue: integer("input_value").notNull(), // Satoshis
+  witnessScriptHash: text("witness_script_hash").notNull(),
+  
+  // Outputs (strict: no hidden outputs allowed)
+  outputAddress: text("output_address").notNull(), // Single output recipient
+  outputValue: integer("output_value").notNull(), // Satoshis
+  
+  // Fee Calculation
+  feeRate: integer("fee_rate").notNull(), // sats/vbyte at template creation
+  virtualSize: integer("virtual_size").notNull(), // vbytes
+  fee: integer("fee").notNull(), // Calculated fee in satoshis
+  
+  // Original PSBT (for reference)
+  psbtBase64: text("psbt_base64").notNull(),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
+export type PsbtTemplate = typeof psbtTemplates.$inferSelect;
+export type InsertPsbtTemplate = typeof psbtTemplates.$inferInsert;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,

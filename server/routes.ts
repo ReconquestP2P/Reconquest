@@ -2563,6 +2563,114 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   // PRE-SIGNED TRANSACTION ROUTES (Firefish Ephemeral Key Model)
   // ========================================================================
 
+  // Get PSBT template for signing (provides real Bitcoin transaction data)
+  app.get("/api/loans/:id/psbt-template", authenticateToken, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const txType = req.query.txType as string || 'cooperative_close';
+      const userId = (req as any).user.id;
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Authorization: User must be borrower or lender
+      if (loan.borrowerId !== userId && loan.lenderId !== userId) {
+        return res.status(403).json({ message: "Not authorized for this loan" });
+      }
+      
+      if (!loan.escrowAddress || !loan.escrowWitnessScript) {
+        return res.status(400).json({ message: "Loan has no escrow address configured" });
+      }
+      
+      // Fetch UTXO from testnet4
+      const { fetchEscrowUTXO, createSpendPSBT } = await import("./services/psbt-builder.js");
+      
+      const utxo = await fetchEscrowUTXO(loan.escrowAddress);
+      if (!utxo) {
+        return res.status(400).json({ 
+          message: "No UTXO found for escrow address. Has the collateral been deposited?",
+          escrowAddress: loan.escrowAddress
+        });
+      }
+      
+      // Determine output address based on transaction type
+      let outputAddress: string;
+      
+      if (txType === 'default') {
+        // Default transaction: Lender claims collateral
+        if (!loan.lenderId) {
+          return res.status(400).json({ message: "Loan has no lender assigned" });
+        }
+        const lender = await storage.getUser(loan.lenderId);
+        if (!lender || !lender.btcReturnAddress) {
+          return res.status(400).json({ message: "Lender has no return address configured" });
+        }
+        outputAddress = lender.btcReturnAddress;
+      } else {
+        // Recovery and cooperative_close: Borrower gets collateral back
+        const borrower = await storage.getUser(loan.borrowerId);
+        if (!borrower || !borrower.btcReturnAddress) {
+          return res.status(400).json({ message: "Borrower has no return address configured" });
+        }
+        outputAddress = borrower.btcReturnAddress;
+      }
+      
+      // Create PSBT template
+      const psbtTemplate = await createSpendPSBT(
+        utxo,
+        loan.escrowWitnessScript,
+        outputAddress
+      );
+      
+      // SECURITY: Store canonical template metadata for validation during aggregation
+      try {
+        await storage.storePsbtTemplate({
+          loanId,
+          txType,
+          canonicalTxid: psbtTemplate.canonicalTxid,
+          inputTxid: psbtTemplate.inputTxid,
+          inputVout: psbtTemplate.inputVout,
+          inputValue: psbtTemplate.inputValue,
+          witnessScriptHash: psbtTemplate.witnessScriptHash,
+          outputAddress: psbtTemplate.outputAddress,
+          outputValue: psbtTemplate.outputValue,
+          feeRate: psbtTemplate.feeRate,
+          virtualSize: psbtTemplate.virtualSize,
+          fee: psbtTemplate.fee,
+          psbtBase64: psbtTemplate.psbtBase64,
+        });
+        console.log(`🔒 Canonical PSBT template stored for loan #${loanId} (${txType})`);
+      } catch (storeError) {
+        console.warn(`⚠️ Could not store canonical template (may already exist):`, storeError);
+      }
+      
+      console.log(`📋 PSBT template created for loan #${loanId} (${txType}) -> ${outputAddress}`);
+      
+      res.json({
+        success: true,
+        loanId,
+        txType,
+        escrowAddress: loan.escrowAddress,
+        outputAddress,
+        utxo: {
+          txid: utxo.txid,
+          vout: utxo.vout,
+          value: utxo.value,
+        },
+        psbtBase64: psbtTemplate.psbtBase64,
+        txHash: psbtTemplate.txHash,
+        inputValue: psbtTemplate.inputValue,
+        outputValue: psbtTemplate.outputValue,
+        fee: psbtTemplate.fee,
+      });
+    } catch (error) {
+      console.error("Error creating PSBT template:", error);
+      res.status(500).json({ message: "Failed to create PSBT template" });
+    }
+  });
+
   // Store pre-signed transaction (called automatically when user generates ephemeral keys)
   app.post("/api/loans/:id/transactions/store", authenticateToken, async (req, res) => {
     try {
@@ -3146,9 +3254,37 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         txHash: transactions[0].txHash,
       });
 
-      // Aggregate signatures (2-of-3)
+      // Aggregate signatures (2-of-3) with PSBT integrity validation
       const allTransactions = [...transactions, platformTx];
-      const aggregation = await aggregateSignatures(allTransactions);
+      
+      // Load canonical template for strict validation
+      const canonicalTemplate = await storage.getPsbtTemplate(loanId, 'cooperative_close');
+      
+      // For cooperative_close, collateral returns to borrower
+      const aggregation = await aggregateSignatures(
+        allTransactions, 
+        {
+          escrowTxid: loan.escrowTxid || undefined,
+          escrowVout: loan.escrowVout ?? undefined,
+          escrowAmount: loan.collateralBtc ? Math.floor(Number(loan.collateralBtc) * 100000000) : undefined,
+          borrowerAddress: loan.borrowerBtcAddress || undefined,
+          lenderAddress: loan.lenderBtcAddress || undefined,
+          expectedOutputAddress: loan.borrowerBtcAddress || undefined,
+          txType: 'cooperative_close'
+        },
+        canonicalTemplate ? {
+          canonicalTxid: canonicalTemplate.canonicalTxid,
+          inputTxid: canonicalTemplate.inputTxid,
+          inputVout: canonicalTemplate.inputVout,
+          inputValue: canonicalTemplate.inputValue,
+          witnessScriptHash: canonicalTemplate.witnessScriptHash,
+          outputAddress: canonicalTemplate.outputAddress,
+          outputValue: canonicalTemplate.outputValue,
+          feeRate: canonicalTemplate.feeRate,
+          virtualSize: canonicalTemplate.virtualSize,
+          fee: canonicalTemplate.fee,
+        } : undefined
+      );
 
       if (!aggregation.success || !aggregation.txHex) {
         // Mark completed even if broadcast fails
@@ -3280,9 +3416,37 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         txHash: transactions[0].txHash,
       });
 
-      // Aggregate signatures (2-of-3)
+      // Aggregate signatures (2-of-3) with PSBT integrity validation
       const allTransactions = [...transactions, platformTx];
-      const aggregation = await aggregateSignatures(allTransactions);
+      
+      // Load canonical template for strict validation
+      const canonicalTemplate = await storage.getPsbtTemplate(loanId, 'cooperative_close');
+      
+      // For cooperative_close, collateral returns to borrower
+      const aggregation = await aggregateSignatures(
+        allTransactions, 
+        {
+          escrowTxid: loan.escrowTxid || undefined,
+          escrowVout: loan.escrowVout ?? undefined,
+          escrowAmount: loan.collateralBtc ? Math.floor(Number(loan.collateralBtc) * 100000000) : undefined,
+          borrowerAddress: loan.borrowerBtcAddress || undefined,
+          lenderAddress: loan.lenderBtcAddress || undefined,
+          expectedOutputAddress: loan.borrowerBtcAddress || undefined,
+          txType: 'cooperative_close'
+        },
+        canonicalTemplate ? {
+          canonicalTxid: canonicalTemplate.canonicalTxid,
+          inputTxid: canonicalTemplate.inputTxid,
+          inputVout: canonicalTemplate.inputVout,
+          inputValue: canonicalTemplate.inputValue,
+          witnessScriptHash: canonicalTemplate.witnessScriptHash,
+          outputAddress: canonicalTemplate.outputAddress,
+          outputValue: canonicalTemplate.outputValue,
+          feeRate: canonicalTemplate.feeRate,
+          virtualSize: canonicalTemplate.virtualSize,
+          fee: canonicalTemplate.fee,
+        } : undefined
+      );
 
       if (!aggregation.success || !aggregation.txHex) {
         return res.status(500).json({ 

@@ -99,6 +99,7 @@ export async function generateAndSignTransactions(params: {
       const borrowerTimelock = (params.term * 30 + borrowerGracePeriodDays) * 24 * 60 * 60; // seconds
       
       const recoveryTx = await buildRecoveryTransaction({
+        loanId: params.loanId,
         escrowAddress: params.escrowAddress,
         borrowerPubkey: publicKey,
         collateralBtc: params.collateralBtc,
@@ -120,6 +121,7 @@ export async function generateAndSignTransactions(params: {
     // This is used when loan is repaid successfully
     if (params.escrowAddress) {
       const cooperativeTx = await buildCooperativeCloseTransaction({
+        loanId: params.loanId,
         escrowAddress: params.escrowAddress,
         publicKey,
         loanAmount: params.loanAmount,
@@ -144,6 +146,7 @@ export async function generateAndSignTransactions(params: {
       const lenderTimelock = params.term * 30 * 24 * 60 * 60; // Activates at loan term end
       
       const defaultTx = await buildDefaultTransaction({
+        loanId: params.loanId,
         escrowAddress: params.escrowAddress,
         lenderPubkey: publicKey,
         collateralBtc: params.collateralBtc,
@@ -226,15 +229,67 @@ function generateMessageHash(data: string): string {
 }
 
 /**
+ * Fetch real PSBT template from backend
+ * This ensures the frontend signs a backend-validated transaction
+ */
+async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{
+  psbtBase64: string;
+  txHash: string;
+  outputAddress: string;
+  outputValue: number;
+  fee: number;
+} | null> {
+  try {
+    const response = await fetch(`/api/loans/${loanId}/psbt-template?txType=${txType}`, {
+      credentials: 'include',
+    });
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch PSBT template: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log(`📋 Received real PSBT template for ${txType}`);
+    console.log(`   Output: ${data.outputAddress} (${data.outputValue} sats)`);
+    console.log(`   Fee: ${data.fee} sats`);
+    
+    return {
+      psbtBase64: data.psbtBase64,
+      txHash: data.txHash,
+      outputAddress: data.outputAddress,
+      outputValue: data.outputValue,
+      fee: data.fee,
+    };
+  } catch (error) {
+    console.warn('Error fetching PSBT template:', error);
+    return null;
+  }
+}
+
+/**
  * Build recovery transaction (allows borrower to recover collateral after timelock)
  */
 async function buildRecoveryTransaction(params: {
+  loanId: number;
   escrowAddress: string;
   borrowerPubkey: string;
   collateralBtc: number;
-  timelock: number; // seconds
+  timelock: number;
 }): Promise<{ psbt: string; messageHash: string; txHash: string }> {
-  // Mock implementation - in production, use actual Bitcoin PSBT library
+  // Try to get real PSBT from backend
+  const realPsbt = await fetchPSBTTemplate(params.loanId, 'recovery');
+  
+  if (realPsbt) {
+    const messageHash = generateMessageHash(realPsbt.psbtBase64);
+    return {
+      psbt: realPsbt.psbtBase64,
+      messageHash,
+      txHash: realPsbt.txHash,
+    };
+  }
+  
+  // Fallback to mock if no UTXO yet
   const mockPSBT = `recovery_psbt_${params.escrowAddress}_${Date.now()}`;
   const txData = `recovery_${params.escrowAddress}_${params.borrowerPubkey}_${params.collateralBtc}_${params.timelock}`;
   const messageHash = generateMessageHash(txData);
@@ -248,20 +303,30 @@ async function buildRecoveryTransaction(params: {
 
 /**
  * Build cooperative close transaction (normal loan repayment)
- * IMPORTANT: txHash uses escrowAddress so borrower and lender produce the same hash
  */
 async function buildCooperativeCloseTransaction(params: {
+  loanId: number;
   escrowAddress: string;
   publicKey: string;
   loanAmount: number;
   collateralBtc: number;
 }): Promise<{ psbt: string; messageHash: string; txHash: string }> {
-  // Mock implementation - use escrowAddress for consistent PSBT across parties
+  // Try to get real PSBT from backend
+  const realPsbt = await fetchPSBTTemplate(params.loanId, 'cooperative_close');
+  
+  if (realPsbt) {
+    const messageHash = generateMessageHash(realPsbt.psbtBase64);
+    return {
+      psbt: realPsbt.psbtBase64,
+      messageHash,
+      txHash: realPsbt.txHash,
+    };
+  }
+  
+  // Fallback to mock if no UTXO yet
   const mockPSBT = `cooperative_psbt_${params.escrowAddress}`;
   const txData = `cooperative_${params.escrowAddress}_${params.loanAmount}_${params.collateralBtc}`;
   const messageHash = generateMessageHash(txData);
-  
-  // Use escrowAddress hash for consistent txHash between borrower and lender
   const escrowHash = params.escrowAddress.slice(-8);
   
   return {
@@ -273,15 +338,27 @@ async function buildCooperativeCloseTransaction(params: {
 
 /**
  * Build default transaction (lender claims collateral on default)
- * Includes timelock that activates BEFORE borrower's recovery for lender priority
  */
 async function buildDefaultTransaction(params: {
+  loanId: number;
   escrowAddress: string;
   lenderPubkey: string;
   collateralBtc: number;
-  timelock: number; // seconds - activates 14 days before borrower's recovery
+  timelock: number;
 }): Promise<{ psbt: string; messageHash: string; txHash: string }> {
-  // Mock implementation
+  // Try to get real PSBT from backend
+  const realPsbt = await fetchPSBTTemplate(params.loanId, 'default');
+  
+  if (realPsbt) {
+    const messageHash = generateMessageHash(realPsbt.psbtBase64);
+    return {
+      psbt: realPsbt.psbtBase64,
+      messageHash,
+      txHash: realPsbt.txHash,
+    };
+  }
+  
+  // Fallback to mock if no UTXO yet
   const mockPSBT = `default_psbt_${params.escrowAddress}_${Date.now()}`;
   const txData = `default_${params.escrowAddress}_${params.lenderPubkey}_${params.collateralBtc}_${params.timelock}`;
   const messageHash = generateMessageHash(txData);

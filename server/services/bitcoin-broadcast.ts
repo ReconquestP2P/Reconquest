@@ -36,6 +36,30 @@ export interface SignatureAggregationResult {
   signaturesRequired: number;
 }
 
+export interface LoanContext {
+  escrowTxid?: string;
+  escrowVout?: number;
+  escrowAmount?: number;
+  borrowerAddress?: string;
+  lenderAddress?: string;
+  expectedOutputAddress?: string;
+  txType?: string;
+}
+
+// Canonical template from database (authoritative source)
+export interface CanonicalPsbtTemplate {
+  canonicalTxid: string;
+  inputTxid: string;
+  inputVout: number;
+  inputValue: number;
+  witnessScriptHash: string;
+  outputAddress: string;
+  outputValue: number;
+  feeRate: number;
+  virtualSize: number;
+  fee: number;
+}
+
 export interface BroadcastResult {
   success: boolean;
   txid?: string;
@@ -43,19 +67,213 @@ export interface BroadcastResult {
 }
 
 /**
+ * SECURITY CRITICAL: Validate PSBT integrity against loan configuration
+ * This prevents attackers from submitting PSBTs that spend different UTXOs
+ * or route funds to unexpected addresses.
+ * 
+ * VALIDATES:
+ * - Transaction ID derived from PSBT matches expectation
+ * - Input txid/vout matches escrow UTXO
+ * - ALL outputs go to expected addresses (no hidden outputs)
+ * - Input value matches expected escrow amount
+ */
+async function validatePsbtIntegrity(
+  psbtBase64: string,
+  loanContext: LoanContext
+): Promise<{ valid: boolean; error?: string; derivedTxHash?: string }> {
+  try {
+    if (!psbtBase64 || psbtBase64.length < 100) {
+      return { valid: true }; // Skip for legacy mock PSBTs
+    }
+    
+    const bitcoin = await import('bitcoinjs-lib');
+    const ecc = await import('tiny-secp256k1');
+    bitcoin.initEccLib(ecc);
+    
+    const parsedPsbt = bitcoin.Psbt.fromBase64(psbtBase64);
+    
+    // SECURITY: Derive the transaction ID from the PSBT itself
+    // This prevents txHash spoofing attacks
+    let derivedTxHash: string | undefined;
+    try {
+      const txForId = parsedPsbt.extractTransaction(true); // Allow incomplete for ID extraction
+      derivedTxHash = txForId.getId();
+      console.log(`🔍 Derived txHash from PSBT: ${derivedTxHash.slice(0, 16)}...`);
+    } catch (extractError) {
+      // If we can't extract, compute from unsigned tx
+      try {
+        const unsignedTx = parsedPsbt.data.globalMap.unsignedTx;
+        if (unsignedTx && 'tx' in unsignedTx) {
+          derivedTxHash = (unsignedTx as any).tx.getId();
+          console.log(`🔍 Derived txHash from unsigned tx: ${derivedTxHash?.slice(0, 16)}...`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not derive txHash from PSBT');
+      }
+    }
+    
+    // Get transaction inputs and outputs
+    const txInputs = parsedPsbt.txInputs;
+    const txOutputs = parsedPsbt.txOutputs;
+    
+    if (txInputs.length === 0) {
+      return { valid: false, error: 'PSBT has no inputs' };
+    }
+    
+    // SECURITY: Only allow single input from escrow
+    if (txInputs.length > 1) {
+      return { valid: false, error: `PSBT has ${txInputs.length} inputs - expected exactly 1 from escrow` };
+    }
+    
+    // Validate escrow UTXO if provided in context
+    if (loanContext.escrowTxid) {
+      const inputTxid = Buffer.from(txInputs[0].hash).reverse().toString('hex');
+      const inputVout = txInputs[0].index;
+      
+      if (inputTxid !== loanContext.escrowTxid) {
+        return { 
+          valid: false, 
+          error: `PSBT input txid (${inputTxid.slice(0, 16)}...) doesn't match escrow (${loanContext.escrowTxid.slice(0, 16)}...)` 
+        };
+      }
+      
+      if (loanContext.escrowVout !== undefined && inputVout !== loanContext.escrowVout) {
+        return { 
+          valid: false, 
+          error: `PSBT input vout (${inputVout}) doesn't match escrow (${loanContext.escrowVout})` 
+        };
+      }
+      
+      console.log(`✅ PSBT input matches escrow UTXO: ${inputTxid.slice(0, 16)}...:${inputVout}`);
+    }
+    
+    // SECURITY: Validate ALL outputs based on txType - strict recipient enforcement
+    const network = bitcoin.networks.testnet;
+    
+    // Determine exact allowed recipients based on transaction type
+    let primaryRecipient: string | undefined;
+    const allowedAddresses = new Set<string>();
+    
+    // txType determines who should receive the funds
+    // cooperative_close/recovery -> borrower
+    // default -> lender
+    if (loanContext.txType === 'cooperative_close' || loanContext.txType === 'recovery') {
+      primaryRecipient = loanContext.borrowerAddress;
+      if (loanContext.borrowerAddress) {
+        allowedAddresses.add(loanContext.borrowerAddress);
+      }
+    } else if (loanContext.txType === 'default') {
+      primaryRecipient = loanContext.lenderAddress;
+      if (loanContext.lenderAddress) {
+        allowedAddresses.add(loanContext.lenderAddress);
+      }
+    } else {
+      // Unknown txType - allow expected output address only
+      if (loanContext.expectedOutputAddress) {
+        primaryRecipient = loanContext.expectedOutputAddress;
+        allowedAddresses.add(loanContext.expectedOutputAddress);
+      }
+    }
+    
+    // Check every output - strict validation
+    if (allowedAddresses.size > 0 && txOutputs.length > 0) {
+      let totalOutputValue = 0;
+      let primaryRecipientValue = 0;
+      
+      // SECURITY: Only allow 1 output for simplicity (no hidden change outputs)
+      if (txOutputs.length > 1) {
+        return { 
+          valid: false, 
+          error: `PSBT has ${txOutputs.length} outputs - expected exactly 1 to prevent fund siphoning` 
+        };
+      }
+      
+      for (let i = 0; i < txOutputs.length; i++) {
+        const output = txOutputs[i];
+        totalOutputValue += output.value;
+        
+        try {
+          const outputAddress = bitcoin.address.fromOutputScript(output.script, network);
+          
+          if (!allowedAddresses.has(outputAddress)) {
+            return { 
+              valid: false, 
+              error: `PSBT output[${i}] goes to unauthorized address: ${outputAddress.slice(0, 20)}...` 
+            };
+          }
+          
+          if (outputAddress === primaryRecipient) {
+            primaryRecipientValue = output.value;
+          }
+          
+          console.log(`✅ Output[${i}]: ${output.value} sats → ${outputAddress.slice(0, 20)}...`);
+        } catch (addrError) {
+          // OP_RETURN or non-standard script - reject for safety
+          return { 
+            valid: false, 
+            error: `PSBT output[${i}] has non-standard script - rejected for safety` 
+          };
+        }
+      }
+      
+      // SECURITY: Verify output value with tight tolerance
+      // Maximum allowed fee is 5% of escrow or 50000 sats (whichever is smaller)
+      if (loanContext.escrowAmount && primaryRecipientValue > 0) {
+        const maxFeePercent = Math.min(loanContext.escrowAmount * 0.05, 50000); // 5% or 50k sats max
+        const minExpectedOutput = loanContext.escrowAmount - maxFeePercent;
+        
+        if (primaryRecipientValue < minExpectedOutput) {
+          return { 
+            valid: false, 
+            error: `Output value (${primaryRecipientValue}) is too low. Expected at least ${Math.floor(minExpectedOutput)} sats (escrow: ${loanContext.escrowAmount}, max fee: ${Math.floor(maxFeePercent)})` 
+          };
+        }
+        
+        const actualFee = loanContext.escrowAmount - primaryRecipientValue;
+        console.log(`✅ Output value check passed: ${primaryRecipientValue} sats (fee: ${actualFee} sats, max allowed: ${Math.floor(maxFeePercent)})`);
+      }
+      
+      console.log(`✅ Total output value: ${totalOutputValue} sats across ${txOutputs.length} output(s)`);
+    }
+    
+    // Validate escrow amount if provided
+    if (loanContext.escrowAmount !== undefined) {
+      const witnessUtxo = parsedPsbt.data.inputs[0]?.witnessUtxo;
+      if (witnessUtxo) {
+        const inputValue = witnessUtxo.value;
+        // Allow 20% variance for fees (testnet4 can have variable fees)
+        const minExpected = loanContext.escrowAmount * 0.8;
+        const maxExpected = loanContext.escrowAmount * 1.2;
+        
+        if (inputValue < minExpected || inputValue > maxExpected) {
+          return { 
+            valid: false, 
+            error: `PSBT input value (${inputValue}) doesn't match expected escrow amount (~${loanContext.escrowAmount})` 
+          };
+        }
+        
+        console.log(`✅ PSBT input value matches expected amount: ${inputValue} sats`);
+      }
+    }
+    
+    return { valid: true, derivedTxHash };
+  } catch (error: any) {
+    return { valid: false, error: `PSBT integrity check failed: ${error.message}` };
+  }
+}
+
+/**
  * Aggregate signatures from borrower, lender, and platform (2-of-3 multisig)
+ * Uses real PSBT combination for testnet4 broadcast
  * 
- * For Firefish ephemeral model:
- * - Borrower signature (from downloaded recovery file)
- * - Lender signature (from downloaded recovery file)
- * - Platform signature (generated on-demand by backend)
- * 
- * Only 2 of 3 signatures are required for valid transaction
- * 
- * SECURITY: Validates signatures against public keys and enforces roles
+ * @param transactions - Array of pre-signed transactions from borrower and lender
+ * @param loanContext - Optional loan configuration for PSBT integrity validation
+ * @param canonicalTemplate - Authoritative template from database for strict validation
  */
 export async function aggregateSignatures(
-  transactions: PreSignedTransaction[]
+  transactions: PreSignedTransaction[],
+  loanContext?: LoanContext,
+  canonicalTemplate?: CanonicalPsbtTemplate
 ): Promise<SignatureAggregationResult> {
   console.log(`🔐 Aggregating ${transactions.length} signatures for multisig...`);
   
@@ -68,17 +286,7 @@ export async function aggregateSignatures(
     };
   }
   
-  // Verify all transactions are for the same tx hash and type
-  const uniqueTxHashes = new Set(transactions.map(tx => tx.txHash));
-  if (uniqueTxHashes.size > 1) {
-    return {
-      success: false,
-      error: 'Signatures are for different transactions',
-      signaturesCollected: transactions.length,
-      signaturesRequired: 2,
-    };
-  }
-  
+  // Verify all transactions are for the same tx type
   const uniqueTxTypes = new Set(transactions.map(tx => tx.txType));
   if (uniqueTxTypes.size > 1) {
     return {
@@ -93,7 +301,6 @@ export async function aggregateSignatures(
     // SECURITY: Verify participant roles
     const roles = new Set(transactions.map(tx => tx.partyRole));
     
-    // Must have borrower + lender (+ optional platform)
     if (!roles.has('borrower')) {
       return {
         success: false,
@@ -112,27 +319,280 @@ export async function aggregateSignatures(
       };
     }
     
-    // SECURITY: Verify signatures against public keys
+    console.log('✅ All required parties present');
+    
+    // SECURITY: Verify transaction consistency (txHash must match)
+    const uniqueTxHashes = new Set(transactions.map(tx => tx.txHash));
+    if (uniqueTxHashes.size > 1) {
+      console.error('❌ Transaction hash mismatch - PSBTs are for different transactions');
+      return {
+        success: false,
+        error: 'Transaction consistency check failed: PSBTs have different txHash values',
+        signaturesCollected: transactions.length,
+        signaturesRequired: 2,
+      };
+    }
+    
+    console.log('✅ Transaction consistency verified (client-supplied)');
+    
+    // SECURITY CRITICAL: Validate against canonical template from database
+    if (canonicalTemplate) {
+      console.log('🔒 Validating against canonical template from database...');
+      
+      for (const tx of transactions) {
+        if (!tx.psbt || tx.psbt.length < 100) continue;
+        
+        try {
+          const bitcoin = await import('bitcoinjs-lib');
+          const ecc = await import('tiny-secp256k1');
+          bitcoin.initEccLib(ecc);
+          
+          const parsedPsbt = bitcoin.Psbt.fromBase64(tx.psbt);
+          const txInputs = parsedPsbt.txInputs;
+          const txOutputs = parsedPsbt.txOutputs;
+          
+          // Validate input matches canonical
+          if (txInputs.length !== 1) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT has ${txInputs.length} inputs, expected 1`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          const inputTxid = Buffer.from(txInputs[0].hash).reverse().toString('hex');
+          if (inputTxid !== canonicalTemplate.inputTxid) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT input txid mismatch`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          if (txInputs[0].index !== canonicalTemplate.inputVout) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT input vout mismatch`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          // Validate output matches canonical EXACTLY
+          if (txOutputs.length !== 1) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT has ${txOutputs.length} outputs, expected 1`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          const network = bitcoin.networks.testnet;
+          const outputAddress = bitcoin.address.fromOutputScript(txOutputs[0].script, network);
+          
+          if (outputAddress !== canonicalTemplate.outputAddress) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT output address mismatch`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          // STRICT: Output value must match EXACTLY
+          if (txOutputs[0].value !== BigInt(canonicalTemplate.outputValue)) {
+            return {
+              success: false,
+              error: `${tx.partyRole}'s PSBT output value (${txOutputs[0].value}) doesn't match canonical (${canonicalTemplate.outputValue})`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+          
+          console.log(`✅ ${tx.partyRole}'s PSBT matches canonical template exactly`);
+        } catch (parseError: any) {
+          return {
+            success: false,
+            error: `Failed to parse ${tx.partyRole}'s PSBT: ${parseError.message}`,
+            signaturesCollected: transactions.length,
+            signaturesRequired: 2,
+          };
+        }
+      }
+      
+      console.log('✅ All PSBTs validated against canonical template');
+    }
+    
+    // SECURITY: Validate PSBT integrity against loan configuration (fallback if no canonical template)
+    if (!canonicalTemplate && loanContext && (loanContext.escrowTxid || loanContext.expectedOutputAddress)) {
+      console.log('🔍 Validating PSBT integrity against loan configuration...');
+      
+      let firstDerivedTxHash: string | undefined;
+      
+      for (const tx of transactions) {
+        const integrityResult = await validatePsbtIntegrity(tx.psbt, loanContext);
+        if (!integrityResult.valid) {
+          return {
+            success: false,
+            error: `PSBT integrity check failed for ${tx.partyRole}: ${integrityResult.error}`,
+            signaturesCollected: transactions.length,
+            signaturesRequired: 2,
+          };
+        }
+        
+        // SECURITY: Verify derived txHash matches across all PSBTs
+        if (integrityResult.derivedTxHash) {
+          if (!firstDerivedTxHash) {
+            firstDerivedTxHash = integrityResult.derivedTxHash;
+          } else if (integrityResult.derivedTxHash !== firstDerivedTxHash) {
+            return {
+              success: false,
+              error: `PSBT txHash mismatch: ${tx.partyRole}'s PSBT has different transaction ID`,
+              signaturesCollected: transactions.length,
+              signaturesRequired: 2,
+            };
+          }
+        }
+      }
+      
+      console.log('✅ PSBT integrity validated - all derived txHashes match');
+    }
+    
+    // SECURITY: Verify all signatures cryptographically before combination
     for (const tx of transactions) {
       const isValid = await verifySignature(tx.signature, tx.psbt, tx.partyPubkey);
       if (!isValid) {
         return {
           success: false,
-          error: `Invalid signature from ${tx.partyRole}. Signature does not match public key.`,
+          error: `Invalid signature from ${tx.partyRole}. Cryptographic verification failed.`,
           signaturesCollected: transactions.length,
           signaturesRequired: 2,
         };
       }
     }
     
-    console.log('✅ All signatures verified successfully');
+    console.log('✅ All signatures cryptographically verified');
     
-    // Mock: In production, this would combine verified signatures into valid Bitcoin transaction
-    const mockTxHex = combineMockSignatures(transactions);
+    // Try to combine real PSBTs using bitcoinjs-lib
+    const signedPsbts = transactions
+      .filter(tx => tx.psbt && tx.psbt.length > 50)
+      .map(tx => tx.psbt);
+    
+    // Try to combine real PSBTs using bitcoinjs-lib
+    if (signedPsbts.length >= 2) {
+      try {
+        const { combinePSBTs } = await import('./psbt-builder.js');
+        const { finalTxHex, txid } = combinePSBTs(signedPsbts);
+        
+        console.log(`✅ Real PSBTs combined successfully: ${txid}`);
+        
+        // SECURITY: Post-combination verification of final transaction
+        if (loanContext && (loanContext.escrowTxid || loanContext.expectedOutputAddress)) {
+          console.log('🔍 Verifying final combined transaction...');
+          
+          const bitcoin = await import('bitcoinjs-lib');
+          const finalTx = bitcoin.Transaction.fromHex(finalTxHex);
+          const network = bitcoin.networks.testnet;
+          
+          // Verify input matches escrow
+          if (loanContext.escrowTxid && finalTx.ins.length > 0) {
+            const inputTxid = Buffer.from(finalTx.ins[0].hash).reverse().toString('hex');
+            if (inputTxid !== loanContext.escrowTxid) {
+              return {
+                success: false,
+                error: `Final tx input txid mismatch: expected ${loanContext.escrowTxid.slice(0, 16)}...`,
+                signaturesCollected: transactions.length,
+                signaturesRequired: 2,
+              };
+            }
+          }
+          
+          // Verify output goes to correct recipient
+          if (finalTx.outs.length > 0) {
+            const outputAddress = bitcoin.address.fromOutputScript(finalTx.outs[0].script, network);
+            
+            // Determine expected recipient based on txType
+            let expectedRecipient: string | undefined;
+            if (loanContext.txType === 'cooperative_close' || loanContext.txType === 'recovery') {
+              expectedRecipient = loanContext.borrowerAddress;
+            } else if (loanContext.txType === 'default') {
+              expectedRecipient = loanContext.lenderAddress;
+            } else {
+              expectedRecipient = loanContext.expectedOutputAddress;
+            }
+            
+            if (expectedRecipient && outputAddress !== expectedRecipient) {
+              return {
+                success: false,
+                error: `Final tx output goes to wrong address: ${outputAddress.slice(0, 20)}...`,
+                signaturesCollected: transactions.length,
+                signaturesRequired: 2,
+              };
+            }
+            
+            // Verify output value with tight tolerance
+            if (loanContext.escrowAmount) {
+              const outputValue = finalTx.outs[0].value;
+              const maxFee = Math.min(loanContext.escrowAmount * 0.05, 50000);
+              const minExpected = loanContext.escrowAmount - maxFee;
+              
+              if (outputValue < minExpected) {
+                return {
+                  success: false,
+                  error: `Final tx output value (${outputValue}) too low. Min: ${Math.floor(minExpected)}`,
+                  signaturesCollected: transactions.length,
+                  signaturesRequired: 2,
+                };
+              }
+              console.log(`✅ Final tx output value verified: ${outputValue} sats`);
+            }
+            
+            console.log(`✅ Final tx verified: ${txid.slice(0, 16)}... → ${outputAddress.slice(0, 20)}...`);
+          }
+        }
+        
+        return {
+          success: true,
+          txHex: finalTxHex,
+          signaturesCollected: transactions.length,
+          signaturesRequired: 2,
+        };
+      } catch (psbtError: any) {
+        console.error('❌ PSBT combination failed:', psbtError.message);
+        return {
+          success: false,
+          error: `PSBT combination failed: ${psbtError.message}`,
+          signaturesCollected: transactions.length,
+          signaturesRequired: 2,
+        };
+      }
+    }
+    
+    // Legacy mode for mock PSBTs (will be deprecated)
+    // Only allow if we detect mock PSBTs (for backward compatibility during transition)
+    const hasMockPsbts = transactions.some(tx => 
+      tx.psbt.startsWith('Y29vcGVyYXRpdmU') || // base64 of "cooperative_psbt"
+      tx.psbt.startsWith('cmVjb3Zlcnk') ||      // base64 of "recovery_psbt"
+      tx.psbt.startsWith('ZGVmYXVsdA')          // base64 of "default"
+    );
+    
+    if (hasMockPsbts) {
+      console.warn('⚠️ Using legacy mock PSBT mode (will be deprecated)');
+      const mockTxHex = combineMockSignatures(transactions);
+      return {
+        success: true,
+        txHex: mockTxHex,
+        signaturesCollected: transactions.length,
+        signaturesRequired: 2,
+      };
+    }
     
     return {
-      success: true,
-      txHex: mockTxHex,
+      success: false,
+      error: 'Invalid PSBT format - neither real nor legacy mock PSBTs detected',
       signaturesCollected: transactions.length,
       signaturesRequired: 2,
     };
@@ -148,9 +608,10 @@ export async function aggregateSignatures(
 }
 
 /**
- * Verify a signature against a public key
+ * Verify a signature against a public key using cryptographic validation
  * 
  * SECURITY CRITICAL: This prevents unauthorized transactions
+ * Uses bitcoinjs-lib validateSignaturesOfInput for proper verification
  */
 async function verifySignature(
   signature: string,
@@ -158,26 +619,60 @@ async function verifySignature(
   publicKey: string
 ): Promise<boolean> {
   try {
-    // Mock: In production, use secp256k1.verify()
-    // Example: const messageHash = sha256(psbt);
-    //          return secp256k1.verify(signature, messageHash, publicKey);
-    
-    // For now, basic sanity checks
+    // Basic sanity checks
     if (!signature || !psbt || !publicKey) {
+      console.error('❌ Missing signature, PSBT, or public key');
       return false;
     }
     
-    // Mock validation: Check signature format
-    if (signature.length < 10) {
+    // Check signature format - must have reasonable length
+    if (signature.length < 64) {
+      console.error('❌ Signature too short');
       return false;
     }
     
-    // Mock validation: Check public key format (should be 66 hex chars for compressed)
-    if (publicKey.length !== 66 && !publicKey.startsWith('02') && !publicKey.startsWith('03')) {
-      console.warn(`⚠️ Public key format may be invalid: ${publicKey.slice(0, 20)}...`);
+    // Check public key format (must be 66 hex chars for compressed, starting with 02 or 03)
+    if (publicKey.length !== 66) {
+      console.error(`❌ Invalid public key length: ${publicKey.length} (expected 66)`);
+      return false;
     }
     
-    console.log(`✅ Signature verified for pubkey ${publicKey.slice(0, 20)}...`);
+    if (!publicKey.startsWith('02') && !publicKey.startsWith('03')) {
+      console.error(`❌ Invalid public key prefix: ${publicKey.slice(0, 2)}`);
+      return false;
+    }
+    
+    // For real PSBTs, use cryptographic verification with validateSignaturesOfInput
+    if (psbt.length > 100) {
+      try {
+        const bitcoin = await import('bitcoinjs-lib');
+        const ecc = await import('tiny-secp256k1');
+        
+        bitcoin.initEccLib(ecc);
+        
+        const parsedPsbt = bitcoin.Psbt.fromBase64(psbt);
+        const pubkeyBuffer = Buffer.from(publicKey, 'hex');
+        
+        // CRYPTOGRAPHIC VERIFICATION: Validate signature against sighash
+        const isValid = parsedPsbt.validateSignaturesOfInput(0, (pubkey, msghash, sig) => {
+          return ecc.verify(msghash, pubkey, sig);
+        }, pubkeyBuffer);
+        
+        if (!isValid) {
+          console.error(`❌ Cryptographic signature verification failed for pubkey ${publicKey.slice(0, 16)}...`);
+          return false;
+        }
+        
+        console.log(`✅ Cryptographically verified signature for pubkey ${publicKey.slice(0, 16)}...`);
+        return true;
+      } catch (psbtError: any) {
+        console.error('❌ PSBT verification failed:', psbtError.message);
+        return false;
+      }
+    }
+    
+    // For legacy mock PSBTs (backward compatibility during transition)
+    console.log(`⚠️ Legacy signature verification for pubkey ${publicKey.slice(0, 16)}...`);
     return true;
   } catch (error) {
     console.error('Signature verification failed:', error);
@@ -186,16 +681,17 @@ async function verifySignature(
 }
 
 /**
- * Broadcast transaction via public Mempool.space testnet API
- * This is a fallback when local Bitcoin RPC is not available
+ * Broadcast transaction via public Mempool.space testnet4 API
+ * Uses the new testnet4 network
  */
 async function broadcastViaMempoolSpace(txHex: string): Promise<string> {
   const axios = (await import('axios')).default;
   
-  console.log('📡 Broadcasting via Mempool.space testnet API...');
+  console.log('📡 Broadcasting via Mempool.space testnet4 API...');
+  console.log(`   Transaction hex (${txHex.length} chars): ${txHex.slice(0, 50)}...`);
   
   const response = await axios.post(
-    'https://mempool.space/testnet/api/tx',
+    'https://mempool.space/testnet4/api/tx',
     txHex,
     {
       headers: { 'Content-Type': 'text/plain' },
@@ -205,55 +701,35 @@ async function broadcastViaMempoolSpace(txHex: string): Promise<string> {
   
   // Mempool.space returns the txid as plain text
   const txid = response.data;
-  console.log(`✅ Transaction broadcast via Mempool.space: ${txid}`);
+  console.log(`✅ Transaction broadcast via Mempool.space testnet4: ${txid}`);
   return txid;
 }
 
 /**
- * Broadcast transaction to Bitcoin testnet
- * Priority: 1) Local RPC, 2) Mempool.space API, 3) Mock fallback
+ * Broadcast transaction to Bitcoin testnet4
+ * NO MOCK FALLBACK - must use real network
  */
 export async function broadcastTransaction(txHex: string): Promise<BroadcastResult> {
-  console.log('📡 Broadcasting transaction to Bitcoin testnet...');
+  console.log('📡 Broadcasting transaction to Bitcoin testnet4...');
+  console.log(`   Transaction hex length: ${txHex.length} chars`);
 
   try {
-    const rpcClient = getBitcoinRpcClient();
-
-    // Try 1: Local Bitcoin RPC if configured
-    if (process.env.BITCOIN_RPC_URL) {
-      try {
-        const txid = await rpcClient.broadcastTransaction(txHex);
-        console.log(`✅ Transaction broadcast via local RPC: ${txid}`);
-
-        return {
-          success: true,
-          txid,
-        };
-      } catch (rpcError) {
-        console.warn('⚠️  Local RPC failed, trying Mempool.space API...');
-      }
-    }
-
-    // Try 2: Mempool.space public testnet API
+    // Try Mempool.space testnet4 API (primary method)
     try {
       const txid = await broadcastViaMempoolSpace(txHex);
       return {
         success: true,
         txid,
       };
-    } catch (mempoolError) {
-      console.warn('⚠️  Mempool.space API failed, falling back to mock:', 
-        mempoolError instanceof Error ? mempoolError.message : 'Unknown error');
+    } catch (mempoolError: any) {
+      const errorMsg = mempoolError?.response?.data || mempoolError?.message || 'Unknown error';
+      console.error('❌ Mempool.space testnet4 API error:', errorMsg);
+      
+      return {
+        success: false,
+        error: `Testnet4 broadcast failed: ${errorMsg}`,
+      };
     }
-
-    // Fallback 3: Mock for development
-    const mockTxid = generateMockTxid(txHex);
-    console.log(`✅ Transaction broadcast (mock fallback): ${mockTxid}`);
-
-    return {
-      success: true,
-      txid: mockTxid,
-    };
   } catch (error) {
     console.error('Failed to broadcast transaction:', error);
     return {
