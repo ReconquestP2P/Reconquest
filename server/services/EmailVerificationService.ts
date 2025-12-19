@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { sendEmail } from '../email';
+import { sendEmail, getBaseUrl } from '../email';
 import type { IStorage } from '../storage';
 
 export interface IEmailVerificationService {
@@ -29,6 +29,7 @@ export class EmailVerificationService implements IEmailVerificationService {
 
   async sendVerificationEmail(email: string, username: string, token: string): Promise<void> {
     const verificationUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/verify-email?token=${token}`;
+    const baseUrl = getBaseUrl();
     
     await sendEmail({
       to: email,
@@ -36,7 +37,10 @@ export class EmailVerificationService implements IEmailVerificationService {
       subject: "🔐 Verify Your Email - Reconquest Account",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+            <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+          </div>
+          <div style="background: linear-gradient(135deg, #D4AF37 0%, #F4E5B1 100%); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px;">Email Verification Required</h1>
           </div>
           
@@ -127,13 +131,17 @@ export class EmailVerificationService implements IEmailVerificationService {
     // Send welcome email to user after successful verification
     console.log(`Attempting to send welcome email to verified user: ${user.email}`);
     try {
+      const baseUrl = getBaseUrl();
       await sendEmail({
         to: user.email,
         from: "noreply@reconquestp2p.com",
         subject: "🎉 Welcome to Reconquest - Your Account is Verified!",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center;">
               <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Welcome to Reconquest!</h1>
             </div>
             
@@ -199,7 +207,10 @@ export class EmailVerificationService implements IEmailVerificationService {
         subject: `🔔 [ADMIN ALERT] Email Verification Completed - ${user.username}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Email Verified</h1>
             </div>
             

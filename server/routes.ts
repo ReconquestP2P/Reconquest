@@ -1492,7 +1492,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subject: `🔔 BTC Deposit Confirmation - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">BTC Deposit Confirmation</h1>
             </div>
             
@@ -1843,7 +1846,10 @@ async function sendLoanFundedNotification(loan: any, lender: any) {
       subject: `🎉 Your Loan Has Been Funded! - Loan #${loan.id}`,
       html: `
         <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+          <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+            <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+          </div>
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px;">
             <h1 style="color: white; margin: 0; text-align: center;">🎉 Loan Funded Successfully!</h1>
           </div>
           
@@ -1900,7 +1906,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         subject: `🔔 [ADMIN ALERT] Loan Funding Initiated - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Funding Initiated</h1>
             </div>
             
@@ -1950,7 +1959,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         subject: `🔔 [ADMIN ALERT] New Loan Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">New Loan Posted</h1>
             </div>
             
@@ -1983,13 +1995,17 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       });
 
       // Borrower notification
+      const baseUrl = getBaseUrl();
       await sendEmail({
         to: borrower.email, // Send to borrower, not admin
         from: "Reconquest <noreply@reconquestp2p.com>",
         subject: `✅ Loan Request Posted - Loan #${loan.id}`,
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Loan Request Submitted</h1>
             </div>
             
@@ -2336,7 +2352,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         subject: "🔔 [ADMIN TEST] Email System Test",
         html: `
           <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${getBaseUrl()}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); padding: 20px;">
               <h1 style="color: white; margin: 0; text-align: center;">Email System Test</h1>
             </div>
             

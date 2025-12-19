@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { sendEmail } from '../email';
+import { sendEmail, getBaseUrl } from '../email';
 import type { IStorage } from '../storage';
 
 export class PasswordResetService {
@@ -39,13 +39,17 @@ export class PasswordResetService {
       
       console.log(`Generated reset URL: ${resetUrl}`);
       
+      const logoUrl = getBaseUrl();
       await sendEmail({
         to: user.email,
         from: "noreply@reconquestp2p.com",
         subject: "🔐 Reset Your Reconquest Password",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+              <img src="${logoUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+            </div>
+            <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center;">
               <h1 style="color: white; margin: 0; font-size: 28px;">🔐 Password Reset Request</h1>
             </div>
             
@@ -169,6 +173,7 @@ export class PasswordResetService {
 
   private async sendPasswordResetConfirmationEmail(user: any): Promise<void> {
     const baseUrl = 'https://reconquestp2p.com';
+    const logoUrl = getBaseUrl();
     
     const loginUrl = `${baseUrl}/login`;
 
@@ -178,7 +183,10 @@ export class PasswordResetService {
       subject: "✅ Password Reset Successful - Reconquest",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+            <img src="${logoUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+          </div>
+          <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px;">✅ Password Reset Successful</h1>
           </div>
           
