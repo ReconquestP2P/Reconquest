@@ -33,8 +33,20 @@ export interface IBitcoinEscrowService {
  * Creates 2-of-3 multisig addresses using borrower, lender, and platform public keys
  */
 export class BitcoinEscrowService implements IBitcoinEscrowService {
-  // Platform's public key for multisig escrow (real compressed public key for testnet)
-  private readonly platformPubkey = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
+  // Platform's public key for multisig escrow (TESTNET ONLY)
+  // The private key is stored securely in PLATFORM_SIGNING_KEY environment variable
+  public static readonly PLATFORM_PUBLIC_KEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
+  
+  // Get platform private key from environment (for signing)
+  public static getPlatformPrivateKey(): string {
+    const key = process.env.PLATFORM_SIGNING_KEY;
+    if (!key) {
+      throw new Error('PLATFORM_SIGNING_KEY environment variable not set');
+    }
+    return key;
+  }
+  
+  private readonly platformPubkey = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
 
   /**
    * Generates a 2-of-3 multisig escrow address using the Python Bitcoin library
