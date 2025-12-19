@@ -2614,17 +2614,17 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           return res.status(400).json({ message: "Loan has no lender assigned" });
         }
         const lender = await storage.getUser(loan.lenderId);
-        if (!lender || !lender.btcReturnAddress) {
-          return res.status(400).json({ message: "Lender has no return address configured" });
+        if (!lender || !lender.btcAddress) {
+          return res.status(400).json({ message: "Lender has no Bitcoin return address configured. Please add your BTC address in My Account." });
         }
-        outputAddress = lender.btcReturnAddress;
+        outputAddress = lender.btcAddress;
       } else {
         // Recovery and cooperative_close: Borrower gets collateral back
         const borrower = await storage.getUser(loan.borrowerId);
-        if (!borrower || !borrower.btcReturnAddress) {
-          return res.status(400).json({ message: "Borrower has no return address configured" });
+        if (!borrower || !borrower.btcAddress) {
+          return res.status(400).json({ message: "Borrower has no Bitcoin return address configured. Please add your BTC address in My Account." });
         }
-        outputAddress = borrower.btcReturnAddress;
+        outputAddress = borrower.btcAddress;
       }
       
       // Create PSBT template
