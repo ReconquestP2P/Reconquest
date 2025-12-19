@@ -34,6 +34,7 @@ export interface IStorage {
   updateLoan(id: number, updates: Partial<Loan>): Promise<Loan | undefined>;
   getAllLoans(): Promise<Loan[]>;
   getAvailableLoans(): Promise<Loan[]>;
+  getLoansWithActiveMonitoring(): Promise<Loan[]>;
 
   // Loan offer operations
   createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer>;
@@ -352,6 +353,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getLoansWithActiveMonitoring(): Promise<Loan[]> {
+    return Array.from(this.loans.values()).filter(loan => 
+      loan.escrowMonitoringActive === true
+    );
+  }
+
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
     const id = this.currentOfferId++;
     const loanOffer: LoanOffer = {
@@ -550,6 +557,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loans)
       .where(eq(loans.status, "posted"));
+  }
+
+  async getLoansWithActiveMonitoring(): Promise<Loan[]> {
+    return await db
+      .select()
+      .from(loans)
+      .where(eq(loans.escrowMonitoringActive, true));
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {

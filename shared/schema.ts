@@ -114,7 +114,13 @@ export const loans = pgTable("loans", {
   fiatTransferConfirmed: boolean("fiat_transfer_confirmed").default(false),
   borrowerConfirmedReceipt: boolean("borrower_confirmed_receipt").default(false),
   btcDepositNotifiedAt: timestamp("btc_deposit_notified_at"), // When borrower clicked "I've Sent BTC"
-  depositConfirmedAt: timestamp("deposit_confirmed_at"), // When borrower confirmed BTC deposit to escrow
+  depositConfirmedAt: timestamp("deposit_confirmed_at"), // When blockchain confirms BTC in escrow
+  
+  // Automated Deposit Monitoring
+  depositTxid: text("deposit_txid"), // Transaction ID provided by borrower (optional)
+  depositConfirmations: integer("deposit_confirmations").default(0), // Current blockchain confirmations
+  escrowMonitoringActive: boolean("escrow_monitoring_active").default(false), // Whether we're actively polling
+  lastMonitorCheckAt: timestamp("last_monitor_check_at"), // Last time we checked blockchain
   borrowerKeysGeneratedAt: timestamp("borrower_keys_generated_at"), // When borrower generated ephemeral keys
   lenderKeysGeneratedAt: timestamp("lender_keys_generated_at"), // When lender generated ephemeral keys
   loanStartedAt: timestamp("loan_started_at"),
