@@ -3087,6 +3087,37 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           repaidAt: new Date(),
         });
         
+        // Still notify borrower even without automatic collateral release
+        const borrower = await storage.getUser(loan.borrowerId);
+        if (borrower && borrower.email) {
+          const baseUrl = getBaseUrl();
+          const manualHtml = createBrandedEmailHtml({
+            title: '🎉 Loan Completed!',
+            greeting: `Hi ${borrower.username},`,
+            content: `
+              <p>Great news! Your loan <strong>#${loanId}</strong> has been <strong>successfully completed</strong>!</p>
+              
+              <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>Collateral Release</strong></p>
+                <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
+                <p style="margin: 5px 0;">Your collateral release is being processed and may require manual verification. Our team will ensure your Bitcoin is returned promptly.</p>
+              </div>
+              
+              <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
+            `,
+            buttonText: 'View My Dashboard',
+            buttonUrl: `${baseUrl}/borrower-dashboard`
+          });
+          
+          await sendEmail({
+            to: borrower.email,
+            from: 'Reconquest <noreply@reconquestp2p.com>',
+            subject: `🎉 Loan #${loanId} Completed!`,
+            html: manualHtml
+          });
+          console.log(`📧 Loan completion email sent to borrower ${borrower.email} (manual processing)`);
+        }
+        
         console.log(`✅ Loan #${loanId} marked as completed (no blockchain tx - missing signatures)`);
         return res.json({ 
           success: true, 
@@ -3151,6 +3182,40 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         status: 'completed',
         repaidAt: new Date(),
       });
+
+      // Send email notification to borrower about collateral release
+      const borrower = await storage.getUser(loan.borrowerId);
+      if (borrower && borrower.email) {
+        const baseUrl = getBaseUrl();
+        const collateralHtml = createBrandedEmailHtml({
+          title: '🎉 Loan Completed - Collateral Released!',
+          greeting: `Hi ${borrower.username},`,
+          content: `
+            <p>Great news! Your loan <strong>#${loanId}</strong> has been <strong>successfully completed</strong>!</p>
+            
+            <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 5px 0; font-size: 16px;"><strong>✅ Your Bitcoin collateral is being released!</strong></p>
+              <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
+              <p style="margin: 5px 0;"><strong>Destination:</strong> Your registered Bitcoin address</p>
+              ${broadcast.txid ? `<p style="margin: 5px 0;"><strong>Transaction ID:</strong> <code style="font-size: 12px;">${broadcast.txid}</code></p>` : ''}
+            </div>
+            
+            <p>The cooperative close transaction has been broadcast to the Bitcoin testnet. Your collateral will be available at your registered Bitcoin address shortly.</p>
+            
+            <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
+          `,
+          buttonText: 'View My Dashboard',
+          buttonUrl: `${baseUrl}/borrower-dashboard`
+        });
+        
+        await sendEmail({
+          to: borrower.email,
+          from: 'Reconquest <noreply@reconquestp2p.com>',
+          subject: `🎉 Loan #${loanId} Completed - Your Collateral is Being Released!`,
+          html: collateralHtml
+        });
+        console.log(`📧 Collateral release email sent to borrower ${borrower.email}`);
+      }
 
       console.log(`✅ Loan #${loanId} completed! Txid: ${broadcast.txid || 'N/A'}`);
       res.json({ 
