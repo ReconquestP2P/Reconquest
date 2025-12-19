@@ -159,7 +159,22 @@ export class BlockchainMonitoringService {
       return;
     }
 
-    console.log(`[BlockchainMonitor] Found UTXO for loan ${loan.id}: ${result.txid}:${result.vout} with ${result.confirmations} confirmations`);
+    // CRITICAL: Verify deposit meets minimum collateral requirement
+    const depositedSats = result.amountSats || 0;
+    if (depositedSats < requiredSats) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id} under-collateralized: deposited ${depositedSats} sats, required ${requiredSats} sats`);
+      // Update with found amount but don't confirm
+      await storage.updateLoan(loan.id, {
+        depositTxid: result.txid,
+        depositConfirmations: result.confirmations || 0,
+        fundingTxid: result.txid,
+        fundingVout: result.vout,
+        fundedAmountSats: depositedSats,
+      });
+      return;
+    }
+
+    console.log(`[BlockchainMonitor] Found UTXO for loan ${loan.id}: ${result.txid}:${result.vout} with ${result.confirmations} confirmations, ${depositedSats} sats (required: ${requiredSats})`);
 
     // Update deposit info
     await storage.updateLoan(loan.id, {
@@ -167,7 +182,7 @@ export class BlockchainMonitoringService {
       depositConfirmations: result.confirmations || 0,
       fundingTxid: result.txid,
       fundingVout: result.vout,
-      fundedAmountSats: result.amountSats,
+      fundedAmountSats: depositedSats,
     });
 
     // Check if we have enough confirmations
@@ -223,15 +238,30 @@ export class BlockchainMonitoringService {
       return { found: false, confirmations: 0, message: 'No deposit found yet. Waiting for Bitcoin to arrive in escrow.' };
     }
 
-    // Update deposit info
+    const depositedSats = result.amountSats || 0;
+
+    // Update deposit info regardless of amount
     await storage.updateLoan(loan.id, {
       depositTxid: result.txid,
       depositConfirmations: result.confirmations || 0,
       fundingTxid: result.txid,
       fundingVout: result.vout,
-      fundedAmountSats: result.amountSats,
+      fundedAmountSats: depositedSats,
       lastMonitorCheckAt: new Date(),
     });
+
+    // CRITICAL: Check if deposit meets minimum collateral requirement
+    if (depositedSats < requiredSats) {
+      const shortfall = (requiredSats - depositedSats) / 100000000;
+      return { 
+        found: true, 
+        confirmations: result.confirmations || 0, 
+        message: `Deposit found but insufficient. Received ${depositedSats / 100000000} BTC, need ${requiredSats / 100000000} BTC. Please add ${shortfall.toFixed(8)} BTC more.`,
+        txid: result.txid,
+        vout: result.vout,
+        amountSats: depositedSats
+      };
+    }
 
     if ((result.confirmations || 0) >= REQUIRED_CONFIRMATIONS) {
       await this.handleDepositConfirmed(loan, result);
@@ -241,7 +271,7 @@ export class BlockchainMonitoringService {
         message: `Deposit confirmed with ${result.confirmations} confirmations! Ready for signing ceremony.`,
         txid: result.txid,
         vout: result.vout,
-        amountSats: result.amountSats
+        amountSats: depositedSats
       };
     }
 
@@ -251,7 +281,7 @@ export class BlockchainMonitoringService {
       message: `Deposit found in mempool, waiting for confirmation (${result.confirmations || 0}/${REQUIRED_CONFIRMATIONS})`,
       txid: result.txid,
       vout: result.vout,
-      amountSats: result.amountSats
+      amountSats: depositedSats
     };
   }
 
