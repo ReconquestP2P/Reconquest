@@ -1577,8 +1577,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate maturity date and amount due
       const maturityDate = new Date();
       maturityDate.setMonth(maturityDate.getMonth() + loan.termMonths);
-      const interestAmount = (parseFloat(loan.amount) * parseFloat(loan.interestRate) / 100);
-      const amountDue = (parseFloat(loan.amount) + interestAmount);
+      const principal = parseFloat(loan.amount);
+      const annualRate = parseFloat(loan.interestRate) / 100;
+      const interestAmount = principal * annualRate * (loan.termMonths / 12);
+      const amountDue = principal + interestAmount;
       
       // Send email to lender (Firefish-style template)
       await sendEmail({
@@ -3134,7 +3136,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         const borrower = await storage.getUser(loan.borrowerId);
         if (lender && lender.email) {
           const principal = parseFloat(loan.amount);
-          const interest = (principal * parseFloat(loan.interestRate)) / 100;
+          const annualRate = parseFloat(loan.interestRate) / 100;
+          const interest = principal * annualRate * (loan.termMonths / 12);
           const totalExpected = principal + interest;
           
           const baseUrl = getBaseUrl();

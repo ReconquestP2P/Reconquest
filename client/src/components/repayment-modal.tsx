@@ -95,7 +95,8 @@ export default function RepaymentModal({
   };
 
   const principal = parseFloat(loan.amount);
-  const interest = (principal * parseFloat(loan.interestRate)) / 100;
+  const annualRate = parseFloat(loan.interestRate) / 100;
+  const interest = principal * annualRate * (loan.termMonths / 12);
   const totalDue = principal + interest;
 
   return (
