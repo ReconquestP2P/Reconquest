@@ -465,101 +465,6 @@ export default function LenderDashboard() {
             </CardContent>
           </Card>
 
-          {/* Pending Repayment Confirmations - moved here for better UX */}
-          {lenderLoans.filter(loan => loan.status === 'repayment_pending').length > 0 && (
-            <Card className="border-green-200 dark:border-green-800 mt-6">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      💰 Pending Repayment Confirmations
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Borrowers have confirmed sending repayment - verify receipt and release collateral
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefresh}
-                    className="flex items-center gap-2"
-                    data-testid="button-refresh-repayments-pending"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {lenderLoans
-                    .filter(loan => loan.status === 'repayment_pending')
-                    .map((loan) => {
-                      const principal = parseFloat(loan.amount);
-                      const interest = (principal * parseFloat(loan.interestRate)) / 100;
-                      const totalExpected = principal + interest;
-                      
-                      return (
-                        <Card key={loan.id} className="border-green-100 dark:border-green-900">
-                          <CardContent className="pt-4">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h3 className="font-semibold text-lg">Loan #{loan.id.toString().padStart(6, '0')}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Borrower: {loan.borrower?.firstName} {loan.borrower?.lastName}
-                                </p>
-                              </div>
-                              <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-                                Awaiting Your Confirmation
-                              </Badge>
-                            </div>
-                            
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
-                              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                                Expected Repayment Amount:
-                              </p>
-                              <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                                {formatCurrency(totalExpected, loan.currency)}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Principal: {formatCurrency(principal, loan.currency)} + Interest: {formatCurrency(interest, loan.currency)}
-                              </p>
-                            </div>
-                            
-                            <Button 
-                              onClick={async () => {
-                                try {
-                                  const res = await apiRequest(`/api/loans/${loan.id}/confirm-receipt`, "POST", {});
-                                  const data = await res.json();
-                                  if (data.success) {
-                                    toast({
-                                      title: "Repayment Confirmed! 🎉",
-                                      description: data.message,
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
-                                  }
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Error",
-                                    description: error.message || "Failed to confirm receipt",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              className="w-full bg-green-600 hover:bg-green-700 text-white"
-                              data-testid={`button-confirm-repayment-${loan.id}`}
-                            >
-                              ✓ I've Received the Repayment - Release Collateral
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
         </TabsContent>
 
         <TabsContent value="recovery" className="space-y-6">
@@ -851,101 +756,6 @@ export default function LenderDashboard() {
         </TabsContent>
 
         <TabsContent value="active" className="space-y-6">
-          {/* Pending Repayment Confirmations */}
-          {lenderLoans.filter(loan => loan.status === 'repayment_pending').length > 0 && (
-            <Card className="border-green-200 dark:border-green-800">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      💰 Pending Repayment Confirmations
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Borrowers have confirmed sending repayment - verify receipt and release collateral
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRefresh}
-                    className="flex items-center gap-2"
-                    data-testid="button-refresh-repayments"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {lenderLoans
-                    .filter(loan => loan.status === 'repayment_pending')
-                    .map((loan) => {
-                      const principal = parseFloat(loan.amount);
-                      const interest = (principal * parseFloat(loan.interestRate)) / 100;
-                      const totalExpected = principal + interest;
-                      
-                      return (
-                        <Card key={loan.id} className="border-green-100 dark:border-green-900">
-                          <CardContent className="pt-4">
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <h3 className="font-semibold text-lg">Loan #{loan.id}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Borrower: {loan.borrower?.firstName} {loan.borrower?.lastName}
-                                </p>
-                              </div>
-                              <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-                                Awaiting Your Confirmation
-                              </Badge>
-                            </div>
-                            
-                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
-                              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                                Expected Repayment Amount:
-                              </p>
-                              <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                                {formatCurrency(totalExpected, loan.currency)}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Principal: {formatCurrency(principal, loan.currency)} + Interest: {formatCurrency(interest, loan.currency)}
-                              </p>
-                            </div>
-                            
-                            <Button 
-                              onClick={async () => {
-                                try {
-                                  const res = await apiRequest(`/api/loans/${loan.id}/confirm-receipt`, "POST", {});
-                                  const data = await res.json();
-                                  if (data.success) {
-                                    toast({
-                                      title: "Repayment Confirmed! 🎉",
-                                      description: data.message,
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
-                                  }
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Error",
-                                    description: error.message || "Failed to confirm receipt",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              className="w-full bg-green-600 hover:bg-green-700 text-white"
-                              data-testid={`button-confirm-receipt-${loan.id}`}
-                            >
-                              ✓ I've Received the Repayment - Release Collateral
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -968,7 +778,7 @@ export default function LenderDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {lenderLoans.filter(loan => loan.status === 'active').length > 0 ? (
+              {lenderLoans.filter(loan => loan.status === 'active' || loan.status === 'repayment_pending').length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -982,7 +792,7 @@ export default function LenderDashboard() {
                   </TableHeader>
                   <TableBody>
                     {lenderLoans
-                      .filter(loan => loan.status === 'active')
+                      .filter(loan => loan.status === 'active' || loan.status === 'repayment_pending')
                       .map((loan) => {
                         const startDate = loan.activatedAt ? new Date(loan.activatedAt) : new Date();
                         const maturityDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
@@ -992,9 +802,15 @@ export default function LenderDashboard() {
                               {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
                             </TableCell>
                             <TableCell>
-                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
-                                Active
-                              </Badge>
+                              {loan.status === 'repayment_pending' ? (
+                                <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100">
+                                  Repayment Sent
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                  Active
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
                             <TableCell>{loan.termMonths} months</TableCell>
@@ -1002,14 +818,43 @@ export default function LenderDashboard() {
                               {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="link"
-                                className="text-primary p-0 h-auto"
-                                onClick={() => setActiveDetailLoan(loan)}
-                                data-testid={`button-view-active-${loan.id}`}
-                              >
-                                View
-                              </Button>
+                              {loan.status === 'repayment_pending' ? (
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await apiRequest(`/api/loans/${loan.id}/confirm-receipt`, "POST", {});
+                                      const data = await res.json();
+                                      if (data.success) {
+                                        toast({
+                                          title: "Repayment Confirmed! 🎉",
+                                          description: data.message,
+                                        });
+                                        queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
+                                      }
+                                    } catch (error: any) {
+                                      toast({
+                                        title: "Error",
+                                        description: error.message || "Failed to confirm receipt",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`button-confirm-receipt-${loan.id}`}
+                                >
+                                  Confirm Receipt
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="link"
+                                  className="text-primary p-0 h-auto"
+                                  onClick={() => setActiveDetailLoan(loan)}
+                                  data-testid={`button-view-active-${loan.id}`}
+                                >
+                                  View
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         );

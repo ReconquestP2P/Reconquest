@@ -3030,7 +3030,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                 <li>Interest: ${interest.toFixed(2)} ${loan.currency}</li>
               </ul>
               <p><strong>Please log in to your dashboard</strong> to confirm you received the funds and release the borrower's Bitcoin collateral.</p>
-              <p>Go to: Lender Dashboard → Pending Transfers tab → Pending Repayment Confirmations</p>
+              <p>Go to: Lender Dashboard → Active Loans tab</p>
             `
           });
           console.log(`📧 Email sent to lender ${lender.email} about repayment for loan #${loanId}`);
