@@ -274,7 +274,7 @@ if __name__ == "__main__":
     # These are actual valid Bitcoin compressed public keys for testing
     pubkey1 = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     pubkey2 = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-    pubkey3 = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+    pubkey3 = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
     
     try:
         # Call the requested function signature

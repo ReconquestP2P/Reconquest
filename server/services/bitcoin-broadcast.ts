@@ -776,7 +776,7 @@ export async function generatePlatformSignature(
 
     // Fallback: Use hardcoded pubkey with mock signature
     const platformPubkey =
-      '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9';
+      '03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e';
     const mockSignature = `platform_sig_${txHash.slice(0, 16)}`;
 
     return {

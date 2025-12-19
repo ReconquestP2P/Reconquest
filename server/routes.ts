@@ -1215,7 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create 2-of-3 multisig escrow address using lender + platform pubkeys
       // Borrower pubkey will be added later after deposit confirmation
       const { createMultisigAddress } = await import('./utils/multisig-creator.js');
-      const PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9";
+      const PLATFORM_PUBKEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
       
       // Use platform pubkey as placeholder for borrower (will be replaced after deposit)
       const multisig = await createMultisigAddress(

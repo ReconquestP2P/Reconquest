@@ -418,7 +418,7 @@ if __name__ == "__main__":
     print("=" * 70)
     
     # Platform's public key (in production, would be securely stored)
-    PLATFORM_PUBKEY = "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+    PLATFORM_PUBKEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
     
     # Test parameters
     loan_id = 1
