@@ -183,7 +183,7 @@ async function runRealTestnetE2E() {
 
     try {
       const response = await axios.post(
-        'https://mempool.space/testnet/api/tx',
+        'https://mempool.space/testnet4/api/tx',
         demoTxHex,
         {
           headers: { 'Content-Type': 'text/plain' },

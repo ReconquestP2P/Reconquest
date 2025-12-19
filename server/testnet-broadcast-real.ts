@@ -38,7 +38,7 @@ interface UTXO {
 async function fetchUTXOs(address: string): Promise<UTXO[]> {
   console.log(`📡 Fetching UTXOs for ${address}...`);
   const response = await axios.get(
-    `https://mempool.space/testnet/api/address/${address}/utxo`,
+    `https://mempool.space/testnet4/api/address/${address}/utxo`,
     { timeout: 30000 }
   );
   return response.data;
@@ -47,7 +47,7 @@ async function fetchUTXOs(address: string): Promise<UTXO[]> {
 async function broadcastTransaction(txHex: string): Promise<string> {
   console.log('📡 Broadcasting transaction via Mempool.space...');
   const response = await axios.post(
-    'https://mempool.space/testnet/api/tx',
+    'https://mempool.space/testnet4/api/tx',
     txHex,
     {
       headers: { 'Content-Type': 'text/plain' },
@@ -255,7 +255,7 @@ async function runRealBroadcast() {
       txid: broadcastTxid,
       confirmed,
       blockHeight,
-      explorerUrl: `https://mempool.space/testnet/tx/${broadcastTxid}`,
+      explorerUrl: `https://mempool.space/testnet4/tx/${broadcastTxid}`,
     };
     
   } catch (error) {

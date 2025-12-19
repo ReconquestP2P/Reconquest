@@ -375,7 +375,7 @@ export default function LenderDashboard() {
                             </p>
                             <div className="flex gap-2 items-center flex-wrap">
                               <a 
-                                href={`https://mempool.space/testnet/address/${loan.escrowAddress}`}
+                                href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -1004,7 +1004,7 @@ export default function LenderDashboard() {
                   {loan.escrowAddress && (
                     <div className="text-center">
                       <a 
-                        href={`https://mempool.space/testnet/address/${loan.escrowAddress}`}
+                        href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
