@@ -289,16 +289,8 @@ async function buildRecoveryTransaction(params: {
     };
   }
   
-  // Fallback to mock if no UTXO yet
-  const mockPSBT = `recovery_psbt_${params.escrowAddress}_${Date.now()}`;
-  const txData = `recovery_${params.escrowAddress}_${params.borrowerPubkey}_${params.collateralBtc}_${params.timelock}`;
-  const messageHash = generateMessageHash(txData);
-  
-  return {
-    psbt: btoa(mockPSBT),
-    messageHash,
-    txHash: `recovery_tx_${params.borrowerPubkey.slice(0, 8)}`,
-  };
+  // NO FALLBACK: Throw error if no UTXO - user must wait for escrow funding
+  throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet. Please deposit the Bitcoin collateral first, then generate your recovery plan.');
 }
 
 /**
@@ -323,17 +315,8 @@ async function buildCooperativeCloseTransaction(params: {
     };
   }
   
-  // Fallback to mock if no UTXO yet
-  const mockPSBT = `cooperative_psbt_${params.escrowAddress}`;
-  const txData = `cooperative_${params.escrowAddress}_${params.loanAmount}_${params.collateralBtc}`;
-  const messageHash = generateMessageHash(txData);
-  const escrowHash = params.escrowAddress.slice(-8);
-  
-  return {
-    psbt: btoa(mockPSBT),
-    messageHash,
-    txHash: `cooperative_tx_${escrowHash}`,
-  };
+  // NO FALLBACK: Throw error if no UTXO - user must wait for escrow funding
+  throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet. Please deposit the Bitcoin collateral first, then generate your recovery plan.');
 }
 
 /**
@@ -358,16 +341,8 @@ async function buildDefaultTransaction(params: {
     };
   }
   
-  // Fallback to mock if no UTXO yet
-  const mockPSBT = `default_psbt_${params.escrowAddress}_${Date.now()}`;
-  const txData = `default_${params.escrowAddress}_${params.lenderPubkey}_${params.collateralBtc}_${params.timelock}`;
-  const messageHash = generateMessageHash(txData);
-  
-  return {
-    psbt: btoa(mockPSBT),
-    messageHash,
-    txHash: `default_tx_${params.lenderPubkey.slice(0, 8)}`,
-  };
+  // NO FALLBACK: Throw error if no UTXO - user must wait for escrow funding
+  throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet. Please deposit the Bitcoin collateral first, then generate your recovery plan.');
 }
 
 /**

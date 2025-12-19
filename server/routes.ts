@@ -2689,6 +2689,16 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const loanId = parseInt(req.params.id);
       const { partyRole, partyPubkey, txType, psbt, signature, txHash, validAfter } = req.body;
 
+      // SECURITY: Reject mock PSBTs - only accept real Bitcoin PSBTs
+      // Real PSBTs in base64 start with "cHNidP8" (which decodes to "psbt\xff")
+      if (!psbt || !psbt.startsWith('cHNidP8')) {
+        console.error(`❌ Rejected mock PSBT for loan #${loanId} (${partyRole}/${txType})`);
+        return res.status(400).json({ 
+          message: "Invalid PSBT format. Please ensure the escrow has been funded before generating your recovery plan.",
+          code: "MOCK_PSBT_REJECTED"
+        });
+      }
+
       const transaction = await storage.storePreSignedTransaction({
         loanId,
         partyRole,

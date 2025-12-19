@@ -92,13 +92,24 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
         description: data.message,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating ephemeral keys:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate recovery plan. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Check for specific UTXO not found error
+      const errorMsg = error?.message || '';
+      if (errorMsg.includes('UTXO_NOT_FOUND') || errorMsg.includes('escrow has been funded') || errorMsg.includes('MOCK_PSBT_REJECTED')) {
+        toast({
+          title: "⏳ Waiting for Bitcoin Deposit",
+          description: "The escrow address hasn't been funded yet. Please deposit the Bitcoin collateral first, wait for confirmation, then generate your recovery plan.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to generate recovery plan. Please try again.",
+          variant: "destructive",
+        });
+      }
       setStep('intro');
     }
   };
