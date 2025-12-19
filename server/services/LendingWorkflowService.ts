@@ -676,7 +676,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   ✅ BTC Deposit Confirmation
                 </a>
-                <a href="https://blockstream.info/testnet/address/${escrowAddress}" 
+                <a href="https://mempool.space/testnet4/address/${escrowAddress}" 
                    target="_blank"
                    style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   🔍 Track Deposit on Blockchain
@@ -742,7 +742,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   📊 View Dashboard
                 </a>
-                <a href="https://blockstream.info/testnet/address/${escrowAddress}" 
+                <a href="https://mempool.space/testnet4/address/${escrowAddress}" 
                    target="_blank"
                    style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   🔍 Monitor Escrow Funding

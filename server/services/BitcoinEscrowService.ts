@@ -173,7 +173,7 @@ except Exception as e:
    * Returns the testnet block explorer URL for a transaction
    */
   getTransactionUrl(txHash: string): string {
-    return `https://blockstream.info/testnet/tx/${txHash}`;
+    return `https://mempool.space/testnet4/tx/${txHash}`;
   }
 
   /**

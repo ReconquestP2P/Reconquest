@@ -1516,7 +1516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://blockstream.info/testnet/address/${loan.escrowAddress}" 
+                <a href="https://mempool.space/testnet4/address/${loan.escrowAddress}" 
                    target="_blank"
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                   🔍 Verify on Blockchain
@@ -1587,7 +1587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </p>
               
               <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
-                The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="https://blockstream.info/testnet/address/${loan.escrowAddress}" target="_blank" style="color: #e74c3c; text-decoration: underline;">designated address</a>.
+                The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="https://mempool.space/testnet4/address/${loan.escrowAddress}" target="_blank" style="color: #e74c3c; text-decoration: underline;">designated address</a>.
               </p>
               
               <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">

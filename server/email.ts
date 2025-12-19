@@ -244,7 +244,7 @@ export async function sendLenderFundingNotification(params: {
   } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-  const mempoolUrl = escrowAddress ? `https://mempool.space/testnet/address/${escrowAddress}` : '';
+  const mempoolUrl = escrowAddress ? `https://mempool.space/testnet4/address/${escrowAddress}` : '';
 
   const html = `
     <!DOCTYPE html>
