@@ -235,16 +235,21 @@ export async function sendLenderFundingNotification(params: {
   loanAmount: string;
   currency: string;
   interestRate: string;
+  startDate: string;
   maturityDate: string;
+  termMonths: number;
   dashboardUrl: string;
   escrowAddress?: string;
 }): Promise<boolean> {
   const { 
-    to, lenderName, loanId, loanAmount, currency, interestRate, maturityDate, dashboardUrl, escrowAddress 
+    to, lenderName, loanId, loanAmount, currency, interestRate, startDate, maturityDate, termMonths, dashboardUrl, escrowAddress 
   } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
   const mempoolUrl = escrowAddress ? `https://mempool.space/testnet4/address/${escrowAddress}` : '';
+  
+  const formattedAmount = parseFloat(loanAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedInterestRate = parseFloat(interestRate).toFixed(2);
 
   const html = `
     <!DOCTYPE html>
@@ -272,10 +277,12 @@ export async function sendLenderFundingNotification(params: {
         </p>
         
         <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
-          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> ${loanId}</p>
-          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${loanAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> ${loanId.toString().padStart(6, '0')}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${formattedAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${formattedInterestRate}% p.a.</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Term:</strong> ${termMonths} months</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Start Date:</strong> ${startDate}</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Maturity Date:</strong> ${maturityDate}</p>
-          <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${interestRate} % p.a.</p>
         </div>
 
         <div style="text-align: center; margin: 30px 0;">

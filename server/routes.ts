@@ -1310,7 +1310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { sendLenderFundingNotification } = await import('./email.js');
             const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
             
-            // Calculate maturity date from loan term
+            // Calculate start date (today) and maturity date from loan term
+            const startDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             const maturityDate = updatedLoan.dueDate 
               ? new Date(updatedLoan.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
               : 'To be determined';
@@ -1322,7 +1323,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               loanAmount: updatedLoan.amount,
               currency: updatedLoan.currency,
               interestRate: updatedLoan.interestRate,
+              startDate: startDate,
               maturityDate: maturityDate,
+              termMonths: updatedLoan.termMonths,
               dashboardUrl: `${baseUrl}/lender`,
               escrowAddress: loan.escrowAddress || undefined,
             });
