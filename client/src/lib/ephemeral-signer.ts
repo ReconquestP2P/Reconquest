@@ -240,8 +240,12 @@ async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{
   fee: number;
 } | null> {
   try {
+    const token = localStorage.getItem('auth_token');
     const response = await fetch(`/api/loans/${loanId}/psbt-template?txType=${txType}`, {
       credentials: 'include',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
     });
     
     if (!response.ok) {
