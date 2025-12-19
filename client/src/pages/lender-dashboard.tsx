@@ -346,6 +346,14 @@ export default function LenderDashboard() {
                               <p className="text-sm text-muted-foreground">
                                 Bitcoin escrow confirmed - awaiting your bank transfer
                               </p>
+                              <div className="flex gap-4 mt-2 text-sm">
+                                <span className="text-muted-foreground">
+                                  📅 Start: <span className="font-medium text-foreground">{loan.plannedStartDate ? formatDate(loan.plannedStartDate) : 'Pending'}</span>
+                                </span>
+                                <span className="text-muted-foreground">
+                                  🏁 End: <span className="font-medium text-foreground">{loan.plannedEndDate ? formatDate(loan.plannedEndDate) : 'Pending'}</span>
+                                </span>
+                              </div>
                             </div>
                             <div className="text-right">
                               <p className="text-2xl font-bold text-green-600">
