@@ -6,6 +6,7 @@ import { insertLoanSchema, insertLoanOfferSchema, insertUserSchema } from "@shar
 import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
+import { releaseCollateral } from "./services/CollateralReleaseService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
 import crypto from "crypto";
@@ -3236,20 +3237,53 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Loan must be awaiting repayment confirmation" });
       }
 
-      // Get cooperative_close transactions
-      const transactions = await storage.getPreSignedTransactions(loanId, 'cooperative_close');
+      // Use automated CollateralReleaseService for fund release
+      console.log(`🔐 Triggering automated collateral release for loan #${loanId}`);
+      
+      const releaseResult = await releaseCollateral(storage, loanId);
+      
+      // Update loan status regardless of blockchain result
+      await storage.updateLoan(loanId, {
+        status: 'completed',
+        repaidAt: new Date(),
+      });
 
-      if (transactions.length < 2) {
-        // If not enough signatures, just mark as completed without blockchain tx
-        await storage.updateLoan(loanId, {
-          status: 'completed',
-          repaidAt: new Date(),
-        });
+      // Send email notification to borrower
+      const borrower = await storage.getUser(loan.borrowerId);
+      if (borrower && borrower.email) {
+        const baseUrl = getBaseUrl();
         
-        // Still notify borrower even without automatic collateral release
-        const borrower = await storage.getUser(loan.borrowerId);
-        if (borrower && borrower.email) {
-          const baseUrl = getBaseUrl();
+        if (releaseResult.success && releaseResult.txid) {
+          // Successful blockchain broadcast
+          const successHtml = createBrandedEmailHtml({
+            title: '🎉 Loan Completed - Collateral Released!',
+            greeting: `Hi ${borrower.username},`,
+            content: `
+              <p>Great news! Your loan <strong>#${loanId}</strong> has been <strong>successfully completed</strong>!</p>
+              
+              <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 5px 0; font-size: 16px;"><strong>✅ Your Bitcoin collateral has been released!</strong></p>
+                <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
+                <p style="margin: 5px 0;"><strong>Destination:</strong> Your registered Bitcoin address</p>
+                <p style="margin: 5px 0;"><strong>Transaction ID:</strong> <code style="font-size: 12px;">${releaseResult.txid}</code></p>
+                ${releaseResult.broadcastUrl ? `<p style="margin: 5px 0;"><a href="${releaseResult.broadcastUrl}" target="_blank">View on Mempool.space</a></p>` : ''}
+              </div>
+              
+              <p>Your collateral is now on its way back to you! It should appear in your wallet within a few confirmations.</p>
+            `,
+            buttonText: 'View My Dashboard',
+            buttonUrl: `${baseUrl}/borrower`
+          });
+          
+          await sendEmail({
+            to: borrower.email,
+            from: 'Reconquest <noreply@reconquestp2p.com>',
+            subject: `🎉 Loan #${loanId} Completed - Collateral Released!`,
+            html: successHtml
+          });
+          console.log(`📧 Collateral release email sent to borrower ${borrower.email}`);
+        } else {
+          // Manual processing needed
           const manualHtml = createBrandedEmailHtml({
             title: '🎉 Loan Completed!',
             greeting: `Hi ${borrower.username},`,
@@ -3259,10 +3293,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Collateral Release</strong></p>
                 <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
-                <p style="margin: 5px 0;">Your collateral release is being processed and may require manual verification. Our team will ensure your Bitcoin is returned promptly.</p>
+                <p style="margin: 5px 0;">Your collateral release is being processed. Our team will ensure your Bitcoin is returned promptly.</p>
               </div>
               
-              <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
+              <p style="color: #666; font-size: 14px;">Thank you for using Reconquest!</p>
             `,
             buttonText: 'View My Dashboard',
             buttonUrl: `${baseUrl}/borrower`
@@ -3274,144 +3308,20 @@ async function sendFundingNotification(loan: any, lenderId: number) {
             subject: `🎉 Loan #${loanId} Completed!`,
             html: manualHtml
           });
-          console.log(`📧 Loan completion email sent to borrower ${borrower.email} (manual processing)`);
+          console.log(`📧 Loan completion email sent to borrower ${borrower.email}`);
         }
-        
-        console.log(`✅ Loan #${loanId} marked as completed (no blockchain tx - missing signatures)`);
-        return res.json({ 
-          success: true, 
-          message: "Loan completed. Collateral return may need manual processing.",
-          blockchainTx: false
-        });
       }
 
-      // Import broadcast service
-      const { aggregateSignatures, broadcastTransaction, generatePlatformSignature } = await import("./services/bitcoin-broadcast.js");
-
-      // Add platform signature
-      const platformSig = await generatePlatformSignature(
-        transactions[0].txHash,
-        `cooperative_close_${loanId}`
-      );
-
-      // Store platform signature
-      const platformTx = await storage.storePreSignedTransaction({
-        loanId,
-        partyRole: 'platform',
-        partyPubkey: platformSig.publicKey,
-        txType: 'cooperative_close',
-        psbt: transactions[0].psbt,
-        signature: platformSig.signature,
-        txHash: transactions[0].txHash,
-      });
-
-      // Aggregate signatures (2-of-3) with PSBT integrity validation
-      const allTransactions = [...transactions, platformTx];
+      console.log(`✅ Loan #${loanId} completed. Release result: ${releaseResult.success ? 'SUCCESS' : releaseResult.error}`);
       
-      // Load canonical template for strict validation
-      const canonicalTemplate = await storage.getPsbtTemplate(loanId, 'cooperative_close');
-      
-      // For cooperative_close, collateral returns to borrower
-      const aggregation = await aggregateSignatures(
-        allTransactions, 
-        {
-          escrowTxid: loan.escrowTxid || undefined,
-          escrowVout: loan.escrowVout ?? undefined,
-          escrowAmount: loan.collateralBtc ? Math.floor(Number(loan.collateralBtc) * 100000000) : undefined,
-          borrowerAddress: loan.borrowerBtcAddress || undefined,
-          lenderAddress: loan.lenderBtcAddress || undefined,
-          expectedOutputAddress: loan.borrowerBtcAddress || undefined,
-          txType: 'cooperative_close'
-        },
-        canonicalTemplate ? {
-          canonicalTxid: canonicalTemplate.canonicalTxid,
-          inputTxid: canonicalTemplate.inputTxid,
-          inputVout: canonicalTemplate.inputVout,
-          inputValue: canonicalTemplate.inputValue,
-          witnessScriptHash: canonicalTemplate.witnessScriptHash,
-          outputAddress: canonicalTemplate.outputAddress,
-          outputValue: canonicalTemplate.outputValue,
-          feeRate: canonicalTemplate.feeRate,
-          virtualSize: canonicalTemplate.virtualSize,
-          fee: canonicalTemplate.fee,
-        } : undefined
-      );
-
-      if (!aggregation.success || !aggregation.txHex) {
-        // Mark completed even if broadcast fails
-        await storage.updateLoan(loanId, {
-          status: 'completed',
-          repaidAt: new Date(),
-        });
-        
-        return res.json({ 
-          success: true,
-          message: "Loan completed. Bitcoin transaction aggregation failed - manual review needed.",
-          blockchainTx: false,
-          error: aggregation.error
-        });
-      }
-
-      // Broadcast to Bitcoin testnet
-      const broadcast = await broadcastTransaction(aggregation.txHex);
-
-      // Update all transactions with broadcast status
-      for (const tx of allTransactions) {
-        await storage.updateTransactionBroadcastStatus(tx.id, {
-          broadcastStatus: broadcast.success ? 'broadcasting' : 'failed',
-          broadcastTxid: broadcast.txid,
-          broadcastedAt: new Date(),
-        });
-      }
-
-      // Update loan status
-      await storage.updateLoan(loanId, {
-        status: 'completed',
-        repaidAt: new Date(),
-      });
-
-      // Send email notification to borrower about collateral release
-      const borrower = await storage.getUser(loan.borrowerId);
-      if (borrower && borrower.email) {
-        const baseUrl = getBaseUrl();
-        const collateralHtml = createBrandedEmailHtml({
-          title: '🎉 Loan Completed - Collateral Released!',
-          greeting: `Hi ${borrower.username},`,
-          content: `
-            <p>Great news! Your loan <strong>#${loanId}</strong> has been <strong>successfully completed</strong>!</p>
-            
-            <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
-              <p style="margin: 5px 0; font-size: 16px;"><strong>✅ Your Bitcoin collateral is being released!</strong></p>
-              <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
-              <p style="margin: 5px 0;"><strong>Destination:</strong> Your registered Bitcoin address</p>
-              ${broadcast.txid ? `<p style="margin: 5px 0;"><strong>Transaction ID:</strong> <code style="font-size: 12px;">${broadcast.txid}</code></p>` : ''}
-            </div>
-            
-            <p>The cooperative close transaction has been broadcast to the Bitcoin testnet. Your collateral will be available at your registered Bitcoin address shortly.</p>
-            
-            <p style="color: #666; font-size: 14px;">Thank you for using Reconquest! We hope to see you again soon.</p>
-          `,
-          buttonText: 'View My Dashboard',
-          buttonUrl: `${baseUrl}/borrower`
-        });
-        
-        await sendEmail({
-          to: borrower.email,
-          from: 'Reconquest <noreply@reconquestp2p.com>',
-          subject: `🎉 Loan #${loanId} Completed - Your Collateral is Being Released!`,
-          html: collateralHtml
-        });
-        console.log(`📧 Collateral release email sent to borrower ${borrower.email}`);
-      }
-
-      console.log(`✅ Loan #${loanId} completed! Txid: ${broadcast.txid || 'N/A'}`);
-      res.json({ 
-        success: true, 
-        txid: broadcast.txid,
-        blockchainTx: broadcast.success,
-        message: broadcast.success 
-          ? "Loan completed. Collateral is being returned to borrower."
-          : "Loan completed. Bitcoin broadcast may need manual processing."
+      return res.json({ 
+        success: true,
+        message: releaseResult.success 
+          ? "Loan completed! Collateral released to borrower." 
+          : `Loan completed. Collateral release: ${releaseResult.error}`,
+        blockchainTx: releaseResult.success,
+        txid: releaseResult.txid,
+        broadcastUrl: releaseResult.broadcastUrl
       });
 
     } catch (error) {
