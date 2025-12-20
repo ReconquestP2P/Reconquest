@@ -14,6 +14,7 @@ import FundingTracker from "@/components/funding-tracker";
 import RepaymentModal from "@/components/repayment-modal";
 import DepositInstructionsCard from "@/components/deposit-instructions-card";
 import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
+import { LtvBatteryIndicator } from "@/components/ltv-battery-indicator";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -146,12 +147,6 @@ export default function BorrowerDashboard() {
     }
   };
 
-  const getLTVBadge = (ltv: string) => {
-    const ltvNum = parseFloat(ltv);
-    if (ltvNum < 50) return <Badge className="bg-green-100 text-green-800">{formatPercentage(ltv)}</Badge>;
-    if (ltvNum < 70) return <Badge className="bg-yellow-100 text-yellow-800">{formatPercentage(ltv)}</Badge>;
-    return <Badge className="bg-red-100 text-red-800">{formatPercentage(ltv)}</Badge>;
-  };
 
   if (isLoading) {
     return (
@@ -368,7 +363,7 @@ export default function BorrowerDashboard() {
                           <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
                           <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
                           <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                          <TableCell>{getLTVBadge(loan.ltvRatio)}</TableCell>
+                          <TableCell><LtvBatteryIndicator ltv={loan.ltvRatio} size="sm" /></TableCell>
                           <TableCell>
                             {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
                           </TableCell>

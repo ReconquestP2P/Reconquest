@@ -19,6 +19,7 @@ import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
 import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
+import { LtvBatteryIndicator } from "@/components/ltv-battery-indicator";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
@@ -784,6 +785,7 @@ export default function LenderDashboard() {
                     <TableRow>
                       <TableHead>Loan Amount</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>LTV</TableHead>
                       <TableHead>Interest Rate (p.a.)</TableHead>
                       <TableHead>Period</TableHead>
                       <TableHead>Maturity Date</TableHead>
@@ -811,6 +813,9 @@ export default function LenderDashboard() {
                                   Active
                                 </Badge>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <LtvBatteryIndicator ltv={loan.ltvRatio || 0} size="sm" />
                             </TableCell>
                             <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
                             <TableCell>{loan.termMonths} months</TableCell>
