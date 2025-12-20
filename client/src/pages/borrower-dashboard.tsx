@@ -370,47 +370,97 @@ export default function BorrowerDashboard() {
                   <p className="text-gray-500 dark:text-gray-400">No active loans. Once you deposit BTC and the lender transfers funds, your loan will appear here.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Loan ID</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Collateral</TableHead>
-                        <TableHead>Interest Rate</TableHead>
-                        <TableHead>LTV</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {activeLoans.map((loan) => (
-                        <TableRow key={loan.id}>
-                          <TableCell className="font-medium">#{loan.id}</TableCell>
-                          <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
-                          <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
-                          <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                          <TableCell><LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" /></TableCell>
-                          <TableCell>
-                            {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(loan.status)}</TableCell>
-                          <TableCell>
-                            <Button
-                              onClick={() => setRepayingLoan(loan)}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                              data-testid={`button-repay-loan-${loan.id}`}
-                            >
-                              Repay Loan
-                            </Button>
-                          </TableCell>
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Loan ID</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Collateral</TableHead>
+                          <TableHead>Interest Rate</TableHead>
+                          <TableHead>LTV</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {activeLoans.map((loan) => (
+                          <TableRow key={loan.id}>
+                            <TableCell className="font-medium">#{loan.id}</TableCell>
+                            <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
+                            <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
+                            <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
+                            <TableCell><LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" /></TableCell>
+                            <TableCell>
+                              {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                            <TableCell>
+                              <Button
+                                onClick={() => setRepayingLoan(loan)}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                data-testid={`button-repay-loan-${loan.id}`}
+                              >
+                                Repay Loan
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Top-Up Collateral Section - Shows when any loan has elevated LTV */}
+                  {activeLoans.some((loan: any) => calculateCurrentLtv(loan) >= 75) && (
+                    <div className="mt-6 border-t pt-6">
+                      <h3 className="text-lg font-semibold text-amber-600 dark:text-amber-400 mb-4 flex items-center gap-2">
+                        ⚠️ Top-Up Collateral Required
+                      </h3>
+                      <div className="space-y-4">
+                        {activeLoans
+                          .filter((loan: any) => calculateCurrentLtv(loan) >= 75)
+                          .map((loan: any) => {
+                            const currentLtv = calculateCurrentLtv(loan);
+                            const isUrgent = currentLtv >= 85;
+                            return (
+                              <div
+                                key={loan.id}
+                                className={`p-4 rounded-lg border-2 ${
+                                  isUrgent
+                                    ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700'
+                                    : 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="font-semibold">Loan #{loan.id}</span>
+                                  <Badge variant={isUrgent ? "destructive" : "secondary"}>
+                                    {currentLtv.toFixed(1)}% LTV
+                                  </Badge>
+                                </div>
+                                <p className={`text-sm mb-3 ${isUrgent ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                                  {isUrgent
+                                    ? '🔴 URGENT: Your collateral is at risk. Add more BTC immediately to avoid automatic liquidation at 95% LTV.'
+                                    : '⚠️ Your LTV is rising. Consider adding more collateral to protect your position.'}
+                                </p>
+                                <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Send additional BTC to this address:</p>
+                                  <code className="text-xs break-all text-blue-600 dark:text-blue-400 block p-2 bg-blue-50 dark:bg-blue-950/30 rounded" data-testid={`topup-address-${loan.id}`}>
+                                    {loan.escrowAddress || 'Address not available'}
+                                  </code>
+                                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                                    This is the same escrow address used for your initial collateral deposit.
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

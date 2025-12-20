@@ -386,6 +386,7 @@ export class LtvMonitoringService {
       const termMonths = loan.termMonths || 12;
       const loanValueWithInterest = loanAmount * (1 + interestRate * (termMonths / 12));
       const btcPriceEur = btcPriceUsd * 0.85;
+      const escrowAddress = loan.escrowAddress || 'N/A';
 
       const borrowerHtml = createBrandedEmailHtml({
         title: '⚠️ LTV Rising - Monitor Your Loan',
@@ -409,6 +410,12 @@ export class LtvMonitoringService {
             <li>If the Bitcoin price continues to drop, you may be asked to <strong>top up your collateral</strong> at the 85% LTV level.</li>
             <li>At 95% LTV, <strong>automatic liquidation</strong> will be triggered.</li>
           </ul>
+
+          <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #1E40AF;"><strong>💡 Top-Up Address (if needed later):</strong></p>
+            <p style="font-family: monospace; word-break: break-all; color: #1E40AF; margin-top: 10px;">${escrowAddress}</p>
+            <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">This is the same escrow address used for your initial collateral deposit.</p>
+          </div>
           
           <p style="color: #B45309;">
             💡 No action is required now, but please monitor your loan and be prepared to add collateral or repay if the price continues to fall.
@@ -449,6 +456,7 @@ export class LtvMonitoringService {
       const loanValueWithInterest = loanAmount * (1 + interestRate * (termMonths / 12));
       const btcPriceEur = btcPriceUsd * 0.85;
       const liquidationPriceEur = (loanValueWithInterest / collateralBtc) / LIQUIDATION_LTV_THRESHOLD;
+      const escrowAddress = loan.escrowAddress || 'N/A';
       
       // Calculate how much extra BTC is needed to bring LTV back to 50%
       const targetLtv = 0.50;
@@ -479,6 +487,12 @@ export class LtvMonitoringService {
               <li><strong>Option 1:</strong> Top up your collateral with an additional <strong>${additionalBtcNeeded.toFixed(6)} BTC</strong> to restore LTV to 50%</li>
               <li><strong>Option 2:</strong> Repay your loan in full (<strong>€${loanValueWithInterest.toFixed(2)}</strong>)</li>
             </ul>
+
+            <div style="background: #DBEAFE; border: 2px solid #2563EB; padding: 15px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0; color: #1E40AF; font-weight: bold;">📍 Deposit Address for Top-Up:</p>
+              <p style="font-family: monospace; word-break: break-all; color: #1E40AF; background: #EFF6FF; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 14px;">${escrowAddress}</p>
+              <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">Send additional BTC to this address. This is the same escrow address used for your initial collateral deposit.</p>
+            </div>
             
             <p style="color: #DC2626; font-weight: bold; font-size: 16px;">
               ⚠️ WARNING: If LTV reaches 95%, your collateral will be AUTOMATICALLY LIQUIDATED and sent to the lender. This action is irreversible.
