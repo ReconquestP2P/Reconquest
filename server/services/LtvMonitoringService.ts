@@ -2,8 +2,11 @@
  * LTV Monitoring Service
  * 
  * Polls active loans periodically and checks if BTC price drop triggers liquidation.
- * When collateral value falls below the liquidation threshold (90% LTV), 
+ * When collateral value falls below the liquidation threshold (95% LTV), 
  * automatically broadcasts the liquidation transaction to send BTC to lender.
+ * 
+ * IMPORTANT: Loan value = Principal + Interest (not just principal)
+ * Example: €10,000 loan at 10% APY for 12 months = €11,000 loan value
  */
 
 import { storage } from '../storage';
@@ -13,7 +16,7 @@ import { sendEmail, createBrandedEmailHtml } from '../email';
 import type { Loan } from '@shared/schema';
 
 const POLLING_INTERVAL_MS = 60000; // Check every 1 minute
-const LIQUIDATION_LTV_THRESHOLD = 0.90; // 90% LTV triggers liquidation (collateral worth only 111% of loan)
+const LIQUIDATION_LTV_THRESHOLD = 0.95; // 95% LTV triggers liquidation
 const WARNING_LTV_THRESHOLD = 0.75; // 75% LTV sends warning email
 
 interface LtvCheckResult {
@@ -128,31 +131,49 @@ export class LtvMonitoringService {
   }
 
   /**
+   * Calculate total loan value including principal + interest
+   * Example: €10,000 at 10% APY for 12 months = €10,000 + €1,000 = €11,000
+   */
+  private calculateTotalLoanValue(loan: Loan): number {
+    const principal = parseFloat(String(loan.amount));
+    const interestRate = parseFloat(String(loan.interestRate)) / 100; // Convert percentage to decimal
+    const termMonths = loan.termMonths || 12;
+    
+    // Interest = Principal × Rate × (Months / 12)
+    const interest = principal * interestRate * (termMonths / 12);
+    const totalValue = principal + interest;
+    
+    return totalValue;
+  }
+
+  /**
    * Check a single loan's LTV and take action if needed
    */
   private async checkLoanLtv(loan: Loan, btcPriceUsd: number): Promise<LtvCheckResult> {
     const collateralBtc = parseFloat(String(loan.collateralBtc));
-    const loanAmountUsd = parseFloat(String(loan.amount));
+    
+    // Total loan value = principal + interest
+    const totalLoanValue = this.calculateTotalLoanValue(loan);
     const collateralValueUsd = collateralBtc * btcPriceUsd;
     
-    // LTV = loan amount / collateral value
+    // LTV = total loan value (principal + interest) / collateral value
     // Higher LTV = more risky
-    const currentLtv = loanAmountUsd / collateralValueUsd;
+    const currentLtv = totalLoanValue / collateralValueUsd;
 
     const result: LtvCheckResult = {
       loanId: loan.id,
       currentLtv,
       collateralValueUsd,
-      loanAmountUsd,
+      loanAmountUsd: totalLoanValue,
       btcPriceUsd,
       status: 'healthy'
     };
 
-    // Check if liquidation needed (LTV >= 90%)
+    // Check if liquidation needed (LTV >= 95%)
     if (currentLtv >= LIQUIDATION_LTV_THRESHOLD) {
       result.status = 'liquidation';
       console.log(`🚨 [LtvMonitor] Loan #${loan.id} LIQUIDATION TRIGGERED! LTV: ${(currentLtv * 100).toFixed(1)}%`);
-      console.log(`   Collateral: ${collateralBtc} BTC = $${collateralValueUsd.toFixed(2)} vs Loan: $${loanAmountUsd}`);
+      console.log(`   Collateral: ${collateralBtc} BTC = $${collateralValueUsd.toFixed(2)} vs Loan Value (P+I): $${totalLoanValue.toFixed(2)}`);
       
       await this.executeLiquidation(loan, currentLtv, collateralValueUsd, btcPriceUsd);
     }
