@@ -152,38 +152,44 @@ export class LtvMonitoringService {
   private async checkLoanLtv(loan: Loan, btcPriceUsd: number): Promise<LtvCheckResult> {
     const collateralBtc = parseFloat(String(loan.collateralBtc));
     
-    // Total loan value = principal + interest
+    // Total loan value = principal + interest (in loan currency)
     const totalLoanValue = this.calculateTotalLoanValue(loan);
-    const collateralValueUsd = collateralBtc * btcPriceUsd;
+    
+    // Convert BTC price to loan currency (EUR uses ~0.85 conversion from USD)
+    const btcPriceInLoanCurrency = loan.currency === 'EUR' ? btcPriceUsd * 0.85 : btcPriceUsd;
+    const collateralValueInLoanCurrency = collateralBtc * btcPriceInLoanCurrency;
     
     // LTV = total loan value (principal + interest) / collateral value
-    // Higher LTV = more risky
-    const currentLtv = totalLoanValue / collateralValueUsd;
+    // Higher LTV = more risky (both values now in same currency)
+    const currentLtv = totalLoanValue / collateralValueInLoanCurrency;
 
     const result: LtvCheckResult = {
       loanId: loan.id,
       currentLtv,
-      collateralValueUsd,
-      loanAmountUsd: totalLoanValue,
+      collateralValueUsd: collateralValueInLoanCurrency, // Actually in loan currency
+      loanAmountUsd: totalLoanValue, // Actually in loan currency
       btcPriceUsd,
       status: 'healthy'
     };
+
+    const currencySymbol = loan.currency === 'EUR' ? '€' : '$';
 
     // Check if liquidation needed (LTV >= 95%)
     if (currentLtv >= LIQUIDATION_LTV_THRESHOLD) {
       result.status = 'liquidation';
       console.log(`🚨 [LtvMonitor] Loan #${loan.id} LIQUIDATION TRIGGERED! LTV: ${(currentLtv * 100).toFixed(1)}%`);
-      console.log(`   Collateral: ${collateralBtc} BTC = $${collateralValueUsd.toFixed(2)} vs Loan Value (P+I): $${totalLoanValue.toFixed(2)}`);
+      console.log(`   Collateral: ${collateralBtc} BTC = ${currencySymbol}${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): ${currencySymbol}${totalLoanValue.toFixed(2)}`);
       
-      await this.executeLiquidation(loan, currentLtv, collateralValueUsd, btcPriceUsd);
+      await this.executeLiquidation(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
     }
     // Check if warning needed (LTV >= 75%)
     else if (currentLtv >= WARNING_LTV_THRESHOLD) {
       result.status = 'warning';
       console.log(`⚠️ [LtvMonitor] Loan #${loan.id} LTV WARNING: ${(currentLtv * 100).toFixed(1)}%`);
+      console.log(`   Collateral: ${collateralBtc} BTC = ${currencySymbol}${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): ${currencySymbol}${totalLoanValue.toFixed(2)}`);
       
       if (!warningsSent.has(loan.id)) {
-        await this.sendLtvWarning(loan, currentLtv, collateralValueUsd, btcPriceUsd);
+        await this.sendLtvWarning(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
         warningsSent.add(loan.id);
       }
     } else {
@@ -349,7 +355,7 @@ export class LtvMonitoringService {
   }
 
   /**
-   * Send LTV warning email to borrower
+   * Send LTV warning emails to both borrower and lender
    */
   private async sendLtvWarning(
     loan: Loan,
@@ -359,46 +365,99 @@ export class LtvMonitoringService {
   ): Promise<void> {
     try {
       const borrower = await storage.getUser(loan.borrowerId);
-      if (!borrower?.email) return;
+      const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
 
       const collateralBtc = parseFloat(String(loan.collateralBtc));
       const loanAmount = parseFloat(String(loan.amount));
-      const liquidationPrice = (loanAmount / collateralBtc) / LIQUIDATION_LTV_THRESHOLD;
+      const interestRate = parseFloat(String(loan.interestRate)) / 100;
+      const termMonths = loan.termMonths || 12;
+      const loanValueWithInterest = loanAmount * (1 + interestRate * (termMonths / 12));
+      const liquidationPrice = (loanValueWithInterest / collateralBtc) / LIQUIDATION_LTV_THRESHOLD;
+      
+      // Calculate how much extra BTC is needed to bring LTV back to 50%
+      const targetLtv = 0.50;
+      const requiredCollateralValue = loanValueWithInterest / targetLtv;
+      const additionalBtcNeeded = Math.max(0, (requiredCollateralValue - collateralValueUsd) / btcPriceUsd);
 
-      const html = createBrandedEmailHtml({
-        title: '⚠️ LTV Warning - Add Collateral or Repay',
-        greeting: `Dear ${borrower.firstName || borrower.username},`,
-        content: `
-          <p>The Bitcoin price has dropped and your loan #${loan.id} is approaching the liquidation threshold.</p>
-          
-          <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #92400E;"><strong>Current Status:</strong></p>
-            <ul style="color: #92400E;">
-              <li>Current LTV: ${(currentLtv * 100).toFixed(1)}% (Liquidation at 90%)</li>
-              <li>Collateral Value: $${collateralValueUsd.toFixed(2)}</li>
-              <li>Loan Amount: €${loanAmount.toLocaleString()}</li>
-              <li>Current BTC Price: $${btcPriceUsd.toLocaleString()}</li>
-              <li><strong>Liquidation Price: $${liquidationPrice.toFixed(0)}</strong></li>
+      // Send warning to borrower
+      if (borrower?.email) {
+        const borrowerHtml = createBrandedEmailHtml({
+          title: '⚠️ LTV Warning - Top Up Collateral or Repay',
+          greeting: `Dear ${borrower.firstName || borrower.username},`,
+          content: `
+            <p>The Bitcoin price has dropped and your loan #${loan.id} is approaching the liquidation threshold.</p>
+            
+            <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400E;"><strong>Current Status:</strong></p>
+              <ul style="color: #92400E;">
+                <li>Current LTV: ${(currentLtv * 100).toFixed(1)}% (Liquidation at 95%)</li>
+                <li>Collateral Value: €${(collateralValueUsd * 0.85).toFixed(2)}</li>
+                <li>Loan Value (incl. interest): €${loanValueWithInterest.toFixed(2)}</li>
+                <li>Current BTC Price: €${(btcPriceUsd * 0.85).toFixed(0)}</li>
+                <li><strong>Liquidation Price: ~€${(liquidationPrice * 0.85).toFixed(0)}</strong></li>
+              </ul>
+            </div>
+
+            <p><strong>To avoid liquidation, you must take action:</strong></p>
+            <ul>
+              <li><strong>Option 1:</strong> Top up your collateral with an additional ${additionalBtcNeeded.toFixed(6)} BTC to restore LTV to 50%</li>
+              <li><strong>Option 2:</strong> Repay your loan in full (€${loanValueWithInterest.toFixed(2)})</li>
             </ul>
-          </div>
+            
+            <p style="color: #DC2626; font-weight: bold;">
+              ⚠️ If BTC drops to ~€${(liquidationPrice * 0.85).toFixed(0)} without action, your collateral will be automatically liquidated and sent to the lender.
+            </p>
+          `
+        });
 
-          <p><strong>To avoid liquidation:</strong></p>
-          <ul>
-            <li>Repay your loan in full before the price drops further</li>
-            <li>Contact support if you need assistance</li>
-          </ul>
-          
-          <p>If BTC drops to ~$${liquidationPrice.toFixed(0)}, your collateral will be automatically liquidated.</p>
-        `
-      });
+        await sendEmail({
+          to: borrower.email,
+          from: 'Reconquest <noreply@reconquestp2p.com>',
+          subject: `⚠️ URGENT: LTV Warning for Loan #${loan.id} - ${(currentLtv * 100).toFixed(0)}% LTV - Action Required`,
+          html: borrowerHtml
+        });
+        console.log(`📧 [LtvMonitor] LTV warning email sent to borrower: ${borrower.email}`);
+      }
 
-      await sendEmail({
-        to: borrower.email,
-        from: 'Reconquest <noreply@reconquestp2p.com>',
-        subject: `⚠️ LTV Warning for Loan #${loan.id} - ${(currentLtv * 100).toFixed(0)}% LTV`,
-        html
-      });
-      console.log(`📧 [LtvMonitor] LTV warning email sent to: ${borrower.email}`);
+      // Send notification to lender
+      if (lender?.email) {
+        const lenderHtml = createBrandedEmailHtml({
+          title: '📊 LTV Alert - Borrower Notified to Top Up',
+          greeting: `Dear ${lender.firstName || lender.username},`,
+          content: `
+            <p>We are writing to inform you that the LTV on loan #${loan.id} has risen due to a drop in Bitcoin price.</p>
+            
+            <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #92400E;"><strong>Loan Status:</strong></p>
+              <ul style="color: #92400E;">
+                <li>Current LTV: ${(currentLtv * 100).toFixed(1)}%</li>
+                <li>Collateral: ${collateralBtc.toFixed(8)} BTC (€${(collateralValueUsd * 0.85).toFixed(2)})</li>
+                <li>Loan Value (incl. interest): €${loanValueWithInterest.toFixed(2)}</li>
+                <li>Liquidation Threshold: 95% LTV</li>
+              </ul>
+            </div>
+
+            <p><strong>What happens next:</strong></p>
+            <ul>
+              <li>The borrower has been notified to either top up their collateral or repay the loan in full.</li>
+              <li>If the borrower does not take action and LTV reaches 95%, the collateral will be <strong>automatically liquidated</strong> and sent to your registered BTC address.</li>
+              <li>This ensures full repayment of your investment regardless of the borrower's actions.</li>
+            </ul>
+            
+            <p style="color: #059669; font-weight: bold;">
+              ✓ Your investment is protected. If the borrower fails to act, you will receive ${collateralBtc.toFixed(8)} BTC automatically.
+            </p>
+          `
+        });
+
+        await sendEmail({
+          to: lender.email,
+          from: 'Reconquest <noreply@reconquestp2p.com>',
+          subject: `📊 LTV Alert for Loan #${loan.id} - Borrower Asked to Top Up Collateral`,
+          html: lenderHtml
+        });
+        console.log(`📧 [LtvMonitor] LTV warning email sent to lender: ${lender.email}`);
+      }
     } catch (error) {
       console.error('[LtvMonitor] Error sending LTV warning:', error);
     }
