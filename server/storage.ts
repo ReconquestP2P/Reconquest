@@ -35,6 +35,7 @@ export interface IStorage {
   getAllLoans(): Promise<Loan[]>;
   getAvailableLoans(): Promise<Loan[]>;
   getLoansWithActiveMonitoring(): Promise<Loan[]>;
+  getActiveLoansForLtvCheck(): Promise<Loan[]>;
 
   // Loan offer operations
   createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer>;
@@ -359,6 +360,14 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getActiveLoansForLtvCheck(): Promise<Loan[]> {
+    return Array.from(this.loans.values()).filter(loan => 
+      loan.status === 'active' && 
+      loan.escrowState === 'keys_generated' &&
+      loan.escrowAddress !== null
+    );
+  }
+
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {
     const id = this.currentOfferId++;
     const loanOffer: LoanOffer = {
@@ -564,6 +573,20 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loans)
       .where(eq(loans.escrowMonitoringActive, true));
+  }
+
+  async getActiveLoansForLtvCheck(): Promise<Loan[]> {
+    const { and, isNotNull } = await import('drizzle-orm');
+    return await db
+      .select()
+      .from(loans)
+      .where(
+        and(
+          eq(loans.status, 'active'),
+          eq(loans.escrowState, 'keys_generated'),
+          isNotNull(loans.escrowAddress)
+        )
+      );
   }
 
   async createLoanOffer(offer: InsertLoanOffer): Promise<LoanOffer> {

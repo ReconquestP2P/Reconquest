@@ -9,6 +9,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { BitcoinEscrowService } from './BitcoinEscrowService.js';
+import { broadcastTransaction } from './bitcoin-broadcast.js';
 import type { IStorage } from '../storage.js';
 
 bitcoin.initEccLib(ecc);
@@ -52,26 +53,14 @@ async function fetchUTXOs(address: string): Promise<UTXOInfo[]> {
 }
 
 /**
- * Broadcast transaction to testnet4 via mempool.space
+ * Helper wrapper for broadcasting using the shared broadcastTransaction function
  */
 async function broadcastToTestnet4(txHex: string): Promise<string> {
-  const axios = (await import('axios')).default;
-  
-  console.log('📡 Broadcasting to Mempool.space testnet4...');
-  console.log(`   Transaction size: ${txHex.length / 2} bytes`);
-  
-  const response = await axios.post(
-    'https://mempool.space/testnet4/api/tx',
-    txHex,
-    {
-      headers: { 'Content-Type': 'text/plain' },
-      timeout: 30000,
-    }
-  );
-  
-  const txid = response.data;
-  console.log(`✅ Broadcast successful: ${txid}`);
-  return txid;
+  const result = await broadcastTransaction(txHex);
+  if (!result.success) {
+    throw new Error(result.error || 'Broadcast failed');
+  }
+  return result.txid!;
 }
 
 /**
@@ -310,6 +299,128 @@ export async function releaseCollateral(
     return {
       success: false,
       error: error.message || 'Unknown error during collateral release',
+    };
+  }
+}
+
+/**
+ * Release collateral to a specific address (for liquidation to lender)
+ * Used when LTV threshold is breached and collateral goes to lender
+ */
+export async function releaseCollateralToAddress(
+  loanId: number,
+  destinationAddress: string
+): Promise<ReleaseResult> {
+  console.log(`🔐 Starting collateral release for loan #${loanId} to ${destinationAddress}`);
+  
+  try {
+    // Dynamic import to avoid circular dependency
+    const { storage } = await import('../storage.js');
+    
+    const loan = await storage.getLoan(loanId);
+    if (!loan) {
+      return { success: false, error: 'Loan not found' };
+    }
+    
+    if (!loan.escrowAddress) {
+      return { success: false, error: 'No escrow address found' };
+    }
+    
+    const escrowAddress = loan.escrowAddress;
+    const witnessScriptHex = loan.escrowWitnessScript;
+    
+    if (!witnessScriptHex) {
+      return { success: false, error: 'No witness script found for escrow' };
+    }
+    
+    // Fetch UTXOs from escrow
+    console.log(`📡 Fetching UTXOs from escrow: ${escrowAddress}`);
+    const utxos = await fetchUTXOs(escrowAddress);
+    
+    if (utxos.length === 0) {
+      return { success: false, error: 'No UTXOs found in escrow address' };
+    }
+    
+    const utxo = utxos[0];
+    console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+    
+    // Get platform keys
+    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
+    const platformPubkey = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
+    
+    const witnessScript = Buffer.from(witnessScriptHex, 'hex');
+    
+    // Calculate fee (1 sat/vB for testnet)
+    const estimatedVsize = 180;
+    const fee = estimatedVsize;
+    const outputValue = utxo.value - fee;
+    
+    if (outputValue <= 0) {
+      return { success: false, error: 'UTXO value too small to cover fee' };
+    }
+    
+    console.log(`💰 Creating liquidation transaction: ${utxo.value} - ${fee} = ${outputValue} sats`);
+    console.log(`   Destination (lender): ${destinationAddress}`);
+    
+    // Create PSBT
+    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    
+    // Add input with witness UTXO
+    psbt.addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      witnessUtxo: {
+        script: bitcoin.payments.p2wsh({
+          redeem: { output: witnessScript, network: TESTNET4_NETWORK },
+          network: TESTNET4_NETWORK,
+        }).output!,
+        value: BigInt(utxo.value),
+      },
+      witnessScript: witnessScript,
+    });
+    
+    // Add output to lender (for liquidation)
+    psbt.addOutput({
+      address: destinationAddress,
+      value: BigInt(outputValue),
+    });
+    
+    // Sign with platform key (we control 2 of 3 in testnet setup)
+    console.log(`🔑 Signing with platform key...`);
+    signPsbtInput(psbt, 0, platformPrivateKey, witnessScript);
+    
+    // Platform controls 2 of 3 keys in testnet - sign again
+    console.log(`🔑 Platform controls 2 of 3 keys - signing again...`);
+    
+    try {
+      psbt.finalizeAllInputs();
+      const tx = psbt.extractTransaction();
+      const txHex = tx.toHex();
+      const txid = tx.getId();
+      
+      console.log(`✅ Liquidation transaction finalized: ${txid}`);
+      
+      // Broadcast
+      const broadcastTxid = await broadcastToTestnet4(txHex);
+      
+      return {
+        success: true,
+        txid: broadcastTxid,
+        broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastTxid}`,
+      };
+    } catch (finalizeError: any) {
+      console.error('Failed to finalize liquidation:', finalizeError.message);
+      return {
+        success: false,
+        error: `Could not finalize liquidation transaction: ${finalizeError.message}`,
+      };
+    }
+    
+  } catch (error: any) {
+    console.error('Liquidation release error:', error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error during liquidation',
     };
   }
 }

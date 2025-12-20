@@ -15,6 +15,7 @@ import jwt from "jsonwebtoken";
 import { EmailVerificationService } from "./services/EmailVerificationService";
 import { PasswordResetService } from "./services/PasswordResetService";
 import { blockchainMonitoring } from "./services/BlockchainMonitoring";
+import { ltvMonitoring } from "./services/LtvMonitoringService";
 import { 
   insertEscrowSessionSchema, 
   insertSignatureExchangeSchema, 
@@ -2350,6 +2351,88 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // ===== LTV MONITORING ADMIN ENDPOINTS =====
+  
+  // Get current LTV status for all active loans
+  app.get("/api/admin/ltv/status", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const results = await ltvMonitoring.checkAllActiveLoans();
+      const simulatedPrice = ltvMonitoring.getSimulatedPrice();
+      
+      res.json({
+        success: true,
+        simulatedPriceActive: simulatedPrice !== null,
+        simulatedPrice,
+        loans: results
+      });
+    } catch (error) {
+      console.error("Error checking LTV status:", error);
+      res.status(500).json({ message: "Failed to check LTV status" });
+    }
+  });
+  
+  // Simulate a BTC price drop (for testing liquidation)
+  app.post("/api/admin/ltv/simulate-price", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { priceUsd } = req.body;
+      
+      if (priceUsd !== null && (typeof priceUsd !== 'number' || priceUsd <= 0)) {
+        return res.status(400).json({ message: "Price must be a positive number or null to reset" });
+      }
+      
+      ltvMonitoring.setSimulatedPrice(priceUsd);
+      
+      res.json({
+        success: true,
+        message: priceUsd === null 
+          ? "Simulated price cleared. Using real BTC price." 
+          : `BTC price simulated at $${priceUsd}. LTV monitoring will use this price.`,
+        simulatedPrice: priceUsd
+      });
+    } catch (error) {
+      console.error("Error simulating price:", error);
+      res.status(500).json({ message: "Failed to simulate price" });
+    }
+  });
+  
+  // Trigger immediate LTV check for a specific loan
+  app.post("/api/admin/ltv/check/:loanId", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      const { overridePrice } = req.body;
+      
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const result = await ltvMonitoring.checkSpecificLoan(loanId, overridePrice);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      res.json({
+        success: true,
+        result
+      });
+    } catch (error) {
+      console.error("Error checking loan LTV:", error);
+      res.status(500).json({ message: "Failed to check loan LTV" });
+    }
+  });
+
   // Test email endpoint
   app.post("/api/test-email", async (req, res) => {
     try {
@@ -3560,6 +3643,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     
     console.log(`[DepositConfirmed] Notifications sent for loan ${loan.id}`);
   });
+  
+  // Start automated LTV monitoring for price-based liquidation
+  ltvMonitoring.startMonitoring();
   
   return httpServer;
 }
