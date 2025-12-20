@@ -29,7 +29,9 @@ export function LtvBatteryIndicator({ ltv, showPercentage = true, size = "md" }:
   };
 
   const getFillPercentage = () => {
-    return Math.min(100, Math.max(0, ltvValue));
+    // Battery drains as LTV rises (like phone battery)
+    // Low LTV = full battery (healthy), High LTV = empty battery (danger)
+    return Math.min(100, Math.max(0, 100 - ltvValue));
   };
 
   const getTerminalColor = () => {
@@ -82,10 +84,13 @@ export function LtvBatteryIndicator({ ltv, showPercentage = true, size = "md" }:
           <div className="space-y-1">
             <p className="font-semibold">LTV: {ltvValue.toFixed(1)}%</p>
             <p className={`text-sm ${getColor()}`}>Status: {getStatusText()}</p>
-            <div className="text-xs text-muted-foreground space-y-0.5 pt-1 border-t">
-              <p>• Green (0-75%): Safe zone</p>
-              <p>• Yellow (75-95%): Warning zone</p>
-              <p>• Red (95%+): Liquidation risk</p>
+            <p className="text-xs text-muted-foreground pt-1 border-t">
+              Battery drains as LTV rises. Keep it charged!
+            </p>
+            <div className="text-xs text-muted-foreground space-y-0.5">
+              <p>• Full (0-75% LTV): Safe zone</p>
+              <p>• Half (75-95% LTV): Warning zone</p>
+              <p>• Empty (95%+ LTV): Liquidation risk</p>
             </div>
           </div>
         </TooltipContent>
