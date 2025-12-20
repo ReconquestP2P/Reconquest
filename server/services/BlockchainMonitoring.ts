@@ -111,23 +111,163 @@ export class BlockchainMonitoringService {
   }
 
   /**
-   * Poll all loans with active monitoring
+   * Poll all loans with active monitoring (initial deposits + top-ups)
    */
   private async pollPendingDeposits(): Promise<void> {
+    // Check for initial deposits
     const loansToMonitor = await storage.getLoansWithActiveMonitoring();
     
-    if (loansToMonitor.length === 0) {
+    if (loansToMonitor.length > 0) {
+      console.log(`[BlockchainMonitor] Checking ${loansToMonitor.length} loans for deposits`);
+
+      for (const loan of loansToMonitor) {
+        try {
+          await this.checkAndUpdateLoanDeposit(loan);
+        } catch (error) {
+          console.error(`[BlockchainMonitor] Error checking loan ${loan.id}:`, error);
+        }
+      }
+    }
+    
+    // Check for top-up deposits
+    const loansWithTopUps = await storage.getLoansWithActiveTopUpMonitoring();
+    
+    if (loansWithTopUps.length > 0) {
+      console.log(`[BlockchainMonitor] Checking ${loansWithTopUps.length} loans for top-ups`);
+
+      for (const loan of loansWithTopUps) {
+        try {
+          await this.checkAndUpdateTopUp(loan);
+        } catch (error) {
+          console.error(`[BlockchainMonitor] Error checking top-up for loan ${loan.id}:`, error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if a loan's top-up deposit has been received and confirmed
+   */
+  private async checkAndUpdateTopUp(loan: Loan): Promise<void> {
+    if (!loan.escrowAddress) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id} has no escrow address for top-up`);
       return;
     }
 
-    console.log(`[BlockchainMonitor] Checking ${loansToMonitor.length} loans for deposits`);
+    const previousCollateralSats = Math.ceil(parseFloat(String(loan.previousCollateralBtc || loan.collateralBtc)) * 100000000);
+    const pendingTopUpSats = Math.ceil(parseFloat(String(loan.pendingTopUpBtc || 0)) * 100000000);
+    const expectedTotalSats = previousCollateralSats + pendingTopUpSats;
+    
+    console.log(`[BlockchainMonitor] Checking top-up for loan ${loan.id}: previous ${previousCollateralSats} sats + pending ${pendingTopUpSats} sats = expected ${expectedTotalSats} sats`);
 
-    for (const loan of loansToMonitor) {
-      try {
-        await this.checkAndUpdateLoanDeposit(loan);
-      } catch (error) {
-        console.error(`[BlockchainMonitor] Error checking loan ${loan.id}:`, error);
+    // Clear cache to get fresh data
+    this.clearCache(loan.escrowAddress);
+    
+    // Get total CONFIRMED balance of the escrow address (only confirmed UTXOs count)
+    const { totalSats, minConfirmations } = await this.getAddressConfirmedBalance(loan.escrowAddress);
+    
+    console.log(`[BlockchainMonitor] Loan ${loan.id} escrow confirmed balance: ${totalSats} sats (min ${minConfirmations} confirmations)`);
+
+    // Check if new deposits have arrived (total >= expected) AND are confirmed
+    if (totalSats >= expectedTotalSats && minConfirmations >= REQUIRED_CONFIRMATIONS) {
+      const newCollateralBtc = totalSats / 100000000;
+      
+      console.log(`[BlockchainMonitor] ✅ Top-up CONFIRMED for loan ${loan.id}! New collateral: ${newCollateralBtc} BTC`);
+      
+      // Update the loan with new collateral amount
+      await storage.updateLoan(loan.id, {
+        collateralBtc: String(newCollateralBtc),
+        topUpConfirmedAt: new Date(),
+        topUpMonitoringActive: false,
+        pendingTopUpBtc: null,
+        previousCollateralBtc: null,
+        fundedAmountSats: totalSats,
+      });
+      
+      // Recalculate LTV based on new collateral (will be picked up by LTV monitor)
+      console.log(`[BlockchainMonitor] Loan ${loan.id} collateral updated from ${loan.collateralBtc} BTC to ${newCollateralBtc} BTC`);
+    } else if (totalSats >= expectedTotalSats) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id} top-up found but awaiting confirmations (${minConfirmations}/${REQUIRED_CONFIRMATIONS})`);
+    } else {
+      console.log(`[BlockchainMonitor] Loan ${loan.id} top-up not yet received. Current: ${totalSats} sats, expected: ${expectedTotalSats} sats`);
+    }
+  }
+
+  /**
+   * Get the total CONFIRMED balance of an address (only confirmed UTXOs) with confirmation count
+   */
+  async getAddressConfirmedBalance(address: string): Promise<{ totalSats: number; minConfirmations: number }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/address/${address}/utxo`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { totalSats: 0, minConfirmations: 0 };
+        }
+        throw new Error(`Blockstream API error: ${response.status}`);
       }
+
+      const utxos: UTXO[] = await response.json();
+
+      if (utxos.length === 0) {
+        return { totalSats: 0, minConfirmations: 0 };
+      }
+
+      // Get current tip height for confirmation calculation
+      const tipResponse = await fetch(`${this.baseUrl}/blocks/tip/height`);
+      const tipHeight = parseInt(await tipResponse.text());
+
+      // Only count confirmed UTXOs and calculate their confirmations
+      let totalSats = 0;
+      let minConfirmations = Infinity;
+
+      for (const utxo of utxos) {
+        if (utxo.status.confirmed && utxo.status.block_height) {
+          totalSats += utxo.value;
+          const confirmations = tipHeight - utxo.status.block_height + 1;
+          minConfirmations = Math.min(minConfirmations, confirmations);
+        }
+      }
+
+      // If no confirmed UTXOs, return 0 confirmations
+      if (minConfirmations === Infinity) {
+        minConfirmations = 0;
+      }
+      
+      return { totalSats, minConfirmations };
+    } catch (error) {
+      console.error('Error getting confirmed address balance:', error);
+      return { totalSats: 0, minConfirmations: 0 };
+    }
+  }
+
+  /**
+   * Get the total balance of an address (sum of all UTXOs including unconfirmed)
+   */
+  async getAddressTotalBalance(address: string): Promise<number> {
+    try {
+      const response = await fetch(`${this.baseUrl}/address/${address}/utxo`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return 0;
+        }
+        throw new Error(`Blockstream API error: ${response.status}`);
+      }
+
+      const utxos: UTXO[] = await response.json();
+
+      if (utxos.length === 0) {
+        return 0;
+      }
+
+      // Sum all UTXO values (including unconfirmed)
+      const totalSats = utxos.reduce((sum, utxo) => sum + utxo.value, 0);
+      
+      return totalSats;
+    } catch (error) {
+      console.error('Error getting address balance:', error);
+      return 0;
     }
   }
 
