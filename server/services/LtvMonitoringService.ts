@@ -387,6 +387,11 @@ export class LtvMonitoringService {
       const loanValueWithInterest = loanAmount * (1 + interestRate * (termMonths / 12));
       const btcPriceEur = btcPriceUsd * 0.85;
       const escrowAddress = loan.escrowAddress || 'N/A';
+      
+      // Calculate top-up amounts for both 75% and 50% LTV
+      const targetLtv50 = 0.50;
+      const requiredCollateralValue50 = loanValueWithInterest / targetLtv50;
+      const additionalBtcFor50 = Math.max(0, (requiredCollateralValue50 - collateralValueEur) / btcPriceEur);
 
       const borrowerHtml = createBrandedEmailHtml({
         title: '⚠️ LTV Rising - Monitor Your Loan',
@@ -407,12 +412,17 @@ export class LtvMonitoringService {
           <p><strong>What this means:</strong></p>
           <ul>
             <li>Your loan is still within safe parameters, but the LTV is increasing.</li>
-            <li>If the Bitcoin price continues to drop, you may be asked to <strong>top up your collateral</strong> at the 85% LTV level.</li>
+            <li>If the Bitcoin price continues to drop, you will be asked to <strong>top up your collateral</strong> at the 85% LTV level.</li>
             <li>At 95% LTV, <strong>automatic liquidation</strong> will be triggered.</li>
           </ul>
 
+          <div style="background: #ECFDF5; border: 1px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 8px;">
+            <p style="margin: 0 0 10px 0; color: #065F46;"><strong>💡 Optional: Top up now to reach 50% LTV (recommended):</strong></p>
+            <p style="margin: 0; color: #065F46;">Deposit <strong>${additionalBtcFor50.toFixed(6)} BTC</strong> to protect your position from future price drops.</p>
+          </div>
+
           <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #1E40AF;"><strong>💡 Top-Up Address (if needed later):</strong></p>
+            <p style="margin: 0; color: #1E40AF;"><strong>📍 Top-Up Address:</strong></p>
             <p style="font-family: monospace; word-break: break-all; color: #1E40AF; margin-top: 10px;">${escrowAddress}</p>
             <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">This is the same escrow address used for your initial collateral deposit.</p>
           </div>
@@ -458,10 +468,15 @@ export class LtvMonitoringService {
       const liquidationPriceEur = (loanValueWithInterest / collateralBtc) / LIQUIDATION_LTV_THRESHOLD;
       const escrowAddress = loan.escrowAddress || 'N/A';
       
-      // Calculate how much extra BTC is needed to bring LTV back to 50%
-      const targetLtv = 0.50;
-      const requiredCollateralValue = loanValueWithInterest / targetLtv;
-      const additionalBtcNeeded = Math.max(0, (requiredCollateralValue - collateralValueEur) / btcPriceEur);
+      // Calculate how much extra BTC is needed to bring LTV back to 75% (minimum safe)
+      const targetLtv75 = 0.75;
+      const requiredCollateralValue75 = loanValueWithInterest / targetLtv75;
+      const additionalBtcFor75 = Math.max(0, (requiredCollateralValue75 - collateralValueEur) / btcPriceEur);
+      
+      // Calculate how much extra BTC is needed to bring LTV back to 50% (recommended safe)
+      const targetLtv50 = 0.50;
+      const requiredCollateralValue50 = loanValueWithInterest / targetLtv50;
+      const additionalBtcFor50 = Math.max(0, (requiredCollateralValue50 - collateralValueEur) / btcPriceEur);
 
       // Send warning to borrower
       if (borrower?.email) {
@@ -482,11 +497,18 @@ export class LtvMonitoringService {
               </ul>
             </div>
 
-            <p><strong>You must take action NOW:</strong></p>
-            <ul>
-              <li><strong>Option 1:</strong> Top up your collateral with an additional <strong>${additionalBtcNeeded.toFixed(6)} BTC</strong> to restore LTV to 50%</li>
-              <li><strong>Option 2:</strong> Repay your loan in full (<strong>€${loanValueWithInterest.toFixed(2)}</strong>)</li>
-            </ul>
+            <p><strong>Top-Up Options:</strong></p>
+            <div style="background: #F0FDF4; border: 1px solid #22C55E; padding: 15px; margin: 10px 0; border-radius: 8px;">
+              <p style="margin: 0 0 10px 0; color: #166534;"><strong>Minimum required (to reach 75% LTV):</strong></p>
+              <p style="margin: 0; color: #166534; font-size: 18px;">Deposit at least <strong>${additionalBtcFor75.toFixed(6)} BTC</strong></p>
+            </div>
+            <div style="background: #ECFDF5; border: 2px solid #10B981; padding: 15px; margin: 10px 0; border-radius: 8px;">
+              <p style="margin: 0 0 10px 0; color: #065F46;"><strong>✨ Recommended (to reach 50% LTV):</strong></p>
+              <p style="margin: 0; color: #065F46; font-size: 18px;">Deposit <strong>${additionalBtcFor50.toFixed(6)} BTC</strong></p>
+              <p style="margin: 5px 0 0 0; color: #065F46; font-size: 12px;">We strongly encourage reaching 50% LTV to avoid future liquidation risk if BTC price continues to drop.</p>
+            </div>
+            
+            <p style="margin-top: 15px;"><strong>Or repay your loan in full:</strong> €${loanValueWithInterest.toFixed(2)}</p>
 
             <div style="background: #DBEAFE; border: 2px solid #2563EB; padding: 15px; margin: 20px 0; border-radius: 8px;">
               <p style="margin: 0; color: #1E40AF; font-weight: bold;">📍 Deposit Address for Top-Up:</p>
@@ -509,7 +531,7 @@ export class LtvMonitoringService {
         console.log(`📧 [LtvMonitor] Critical warning email sent to borrower: ${borrower.email}`);
       }
 
-      // Send notification to lender
+      // Send notification to lender (use the correct collateralValueEur - already in EUR)
       if (lender?.email) {
         const lenderHtml = createBrandedEmailHtml({
           title: '📊 LTV Alert - Borrower Asked to Top Up',

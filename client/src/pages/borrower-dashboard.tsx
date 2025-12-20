@@ -417,7 +417,7 @@ export default function BorrowerDashboard() {
                   {activeLoans.some((loan: any) => calculateCurrentLtv(loan) >= 75) && (
                     <div className="mt-6 border-t pt-6">
                       <h3 className="text-lg font-semibold text-amber-600 dark:text-amber-400 mb-4 flex items-center gap-2">
-                        ⚠️ Top-Up Collateral Required
+                        ⚠️ Top-Up Collateral
                       </h3>
                       <div className="space-y-4">
                         {activeLoans
