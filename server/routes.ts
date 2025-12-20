@@ -1373,6 +1373,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Borrower confirms they've sent a collateral top-up
+  app.post("/api/loans/:id/confirm-topup", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    const borrowerId = req.user.id;
+    const { topUpAmountBtc } = req.body;
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify the user is the borrower
+      if (loan.borrowerId !== borrowerId) {
+        return res.status(403).json({ message: "Only the borrower can confirm a top-up" });
+      }
+      
+      // Verify loan is active
+      if (loan.status !== 'active') {
+        return res.status(400).json({ 
+          message: "Only active loans can receive top-ups" 
+        });
+      }
+      
+      // Verify escrow address exists
+      if (!loan.escrowAddress) {
+        return res.status(400).json({ 
+          message: "No escrow address found for this loan" 
+        });
+      }
+      
+      // Validate top-up amount
+      const topUpBtc = parseFloat(topUpAmountBtc);
+      if (isNaN(topUpBtc) || topUpBtc <= 0) {
+        return res.status(400).json({ 
+          message: "Please provide a valid top-up amount" 
+        });
+      }
+      
+      if (topUpBtc > 10) {
+        return res.status(400).json({ 
+          message: "Top-up amount seems too high. Please check the amount." 
+        });
+      }
+      
+      // Check if there's already a pending top-up
+      if (loan.topUpMonitoringActive) {
+        return res.status(400).json({ 
+          message: "A top-up is already being monitored. Please wait for confirmation." 
+        });
+      }
+      
+      // Update loan with pending top-up info
+      const currentCollateral = parseFloat(String(loan.collateralBtc));
+      const updatedLoan = await storage.updateLoan(loanId, {
+        pendingTopUpBtc: String(topUpBtc),
+        topUpRequestedAt: new Date(),
+        topUpMonitoringActive: true,
+        previousCollateralBtc: String(currentCollateral),
+      });
+      
+      console.log(`🔄 Loan #${loanId}: Borrower confirmed top-up of ${topUpBtc} BTC sent to ${loan.escrowAddress}`);
+      console.log(`   Previous collateral: ${currentCollateral} BTC, Expected new total: ${currentCollateral + topUpBtc} BTC`);
+      
+      res.json({ 
+        success: true,
+        message: "Top-up recorded. We'll monitor the blockchain for your deposit.",
+        pendingTopUpBtc: topUpBtc,
+        escrowAddress: loan.escrowAddress,
+        expectedNewTotal: currentCollateral + topUpBtc
+      });
+    } catch (error) {
+      console.error('Error confirming top-up:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Update loan with borrower's public key after key generation
   app.patch("/api/loans/:id/borrower-keys", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);

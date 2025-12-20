@@ -35,6 +35,7 @@ export interface IStorage {
   getAllLoans(): Promise<Loan[]>;
   getAvailableLoans(): Promise<Loan[]>;
   getLoansWithActiveMonitoring(): Promise<Loan[]>;
+  getLoansWithActiveTopUpMonitoring(): Promise<Loan[]>;
   getActiveLoansForLtvCheck(): Promise<Loan[]>;
 
   // Loan offer operations
@@ -360,6 +361,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getLoansWithActiveTopUpMonitoring(): Promise<Loan[]> {
+    return Array.from(this.loans.values()).filter(loan => 
+      loan.topUpMonitoringActive === true
+    );
+  }
+
   async getActiveLoansForLtvCheck(): Promise<Loan[]> {
     return Array.from(this.loans.values()).filter(loan => 
       loan.status === 'active' && 
@@ -573,6 +580,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loans)
       .where(eq(loans.escrowMonitoringActive, true));
+  }
+
+  async getLoansWithActiveTopUpMonitoring(): Promise<Loan[]> {
+    return await db
+      .select()
+      .from(loans)
+      .where(eq(loans.topUpMonitoringActive, true));
   }
 
   async getActiveLoansForLtvCheck(): Promise<Loan[]> {
