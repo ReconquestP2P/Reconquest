@@ -139,6 +139,13 @@ export const loans = pgTable("loans", {
   txLiquidationHex: text("tx_liquidation_hex"), // Post-maturity liquidation transaction hex
   txRecoveryHex: text("tx_recovery_hex"), // Platform recovery transaction hex
   txCancellationHex: text("tx_cancellation_hex"), // Lender-initiated cancellation transaction hex
+  
+  // Collateral Top-Up Tracking
+  pendingTopUpBtc: decimal("pending_top_up_btc", { precision: 10, scale: 8 }), // Amount borrower claims to have sent
+  topUpRequestedAt: timestamp("top_up_requested_at"), // When borrower clicked "I've topped up"
+  topUpConfirmedAt: timestamp("top_up_confirmed_at"), // When blockchain confirmed the top-up
+  topUpMonitoringActive: boolean("top_up_monitoring_active").default(false), // Whether actively monitoring for top-up
+  previousCollateralBtc: decimal("previous_collateral_btc", { precision: 10, scale: 8 }), // Collateral before top-up (for verification)
 });
 
 export const loanOffers = pgTable("loan_offers", {
