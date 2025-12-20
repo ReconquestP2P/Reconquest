@@ -300,6 +300,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real-time Bitcoin price endpoint (CoinGecko API)
   app.get("/api/btc-price", async (req, res) => {
     try {
+      // Check if there's a simulated price set (for testing)
+      const simulatedPrice = ltvMonitoring.getSimulatedPrice();
+      if (simulatedPrice !== null) {
+        const eurPrice = Math.floor(simulatedPrice * 0.85);
+        return res.json({
+          usd: simulatedPrice,
+          eur: eurPrice,
+          usd_24h_change: -15.0, // Show negative change to indicate simulated drop
+          eur_24h_change: -15.0,
+          last_updated: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+          source: 'SIMULATED (Testing)',
+          price: simulatedPrice,
+          currency: "USD",
+          isSimulated: true
+        });
+      }
+      
       const response = await fetch(
         'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true&include_last_updated_at=true'
       );
