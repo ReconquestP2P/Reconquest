@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro } from "lucide-react";
+import { Coins, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import StatsCard from "@/components/stats-card";
 import LoanCalculator from "@/components/loan-calculator";
 import { AchievementsDashboard } from "@/components/achievements-dashboard";
@@ -38,6 +41,10 @@ export default function BorrowerDashboard() {
   
   // Track which loan needs signing ceremony
   const [signingLoan, setSigningLoan] = useState<Loan | null>(null);
+  
+  // Track which loan needs top-up confirmation
+  const [topUpLoan, setTopUpLoan] = useState<Loan | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState<string>("");
 
   const { data: userLoans = [], isLoading } = useQuery<Loan[]>({
     queryKey: [`/api/users/${userId}/loans`],
@@ -150,6 +157,41 @@ export default function BorrowerDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to confirm receipt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for confirming collateral top-up sent
+  const confirmTopUpMutation = useMutation({
+    mutationFn: async ({ loanId, topUpAmountBtc }: { loanId: number; topUpAmountBtc: string }) => {
+      const res = await fetch(`/api/loans/${loanId}/confirm-topup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({ topUpAmountBtc }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Failed to confirm top-up' }));
+        throw new Error(errorData.message);
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setTopUpLoan(null);
+      setTopUpAmount("");
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+      toast({
+        title: "✅ Top-Up Recorded!",
+        description: `We're monitoring the blockchain for your ${data.pendingTopUpBtc} BTC deposit. Your LTV will update once confirmed.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -445,7 +487,7 @@ export default function BorrowerDashboard() {
                                     ? '🔴 URGENT: Your collateral is at risk. Add more BTC immediately to avoid automatic liquidation at 95% LTV.'
                                     : '⚠️ Your LTV is rising. Consider adding more collateral to protect your position.'}
                                 </p>
-                                <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                                <div className="bg-white dark:bg-gray-900 p-3 rounded border mb-3">
                                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Send additional BTC to this address:</p>
                                   <code className="text-xs break-all text-blue-600 dark:text-blue-400 block p-2 bg-blue-50 dark:bg-blue-950/30 rounded" data-testid={`topup-address-${loan.id}`}>
                                     {loan.escrowAddress || 'Address not available'}
@@ -454,6 +496,25 @@ export default function BorrowerDashboard() {
                                     This is the same escrow address used for your initial collateral deposit.
                                   </p>
                                 </div>
+                                
+                                {/* Show pending top-up status or confirm button */}
+                                {loan.topUpMonitoringActive ? (
+                                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800">
+                                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                                      Monitoring for your {parseFloat(String(loan.pendingTopUpBtc || 0)).toFixed(6)} BTC deposit...
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    onClick={() => setTopUpLoan(loan)}
+                                    className="w-full bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600"
+                                    data-testid={`button-confirm-topup-${loan.id}`}
+                                  >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    I've Sent Additional BTC
+                                  </Button>
+                                )}
                               </div>
                             );
                           })}
@@ -603,6 +664,104 @@ export default function BorrowerDashboard() {
           userId={userId}
         />
       )}
+
+      {/* Top-Up Confirmation Dialog */}
+      <Dialog open={!!topUpLoan} onOpenChange={(open) => { if (!open) { setTopUpLoan(null); setTopUpAmount(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bitcoin className="h-5 w-5 text-amber-600" />
+              Confirm Collateral Top-Up
+            </DialogTitle>
+            <DialogDescription>
+              Tell us how much BTC you sent to your escrow address. We'll monitor the blockchain and update your LTV once the deposit is confirmed.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {topUpLoan && (
+            <div className="space-y-4 py-4">
+              <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600 dark:text-gray-400">Loan</span>
+                  <span className="font-medium">#{topUpLoan.id}</span>
+                </div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600 dark:text-gray-400">Current Collateral</span>
+                  <span className="font-medium">{formatBTC(topUpLoan.collateralBtc)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Current LTV</span>
+                  <span className="font-medium text-amber-600">{calculateCurrentLtv(topUpLoan).toFixed(1)}%</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="topup-amount">Amount Sent (BTC)</Label>
+                <Input
+                  id="topup-amount"
+                  type="number"
+                  step="0.00000001"
+                  min="0.00001"
+                  placeholder="e.g., 0.05"
+                  value={topUpAmount}
+                  onChange={(e) => setTopUpAmount(e.target.value)}
+                  data-testid="input-topup-amount"
+                />
+                <p className="text-xs text-gray-500">
+                  Enter the exact amount you sent to the escrow address.
+                </p>
+              </div>
+
+              {topUpAmount && parseFloat(topUpAmount) > 0 && (
+                <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    <strong>After confirmation:</strong>
+                  </p>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-green-600 dark:text-green-400">New Collateral</span>
+                    <span className="font-medium">{(parseFloat(topUpLoan.collateralBtc) + parseFloat(topUpAmount)).toFixed(8)} BTC</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setTopUpLoan(null); setTopUpAmount(""); }}
+              data-testid="button-cancel-topup"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (topUpLoan && topUpAmount) {
+                  confirmTopUpMutation.mutate({ 
+                    loanId: topUpLoan.id, 
+                    topUpAmountBtc: topUpAmount 
+                  });
+                }
+              }}
+              disabled={!topUpAmount || parseFloat(topUpAmount) <= 0 || confirmTopUpMutation.isPending}
+              className="bg-amber-600 hover:bg-amber-700"
+              data-testid="button-submit-topup"
+            >
+              {confirmTopUpMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Confirm Top-Up
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </FirefishWASMProvider>
   );
