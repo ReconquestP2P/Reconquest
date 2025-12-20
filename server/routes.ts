@@ -2433,6 +2433,30 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // DEVELOPMENT ONLY: Test price simulation without auth (remove in production)
+  app.post("/api/test/simulate-btc-price", async (req, res) => {
+    try {
+      const { priceUsd } = req.body;
+      
+      if (priceUsd !== null && (typeof priceUsd !== 'number' || priceUsd <= 0)) {
+        return res.status(400).json({ message: "Price must be a positive number or null to reset" });
+      }
+      
+      ltvMonitoring.setSimulatedPrice(priceUsd);
+      
+      res.json({
+        success: true,
+        message: priceUsd === null 
+          ? "Simulated price cleared. Using real BTC price." 
+          : `BTC price simulated at $${priceUsd}. LTV monitoring will use this price.`,
+        simulatedPrice: priceUsd
+      });
+    } catch (error) {
+      console.error("Error simulating price:", error);
+      res.status(500).json({ message: "Failed to simulate price" });
+    }
+  });
+
   // Test email endpoint
   app.post("/api/test-email", async (req, res) => {
     try {
