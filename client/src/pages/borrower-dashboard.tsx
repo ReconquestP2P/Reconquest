@@ -43,6 +43,34 @@ export default function BorrowerDashboard() {
     queryKey: [`/api/users/${userId}/loans`],
   });
 
+  // Fetch current BTC price for dynamic LTV calculation
+  const { data: btcPriceData } = useQuery<{ usd: number; eur: number }>({
+    queryKey: ["/api/btc-price"],
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Helper function to calculate current LTV based on live BTC price
+  const calculateCurrentLtv = (loan: any): number => {
+    if (!btcPriceData || !loan.collateralBtc) return parseFloat(loan.ltvRatio) || 50;
+    
+    const collateralBtc = parseFloat(loan.collateralBtc);
+    const loanAmount = parseFloat(loan.amount);
+    const interestRate = parseFloat(loan.interestRate) / 100;
+    const termMonths = loan.termMonths || 12;
+    
+    // Loan value includes principal + interest
+    const loanValueWithInterest = loanAmount * (1 + interestRate * (termMonths / 12));
+    
+    // Get price in loan currency (EUR or USD)
+    const btcPrice = loan.currency === 'EUR' ? btcPriceData.eur : btcPriceData.usd;
+    const collateralValue = collateralBtc * btcPrice;
+    
+    if (collateralValue <= 0) return 100;
+    
+    const ltv = (loanValueWithInterest / collateralValue) * 100;
+    return Math.min(Math.max(ltv, 0), 100); // Clamp between 0-100
+  };
+
   const borrowerLoans = userLoans.filter(loan => loan.borrowerId === userId);
   // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
   const activeLoans = borrowerLoans.filter((loan: any) => 
@@ -363,7 +391,7 @@ export default function BorrowerDashboard() {
                           <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
                           <TableCell>{formatBTC(loan.collateralBtc)}</TableCell>
                           <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
-                          <TableCell><LtvBatteryIndicator ltv={loan.ltvRatio} size="sm" /></TableCell>
+                          <TableCell><LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" /></TableCell>
                           <TableCell>
                             {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
                           </TableCell>
