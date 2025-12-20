@@ -49,6 +49,15 @@ Preferred communication style: Simple, everyday language.
 ### Loan Flow
 The platform facilitates loan creation, lender commitment, borrower collateral deposit, and a dual key generation/transaction signing process where both parties generate ephemeral keys and download pre-signed recovery plans. The repayment flow involves cryptographic verification of both borrower and lender pre-signed transactions before broadcasting to the Bitcoin testnet.
 
+### LTV Monitoring & Collateral Top-Up
+- **Automated LTV Monitoring**: Every 60 seconds, the system checks all active loans' LTV ratios using real-time EUR prices.
+- **Two-Tier Warning System**: 
+  - 75% LTV: Early warning email sent to borrower only
+  - 85% LTV: Critical warning email sent to both borrower and lender
+  - 95% LTV: Automatic liquidation triggered
+- **Collateral Top-Up Flow**: Borrowers can add collateral to the same escrow address. After sending BTC, they confirm the amount via the dashboard modal. The BlockchainMonitor verifies the deposit requires REQUIRED_CONFIRMATIONS before updating collateralBtc.
+- **Schema fields for top-ups**: pendingTopUpBtc, topUpRequestedAt, topUpConfirmedAt, topUpMonitoringActive, previousCollateralBtc
+
 ## External Dependencies
 
 - **Database**: Neon (PostgreSQL)
