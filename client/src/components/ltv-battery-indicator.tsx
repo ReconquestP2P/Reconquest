@@ -29,9 +29,13 @@ export function LtvBatteryIndicator({ ltv, showPercentage = true, size = "md" }:
   };
 
   const getFillPercentage = () => {
-    // Battery drains as LTV rises (like phone battery)
-    // Low LTV = full battery (healthy), High LTV = empty battery (danger)
-    return Math.min(100, Math.max(0, 100 - ltvValue));
+    // Battery is FULL at 50% LTV (healthy starting point)
+    // Battery drains as LTV rises above 50%
+    // At 50% LTV → 100% fill, at 100% LTV → 0% fill
+    if (ltvValue <= 50) return 100;
+    // Map 50-100% LTV to 100-0% fill
+    const drainedAmount = (ltvValue - 50) * 2; // 50% LTV = 0 drain, 100% LTV = 100 drain
+    return Math.min(100, Math.max(0, 100 - drainedAmount));
   };
 
   const getTerminalColor = () => {
