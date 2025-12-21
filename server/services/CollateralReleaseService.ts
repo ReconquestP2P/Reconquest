@@ -138,7 +138,7 @@ export async function releaseCollateral(
       return { success: false, error: 'No witness script found for escrow' };
     }
     
-    // Fetch UTXOs from escrow
+    // Fetch ALL UTXOs from escrow
     console.log(`📡 Fetching UTXOs from escrow: ${escrowAddress}`);
     const utxos = await fetchUTXOs(escrowAddress);
     
@@ -146,8 +146,13 @@ export async function releaseCollateral(
       return { success: false, error: 'No UTXOs found in escrow address' };
     }
     
-    const utxo = utxos[0];
-    console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+    // Log all UTXOs and calculate total value
+    let totalInputValue = 0;
+    for (const utxo of utxos) {
+      console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+      totalInputValue += utxo.value;
+    }
+    console.log(`   Total UTXOs: ${utxos.length}, Total value: ${totalInputValue} sats`);
     
     // Get keys - we need 2 of 3
     const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
@@ -170,34 +175,36 @@ export async function releaseCollateral(
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
-    // Calculate fee (1 sat/vB for testnet)
-    const estimatedVsize = 180; // Approximate vsize for 2-of-3 multisig spend
-    const fee = estimatedVsize;
-    const outputValue = utxo.value - fee;
+    // Calculate fee (1 sat/vB for testnet, ~180 vB per input for 2-of-3 multisig)
+    const estimatedVsizePerInput = 180;
+    const fee = estimatedVsizePerInput * utxos.length;
+    const outputValue = totalInputValue - fee;
     
     if (outputValue <= 0) {
-      return { success: false, error: 'UTXO value too small to cover fee' };
+      return { success: false, error: 'Total UTXO value too small to cover fee' };
     }
     
-    console.log(`💰 Creating transaction: ${utxo.value} - ${fee} = ${outputValue} sats`);
+    console.log(`💰 Creating transaction: ${totalInputValue} - ${fee} = ${outputValue} sats`);
     console.log(`   Destination: ${borrowerReturnAddress}`);
     
     // Create PSBT
     const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
     
-    // Add input with witness UTXO
-    psbt.addInput({
-      hash: utxo.txid,
-      index: utxo.vout,
-      witnessUtxo: {
-        script: bitcoin.payments.p2wsh({
-          redeem: { output: witnessScript, network: TESTNET4_NETWORK },
-          network: TESTNET4_NETWORK,
-        }).output!,
-        value: BigInt(utxo.value),
-      },
-      witnessScript: witnessScript,
-    });
+    // Add ALL inputs
+    for (const utxo of utxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript, network: TESTNET4_NETWORK },
+            network: TESTNET4_NETWORK,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+    }
     
     // Add output to borrower
     psbt.addOutput({
@@ -205,9 +212,11 @@ export async function releaseCollateral(
       value: BigInt(outputValue),
     });
     
-    // Sign with platform key (we always have this)
-    console.log(`🔑 Signing with platform key...`);
-    signPsbtInput(psbt, 0, platformPrivateKey, witnessScript);
+    // Sign ALL inputs with platform key
+    console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
+    }
     
     // For testnet MVP: Check if we have both keys as platform key (simplified 2-of-3)
     // In production, we'd need signatures from borrower/lender
@@ -333,7 +342,7 @@ export async function releaseCollateralToAddress(
       return { success: false, error: 'No witness script found for escrow' };
     }
     
-    // Fetch UTXOs from escrow
+    // Fetch ALL UTXOs from escrow
     console.log(`📡 Fetching UTXOs from escrow: ${escrowAddress}`);
     const utxos = await fetchUTXOs(escrowAddress);
     
@@ -341,8 +350,13 @@ export async function releaseCollateralToAddress(
       return { success: false, error: 'No UTXOs found in escrow address' };
     }
     
-    const utxo = utxos[0];
-    console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+    // Log all UTXOs and calculate total value
+    let totalInputValue = 0;
+    for (const utxo of utxos) {
+      console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+      totalInputValue += utxo.value;
+    }
+    console.log(`   Total UTXOs: ${utxos.length}, Total value: ${totalInputValue} sats`);
     
     // Get platform keys
     const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
@@ -350,34 +364,36 @@ export async function releaseCollateralToAddress(
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
-    // Calculate fee (1 sat/vB for testnet)
-    const estimatedVsize = 180;
-    const fee = estimatedVsize;
-    const outputValue = utxo.value - fee;
+    // Calculate fee (1 sat/vB for testnet, ~180 vB per input for 2-of-3 multisig)
+    const estimatedVsizePerInput = 180;
+    const fee = estimatedVsizePerInput * utxos.length;
+    const outputValue = totalInputValue - fee;
     
     if (outputValue <= 0) {
-      return { success: false, error: 'UTXO value too small to cover fee' };
+      return { success: false, error: 'Total UTXO value too small to cover fee' };
     }
     
-    console.log(`💰 Creating liquidation transaction: ${utxo.value} - ${fee} = ${outputValue} sats`);
+    console.log(`💰 Creating liquidation transaction: ${totalInputValue} - ${fee} = ${outputValue} sats`);
     console.log(`   Destination (lender): ${destinationAddress}`);
     
     // Create PSBT
     const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
     
-    // Add input with witness UTXO
-    psbt.addInput({
-      hash: utxo.txid,
-      index: utxo.vout,
-      witnessUtxo: {
-        script: bitcoin.payments.p2wsh({
-          redeem: { output: witnessScript, network: TESTNET4_NETWORK },
-          network: TESTNET4_NETWORK,
-        }).output!,
-        value: BigInt(utxo.value),
-      },
-      witnessScript: witnessScript,
-    });
+    // Add ALL inputs
+    for (const utxo of utxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript, network: TESTNET4_NETWORK },
+            network: TESTNET4_NETWORK,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+    }
     
     // Add output to lender (for liquidation)
     psbt.addOutput({
@@ -385,12 +401,14 @@ export async function releaseCollateralToAddress(
       value: BigInt(outputValue),
     });
     
-    // Sign with platform key (we control 2 of 3 in testnet setup)
-    console.log(`🔑 Signing with platform key...`);
-    signPsbtInput(psbt, 0, platformPrivateKey, witnessScript);
+    // Sign ALL inputs with platform key (we control 2 of 3 in testnet setup)
+    console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
+    }
     
-    // Platform controls 2 of 3 keys in testnet - sign again
-    console.log(`🔑 Platform controls 2 of 3 keys - signing again...`);
+    // Platform controls 2 of 3 keys in testnet
+    console.log(`🔑 Platform controls 2 of 3 keys - finalizing...`);
     
     try {
       psbt.finalizeAllInputs();
