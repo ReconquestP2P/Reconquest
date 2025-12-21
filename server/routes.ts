@@ -300,24 +300,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real-time Bitcoin price endpoint (CoinGecko API)
   app.get("/api/btc-price", async (req, res) => {
     try {
-      // Check if there's a simulated price set (for testing)
-      const simulatedPrice = ltvMonitoring.getSimulatedPrice();
-      if (simulatedPrice !== null) {
-        const eurPrice = Math.floor(simulatedPrice * 0.85);
-        return res.json({
-          usd: simulatedPrice,
-          eur: eurPrice,
-          usd_24h_change: -15.0, // Show negative change to indicate simulated drop
-          eur_24h_change: -15.0,
-          last_updated: new Date().toISOString(),
-          timestamp: new Date().toISOString(),
-          source: 'SIMULATED (Testing)',
-          price: simulatedPrice,
-          currency: "USD",
-          isSimulated: true
-        });
-      }
-      
       const response = await fetch(
         'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true&include_last_updated_at=true'
       );
@@ -2456,45 +2438,14 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       
       const results = await ltvMonitoring.checkAllActiveLoans();
-      const simulatedPrice = ltvMonitoring.getSimulatedPrice();
       
       res.json({
         success: true,
-        simulatedPriceActive: simulatedPrice !== null,
-        simulatedPrice,
         loans: results
       });
     } catch (error) {
       console.error("Error checking LTV status:", error);
       res.status(500).json({ message: "Failed to check LTV status" });
-    }
-  });
-  
-  // Simulate a BTC price drop (for testing liquidation)
-  app.post("/api/admin/ltv/simulate-price", authenticateToken, async (req, res) => {
-    try {
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
-      const { priceUsd } = req.body;
-      
-      if (priceUsd !== null && (typeof priceUsd !== 'number' || priceUsd <= 0)) {
-        return res.status(400).json({ message: "Price must be a positive number or null to reset" });
-      }
-      
-      ltvMonitoring.setSimulatedPrice(priceUsd);
-      
-      res.json({
-        success: true,
-        message: priceUsd === null 
-          ? "Simulated price cleared. Using real BTC price." 
-          : `BTC price simulated at $${priceUsd}. LTV monitoring will use this price.`,
-        simulatedPrice: priceUsd
-      });
-    } catch (error) {
-      console.error("Error simulating price:", error);
-      res.status(500).json({ message: "Failed to simulate price" });
     }
   });
   
@@ -2525,30 +2476,6 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     } catch (error) {
       console.error("Error checking loan LTV:", error);
       res.status(500).json({ message: "Failed to check loan LTV" });
-    }
-  });
-
-  // DEVELOPMENT ONLY: Test price simulation without auth (remove in production)
-  app.post("/api/test/simulate-btc-price", async (req, res) => {
-    try {
-      const { priceUsd } = req.body;
-      
-      if (priceUsd !== null && (typeof priceUsd !== 'number' || priceUsd <= 0)) {
-        return res.status(400).json({ message: "Price must be a positive number or null to reset" });
-      }
-      
-      ltvMonitoring.setSimulatedPrice(priceUsd);
-      
-      res.json({
-        success: true,
-        message: priceUsd === null 
-          ? "Simulated price cleared. Using real BTC price." 
-          : `BTC price simulated at $${priceUsd}. LTV monitoring will use this price.`,
-        simulatedPrice: priceUsd
-      });
-    } catch (error) {
-      console.error("Error simulating price:", error);
-      res.status(500).json({ message: "Failed to simulate price" });
     }
   });
 

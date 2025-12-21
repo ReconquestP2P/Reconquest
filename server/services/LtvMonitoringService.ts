@@ -36,7 +36,6 @@ const criticalWarningsSent = new Set<number>(); // 85% threshold
 export class LtvMonitoringService {
   private pollingInterval: NodeJS.Timeout | null = null;
   private isPolling = false;
-  private simulatedBtcPrice: number | null = null; // For testing liquidation
 
   /**
    * Start background LTV monitoring for all active loans
@@ -81,33 +80,12 @@ export class LtvMonitoringService {
   }
 
   /**
-   * Set a simulated BTC price for testing liquidation
-   */
-  setSimulatedPrice(priceUsd: number | null): void {
-    this.simulatedBtcPrice = priceUsd;
-    console.log(`[LtvMonitor] Simulated BTC price set to: ${priceUsd ? `$${priceUsd}` : 'disabled (using real price)'}`);
-  }
-
-  /**
-   * Get current simulated price (for admin endpoint)
-   */
-  getSimulatedPrice(): number | null {
-    return this.simulatedBtcPrice;
-  }
-
-  /**
    * Check all active loans for LTV violations
    */
   async checkAllActiveLoans(): Promise<LtvCheckResult[]> {
-    // Get current BTC price (use simulated if set, otherwise real)
-    let btcPriceUsd: number;
-    if (this.simulatedBtcPrice !== null) {
-      btcPriceUsd = this.simulatedBtcPrice;
-      console.log(`[LtvMonitor] Using SIMULATED price: $${btcPriceUsd}`);
-    } else {
-      const priceData = await getBtcPrice();
-      btcPriceUsd = priceData.usd;
-    }
+    // Get current BTC price from real market data
+    const priceData = await getBtcPrice();
+    const btcPriceUsd = priceData.usd;
 
     // Get all active loans (status = 'active' with collateral in escrow)
     const activeLoans = await storage.getActiveLoansForLtvCheck();
@@ -579,7 +557,7 @@ export class LtvMonitoringService {
   }
 
   /**
-   * Manual check for a specific loan (for testing)
+   * Manual check for a specific loan
    */
   async checkSpecificLoan(loanId: number, overridePrice?: number): Promise<LtvCheckResult | null> {
     const loan = await storage.getLoan(loanId);
@@ -588,7 +566,7 @@ export class LtvMonitoringService {
       return null;
     }
 
-    const btcPriceUsd = overridePrice || this.simulatedBtcPrice || (await getBtcPrice()).usd;
+    const btcPriceUsd = overridePrice || (await getBtcPrice()).usd;
     return await this.checkLoanLtv(loan, btcPriceUsd);
   }
 }
