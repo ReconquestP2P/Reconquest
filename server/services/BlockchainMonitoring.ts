@@ -218,13 +218,26 @@ export class BlockchainMonitoringService {
       const borrower = await storage.getUser(loan.borrowerId);
       const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
       
-      // Calculate new LTV (approximate - will be recalculated by LTV monitor)
+      // Calculate new LTV using current EUR price
       const loanAmount = parseFloat(String(loan.amount));
       const interestRate = parseFloat(String(loan.interestRate));
       const interest = loanAmount * (interestRate / 100);
       const totalLoanValue = loanAmount + interest;
-      // We'd need the current BTC price for accurate LTV, so we'll show approximate
-      const newLtv = "Recalculating...";
+      
+      // Fetch current BTC price in EUR
+      let newLtv = "N/A";
+      try {
+        const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur');
+        const priceData = await priceResponse.json();
+        const btcPriceEur = priceData.bitcoin?.eur || 0;
+        if (btcPriceEur > 0) {
+          const collateralValueEur = newCollateralBtc * btcPriceEur;
+          const ltvPercent = (totalLoanValue / collateralValueEur) * 100;
+          newLtv = ltvPercent.toFixed(1);
+        }
+      } catch (error) {
+        console.error('Error fetching BTC price for LTV calculation:', error);
+      }
       
       // Update the loan with new collateral amount
       await storage.updateLoan(loan.id, {

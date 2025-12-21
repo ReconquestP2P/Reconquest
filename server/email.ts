@@ -631,13 +631,19 @@ export async function sendTopUpConfirmedEmail(params: {
           <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New LTV:</strong> ${newLtv}%</p>
         </div>
         
+        ${mempoolLink ? `
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${mempoolLink}" style="display: inline-block; background-color: #1a73e8; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            🔗 View Transaction on Mempool
+          </a>
+        </div>
+        ` : ''}
+        
         <div style="text-align: center; margin: 30px 0;">
           <a href="${dashboardUrl}/borrower" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
             📊 View Dashboard
           </a>
         </div>
-        
-        ${mempoolLink ? `<p style="font-size: 14px; color: #666; text-align: center;"><a href="${mempoolLink}" style="color: #0066cc;">View transaction on Mempool.space</a></p>` : ''}
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
           <strong>— The Reconquest Team 👑</strong>
@@ -674,13 +680,19 @@ export async function sendTopUpConfirmedEmail(params: {
           <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New LTV:</strong> ${newLtv}%</p>
         </div>
         
+        ${mempoolLink ? `
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${mempoolLink}" style="display: inline-block; background-color: #1a73e8; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            🔗 View Transaction on Mempool
+          </a>
+        </div>
+        ` : ''}
+        
         <div style="text-align: center; margin: 30px 0;">
           <a href="${dashboardUrl}/lender" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
             📊 View Dashboard
           </a>
         </div>
-        
-        ${mempoolLink ? `<p style="font-size: 14px; color: #666; text-align: center;"><a href="${mempoolLink}" style="color: #0066cc;">View transaction on Mempool.space</a></p>` : ''}
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
           <strong>— The Reconquest Team 👑</strong>
