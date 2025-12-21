@@ -146,6 +146,8 @@ export const loans = pgTable("loans", {
   topUpConfirmedAt: timestamp("top_up_confirmed_at"), // When blockchain confirmed the top-up
   topUpMonitoringActive: boolean("top_up_monitoring_active").default(false), // Whether actively monitoring for top-up
   previousCollateralBtc: decimal("previous_collateral_btc", { precision: 10, scale: 8 }), // Collateral before top-up (for verification)
+  topUpDetectedInMempoolAt: timestamp("top_up_detected_in_mempool_at"), // When we first saw the top-up in mempool
+  topUpTxid: text("top_up_txid"), // Transaction ID of the top-up deposit
 });
 
 export const loanOffers = pgTable("loan_offers", {

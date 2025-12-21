@@ -4,6 +4,7 @@
 
 import { storage } from '../storage';
 import type { Loan } from '@shared/schema';
+import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail } from '../email';
 
 interface UTXO {
   txid: string;
@@ -163,16 +164,67 @@ export class BlockchainMonitoringService {
     // Clear cache to get fresh data
     this.clearCache(loan.escrowAddress);
     
-    // Get total CONFIRMED balance of the escrow address (only confirmed UTXOs count)
-    const { totalSats, minConfirmations } = await this.getAddressConfirmedBalance(loan.escrowAddress);
+    // Get both confirmed and total (including mempool) balances
+    const { totalSats: confirmedSats, minConfirmations, txids: confirmedTxids } = await this.getAddressConfirmedBalanceWithTxids(loan.escrowAddress);
+    const { totalSats: mempoolSats, txids: mempoolTxids } = await this.getAddressMempoolBalance(loan.escrowAddress);
     
-    console.log(`[BlockchainMonitor] Loan ${loan.id} escrow confirmed balance: ${totalSats} sats (min ${minConfirmations} confirmations)`);
+    const totalWithMempool = confirmedSats + mempoolSats;
+    
+    console.log(`[BlockchainMonitor] Loan ${loan.id} balance: confirmed ${confirmedSats} sats, mempool ${mempoolSats} sats, total ${totalWithMempool} sats`);
 
-    // Check if new deposits have arrived (total >= expected) AND are confirmed
-    if (totalSats >= expectedTotalSats && minConfirmations >= REQUIRED_CONFIRMATIONS) {
-      const newCollateralBtc = totalSats / 100000000;
+    // Allow for small rounding differences (up to 10 sats tolerance)
+    const TOLERANCE_SATS = 10;
+    const meetsExpected = (amount: number) => amount >= expectedTotalSats - TOLERANCE_SATS;
+
+    // Check if we've detected a new top-up in mempool (but not sent email yet)
+    if (!loan.topUpDetectedInMempoolAt && mempoolSats > 0 && meetsExpected(totalWithMempool)) {
+      // Found new unconfirmed deposit - send detection email
+      const newTxid = mempoolTxids[0]; // Get the first new txid
+      console.log(`[BlockchainMonitor] 🔄 Top-up DETECTED in mempool for loan ${loan.id}! Txid: ${newTxid}`);
+      
+      // Get borrower and lender info for emails
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
+      
+      if (borrower && lender && newTxid) {
+        // Send detection emails
+        await sendTopUpDetectedEmail({
+          borrowerEmail: borrower.email,
+          borrowerName: borrower.username,
+          lenderEmail: lender.email,
+          lenderName: lender.username,
+          loanId: loan.id,
+          txid: newTxid,
+          amountBtc: String(loan.pendingTopUpBtc),
+          escrowAddress: loan.escrowAddress,
+        });
+      }
+      
+      // Mark as detected so we don't spam emails
+      await storage.updateLoan(loan.id, {
+        topUpDetectedInMempoolAt: new Date(),
+        topUpTxid: newTxid,
+      });
+    }
+
+    // Check if new deposits have arrived (total >= expected with tolerance) AND are confirmed
+    if (meetsExpected(confirmedSats) && minConfirmations >= REQUIRED_CONFIRMATIONS) {
+      const newCollateralBtc = confirmedSats / 100000000;
+      const pendingTopUpBtc = parseFloat(String(loan.pendingTopUpBtc || 0));
       
       console.log(`[BlockchainMonitor] ✅ Top-up CONFIRMED for loan ${loan.id}! New collateral: ${newCollateralBtc} BTC`);
+      
+      // Get borrower and lender info for confirmation emails
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
+      
+      // Calculate new LTV (approximate - will be recalculated by LTV monitor)
+      const loanAmount = parseFloat(String(loan.amount));
+      const interestRate = parseFloat(String(loan.interestRate));
+      const interest = loanAmount * (interestRate / 100);
+      const totalLoanValue = loanAmount + interest;
+      // We'd need the current BTC price for accurate LTV, so we'll show approximate
+      const newLtv = "Recalculating...";
       
       // Update the loan with new collateral amount
       await storage.updateLoan(loan.id, {
@@ -181,15 +233,119 @@ export class BlockchainMonitoringService {
         topUpMonitoringActive: false,
         pendingTopUpBtc: null,
         previousCollateralBtc: null,
-        fundedAmountSats: totalSats,
+        topUpDetectedInMempoolAt: null,
+        fundedAmountSats: confirmedSats,
       });
       
-      // Recalculate LTV based on new collateral (will be picked up by LTV monitor)
+      // Send confirmation emails
+      if (borrower && lender) {
+        await sendTopUpConfirmedEmail({
+          borrowerEmail: borrower.email,
+          borrowerName: borrower.username,
+          lenderEmail: lender.email,
+          lenderName: lender.username,
+          loanId: loan.id,
+          txid: loan.topUpTxid || undefined,
+          amountBtc: String(pendingTopUpBtc),
+          newTotalCollateralBtc: String(newCollateralBtc),
+          newLtv: newLtv,
+        });
+      }
+      
       console.log(`[BlockchainMonitor] Loan ${loan.id} collateral updated from ${loan.collateralBtc} BTC to ${newCollateralBtc} BTC`);
-    } else if (totalSats >= expectedTotalSats) {
+    } else if (meetsExpected(confirmedSats)) {
       console.log(`[BlockchainMonitor] Loan ${loan.id} top-up found but awaiting confirmations (${minConfirmations}/${REQUIRED_CONFIRMATIONS})`);
+    } else if (mempoolSats > 0 || meetsExpected(totalWithMempool)) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id} top-up in mempool, awaiting confirmation`);
     } else {
-      console.log(`[BlockchainMonitor] Loan ${loan.id} top-up not yet received. Current: ${totalSats} sats, expected: ${expectedTotalSats} sats`);
+      console.log(`[BlockchainMonitor] Loan ${loan.id} top-up not yet received. Current: ${confirmedSats} sats, expected: ${expectedTotalSats} sats (tolerance: ${TOLERANCE_SATS})`);
+    }
+  }
+
+  /**
+   * Get the total CONFIRMED balance of an address with txids
+   */
+  async getAddressConfirmedBalanceWithTxids(address: string): Promise<{ totalSats: number; minConfirmations: number; txids: string[] }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/address/${address}/utxo`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { totalSats: 0, minConfirmations: 0, txids: [] };
+        }
+        throw new Error(`Blockstream API error: ${response.status}`);
+      }
+
+      const utxos: UTXO[] = await response.json();
+
+      if (utxos.length === 0) {
+        return { totalSats: 0, minConfirmations: 0, txids: [] };
+      }
+
+      // Get current tip height for confirmation calculation
+      const tipResponse = await fetch(`${this.baseUrl}/blocks/tip/height`);
+      const tipHeight = parseInt(await tipResponse.text());
+
+      // Only count confirmed UTXOs
+      let totalSats = 0;
+      let minConfirmations = Infinity;
+      const txids: string[] = [];
+
+      for (const utxo of utxos) {
+        if (utxo.status.confirmed && utxo.status.block_height) {
+          totalSats += utxo.value;
+          const confirmations = tipHeight - utxo.status.block_height + 1;
+          minConfirmations = Math.min(minConfirmations, confirmations);
+          if (!txids.includes(utxo.txid)) {
+            txids.push(utxo.txid);
+          }
+        }
+      }
+
+      if (minConfirmations === Infinity) {
+        minConfirmations = 0;
+      }
+      
+      return { totalSats, minConfirmations, txids };
+    } catch (error) {
+      console.error('Error getting confirmed address balance:', error);
+      return { totalSats: 0, minConfirmations: 0, txids: [] };
+    }
+  }
+
+  /**
+   * Get the unconfirmed (mempool) balance of an address with txids
+   */
+  async getAddressMempoolBalance(address: string): Promise<{ totalSats: number; txids: string[] }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/address/${address}/utxo`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { totalSats: 0, txids: [] };
+        }
+        throw new Error(`Blockstream API error: ${response.status}`);
+      }
+
+      const utxos: UTXO[] = await response.json();
+
+      // Only count unconfirmed UTXOs (in mempool)
+      let totalSats = 0;
+      const txids: string[] = [];
+
+      for (const utxo of utxos) {
+        if (!utxo.status.confirmed) {
+          totalSats += utxo.value;
+          if (!txids.includes(utxo.txid)) {
+            txids.push(utxo.txid);
+          }
+        }
+      }
+      
+      return { totalSats, txids };
+    } catch (error) {
+      console.error('Error getting mempool balance:', error);
+      return { totalSats: 0, txids: [] };
     }
   }
 

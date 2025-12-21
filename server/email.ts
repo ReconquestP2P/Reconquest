@@ -463,3 +463,250 @@ export async function sendDetailsChangeConfirmation(params: {
   });
 }
 
+// Send email when top-up is detected in mempool (before confirmation)
+export async function sendTopUpDetectedEmail(params: {
+  borrowerEmail: string;
+  borrowerName: string;
+  lenderEmail: string;
+  lenderName: string;
+  loanId: number;
+  txid: string;
+  amountBtc: string;
+  escrowAddress: string;
+}): Promise<void> {
+  const { borrowerEmail, borrowerName, lenderEmail, lenderName, loanId, txid, amountBtc, escrowAddress } = params;
+  const mempoolLink = `https://mempool.space/testnet4/tx/${txid}`;
+  const logoUrl = getLogoUrl();
+  
+  // Email to borrower
+  const borrowerHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="Reconquest Logo" style="width: 200px; height: auto;" />
+        </div>
+        
+        <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600;">🔄 Top-Up Detected in Mempool</h2>
+        
+        <p style="font-size: 16px; color: #333;">Hi ${borrowerName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          Great news! We've detected your collateral top-up transaction in the Bitcoin mempool. It's now waiting to be confirmed by miners.
+        </p>
+        
+        <div style="background-color: #e8f4fd; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #333;">Transaction Details:</h3>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Loan ID:</strong> #${loanId}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Amount:</strong> ${amountBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Status:</strong> <span style="color: #f59e0b;">⏳ Awaiting Confirmation</span></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${mempoolLink}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            🔗 View on Mempool.space
+          </a>
+        </div>
+        
+        <p style="font-size: 14px; color: #666; line-height: 1.7;">
+          Once the transaction receives the required confirmations, your collateral will be automatically updated and your LTV will be recalculated.
+        </p>
+        
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Email to lender
+  const lenderHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="Reconquest Logo" style="width: 200px; height: auto;" />
+        </div>
+        
+        <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600;">🔄 Borrower Top-Up Detected</h2>
+        
+        <p style="font-size: 16px; color: #333;">Hi ${lenderName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          Good news! The borrower has topped up their collateral for Loan #${loanId}. The transaction is currently in the mempool awaiting confirmation.
+        </p>
+        
+        <div style="background-color: #e8f4fd; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #333;">Transaction Details:</h3>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Loan ID:</strong> #${loanId}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Top-Up Amount:</strong> ${amountBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #555;"><strong>Status:</strong> <span style="color: #f59e0b;">⏳ In Mempool</span></p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${mempoolLink}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            🔗 View on Mempool.space
+          </a>
+        </div>
+        
+        <p style="font-size: 14px; color: #666; line-height: 1.7;">
+          Once confirmed, the loan's LTV ratio will be automatically recalculated with the additional collateral.
+        </p>
+        
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  try {
+    await sendEmail({
+      to: borrowerEmail,
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: `🔄 Top-Up Detected - Loan #${loanId}`,
+      html: borrowerHtml,
+    });
+    console.log(`📧 Top-up detected email sent to borrower: ${borrowerEmail}`);
+    
+    await sendEmail({
+      to: lenderEmail,
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: `🔄 Borrower Top-Up Detected - Loan #${loanId}`,
+      html: lenderHtml,
+    });
+    console.log(`📧 Top-up detected email sent to lender: ${lenderEmail}`);
+  } catch (error) {
+    console.error('Error sending top-up detected emails:', error);
+  }
+}
+
+// Send email when top-up is fully confirmed
+export async function sendTopUpConfirmedEmail(params: {
+  borrowerEmail: string;
+  borrowerName: string;
+  lenderEmail: string;
+  lenderName: string;
+  loanId: number;
+  txid?: string;
+  amountBtc: string;
+  newTotalCollateralBtc: string;
+  newLtv: string;
+}): Promise<void> {
+  const { borrowerEmail, borrowerName, lenderEmail, lenderName, loanId, txid, amountBtc, newTotalCollateralBtc, newLtv } = params;
+  const mempoolLink = txid ? `https://mempool.space/testnet4/tx/${txid}` : null;
+  const logoUrl = getLogoUrl();
+  const dashboardUrl = getBaseUrl();
+  
+  // Email to borrower
+  const borrowerHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="Reconquest Logo" style="width: 200px; height: auto;" />
+        </div>
+        
+        <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600;">✅ Top-Up Confirmed!</h2>
+        
+        <p style="font-size: 16px; color: #333;">Hi ${borrowerName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          Your collateral top-up has been confirmed on the blockchain. Your loan's collateral has been updated.
+        </p>
+        
+        <div style="background-color: #d4edda; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #155724;">Updated Loan Details:</h3>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>Loan ID:</strong> #${loanId}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>Top-Up Amount:</strong> +${amountBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New Total Collateral:</strong> ${newTotalCollateralBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New LTV:</strong> ${newLtv}%</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}/borrower" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            📊 View Dashboard
+          </a>
+        </div>
+        
+        ${mempoolLink ? `<p style="font-size: 14px; color: #666; text-align: center;"><a href="${mempoolLink}" style="color: #0066cc;">View transaction on Mempool.space</a></p>` : ''}
+        
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Email to lender
+  const lenderHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${logoUrl}" alt="Reconquest Logo" style="width: 200px; height: auto;" />
+        </div>
+        
+        <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600;">✅ Borrower Top-Up Confirmed</h2>
+        
+        <p style="font-size: 16px; color: #333;">Hi ${lenderName},</p>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.7;">
+          The borrower's collateral top-up for Loan #${loanId} has been confirmed on the blockchain. The loan's collateral has been increased.
+        </p>
+        
+        <div style="background-color: #d4edda; border-radius: 8px; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #155724;">Updated Loan Details:</h3>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>Loan ID:</strong> #${loanId}</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>Top-Up Amount:</strong> +${amountBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New Total Collateral:</strong> ${newTotalCollateralBtc} BTC</p>
+          <p style="margin: 5px 0; font-size: 14px; color: #155724;"><strong>New LTV:</strong> ${newLtv}%</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}/lender" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            📊 View Dashboard
+          </a>
+        </div>
+        
+        ${mempoolLink ? `<p style="font-size: 14px; color: #666; text-align: center;"><a href="${mempoolLink}" style="color: #0066cc;">View transaction on Mempool.space</a></p>` : ''}
+        
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  try {
+    await sendEmail({
+      to: borrowerEmail,
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: `✅ Top-Up Confirmed - Loan #${loanId}`,
+      html: borrowerHtml,
+    });
+    console.log(`📧 Top-up confirmed email sent to borrower: ${borrowerEmail}`);
+    
+    await sendEmail({
+      to: lenderEmail,
+      from: 'Reconquest <noreply@reconquestp2p.com>',
+      subject: `✅ Borrower Top-Up Confirmed - Loan #${loanId}`,
+      html: lenderHtml,
+    });
+    console.log(`📧 Top-up confirmed email sent to lender: ${lenderEmail}`);
+  } catch (error) {
+    console.error('Error sending top-up confirmed emails:', error);
+  }
+}
