@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink } from "lucide-react";
+import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -56,6 +56,9 @@ export default function LenderDashboard() {
   
   // Active loan details modal state
   const [activeDetailLoan, setActiveDetailLoan] = useState<any | null>(null);
+  
+  // Expandable collateral history state
+  const [expandedCollateralLoanId, setExpandedCollateralLoanId] = useState<number | null>(null);
 
   // Get actual authenticated user ID
   const userId = user?.id ?? 0;
@@ -811,13 +814,14 @@ export default function LenderDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Loan Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Loan ID</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Collateral</TableHead>
+                      <TableHead>Interest Rate</TableHead>
                       <TableHead>LTV</TableHead>
-                      <TableHead>Interest Rate (p.a.)</TableHead>
-                      <TableHead>Period</TableHead>
-                      <TableHead>Maturity Date</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -826,70 +830,218 @@ export default function LenderDashboard() {
                       .map((loan) => {
                         const startDate = loan.activatedAt ? new Date(loan.activatedAt) : new Date();
                         const maturityDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+                        const isExpanded = expandedCollateralLoanId === loan.id;
+                        
+                        const deposits: Array<{type: string; amount: number; txid: string | null; status: string}> = [];
+                        const currentCollateral = parseFloat(loan.collateralBtc || '0');
+                        const previousCollateral = parseFloat(loan.previousCollateralBtc || '0');
+                        const pendingTopUp = parseFloat(loan.pendingTopUpBtc || '0');
+                        
+                        if (previousCollateral > 0) {
+                          deposits.push({
+                            type: 'Initial Deposit',
+                            amount: previousCollateral,
+                            txid: loan.depositTxid,
+                            status: 'confirmed'
+                          });
+                          if (currentCollateral > previousCollateral) {
+                            deposits.push({
+                              type: 'Top-Up',
+                              amount: currentCollateral - previousCollateral,
+                              txid: loan.topUpTxid,
+                              status: 'confirmed'
+                            });
+                          }
+                        } else {
+                          deposits.push({
+                            type: 'Initial Deposit',
+                            amount: currentCollateral,
+                            txid: loan.depositTxid,
+                            status: 'confirmed'
+                          });
+                        }
+                        
+                        if (loan.topUpMonitoringActive && pendingTopUp > 0) {
+                          deposits.push({
+                            type: 'Pending Top-Up',
+                            amount: pendingTopUp,
+                            txid: loan.topUpTxid,
+                            status: loan.topUpDetectedInMempoolAt ? 'mempool' : 'pending'
+                          });
+                        }
+                        
                         return (
-                          <TableRow key={loan.id} data-testid={`active-loan-row-${loan.id}`}>
-                            <TableCell className="font-medium">
-                              {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
-                            </TableCell>
-                            <TableCell>
-                              {loan.status === 'repayment_pending' ? (
-                                <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100">
-                                  Repayment Sent
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
-                                  Active
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" />
-                            </TableCell>
-                            <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
-                            <TableCell>{loan.termMonths} months</TableCell>
-                            <TableCell>
-                              {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </TableCell>
-                            <TableCell>
-                              {loan.status === 'repayment_pending' ? (
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                                  onClick={async () => {
-                                    try {
-                                      const res = await apiRequest(`/api/loans/${loan.id}/confirm-receipt`, "POST", {});
-                                      const data = await res.json();
-                                      if (data.success) {
+                          <>
+                            <TableRow key={loan.id} data-testid={`active-loan-row-${loan.id}`}>
+                              <TableCell>
+                                <button
+                                  className="flex items-center gap-1 text-primary hover:underline font-medium"
+                                  onClick={() => setExpandedCollateralLoanId(isExpanded ? null : loan.id)}
+                                  data-testid={`button-expand-loan-${loan.id}`}
+                                >
+                                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  #{loan.id}
+                                </button>
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
+                              </TableCell>
+                              <TableCell>
+                                <a 
+                                  href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-orange-500 hover:text-orange-600 flex items-center gap-1"
+                                >
+                                  {parseFloat(loan.collateralBtc || 0).toFixed(8)} BTC
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              </TableCell>
+                              <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
+                              <TableCell>
+                                <LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" />
+                              </TableCell>
+                              <TableCell>
+                                {maturityDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </TableCell>
+                              <TableCell>
+                                {loan.status === 'repayment_pending' ? (
+                                  <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100">
+                                    Repayment Sent
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                    Active
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {loan.status === 'repayment_pending' ? (
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                                    onClick={async () => {
+                                      try {
+                                        const res = await apiRequest(`/api/loans/${loan.id}/confirm-receipt`, "POST", {});
+                                        const data = await res.json();
+                                        if (data.success) {
+                                          toast({
+                                            title: "Repayment Confirmed!",
+                                            description: data.message,
+                                          });
+                                          queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
+                                        }
+                                      } catch (error: any) {
                                         toast({
-                                          title: "Repayment Confirmed! 🎉",
-                                          description: data.message,
+                                          title: "Error",
+                                          description: error.message || "Failed to confirm receipt",
+                                          variant: "destructive",
                                         });
-                                        queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
                                       }
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Error",
-                                        description: error.message || "Failed to confirm receipt",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  data-testid={`button-confirm-receipt-${loan.id}`}
-                                >
-                                  Confirm Receipt
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="link"
-                                  className="text-primary p-0 h-auto"
-                                  onClick={() => setActiveDetailLoan(loan)}
-                                  data-testid={`button-view-active-${loan.id}`}
-                                >
-                                  View
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
+                                    }}
+                                    data-testid={`button-confirm-receipt-${loan.id}`}
+                                  >
+                                    Confirm Receipt
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setActiveDetailLoan(loan)}
+                                    data-testid={`button-view-active-${loan.id}`}
+                                  >
+                                    Details
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                            
+                            {/* Collateral Deposit History (expandable) */}
+                            {isExpanded && (
+                              <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                                <TableCell colSpan={8} className="p-4">
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                                      <Bitcoin className="h-4 w-4 text-orange-500" />
+                                      Collateral Deposit History
+                                    </h4>
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden">
+                                      <table className="w-full text-sm">
+                                        <thead className="bg-gray-100 dark:bg-gray-700">
+                                          <tr>
+                                            <th className="text-left p-2 font-medium">Type</th>
+                                            <th className="text-left p-2 font-medium">Amount</th>
+                                            <th className="text-left p-2 font-medium">Status</th>
+                                            <th className="text-left p-2 font-medium">Transaction</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {deposits.map((deposit, idx) => (
+                                            <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                              <td className="p-2">
+                                                <span className={deposit.type.includes('Top-Up') ? 'text-amber-600 font-medium' : ''}>
+                                                  {deposit.type}
+                                                </span>
+                                              </td>
+                                              <td className="p-2 font-mono text-xs">{deposit.amount.toFixed(8)} BTC</td>
+                                              <td className="p-2">
+                                                {deposit.status === 'confirmed' && (
+                                                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                                                    Confirmed
+                                                  </Badge>
+                                                )}
+                                                {deposit.status === 'mempool' && (
+                                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs">
+                                                    In Mempool
+                                                  </Badge>
+                                                )}
+                                                {deposit.status === 'pending' && (
+                                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                                                    Monitoring
+                                                  </Badge>
+                                                )}
+                                              </td>
+                                              <td className="p-2">
+                                                {deposit.txid ? (
+                                                  <a
+                                                    href={`https://mempool.space/testnet4/tx/${deposit.txid}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
+                                                  >
+                                                    {deposit.txid.slice(0, 8)}...{deposit.txid.slice(-6)}
+                                                    <ExternalLink className="h-3 w-3" />
+                                                  </a>
+                                                ) : (
+                                                  <span className="text-gray-400 text-xs">-</span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    
+                                    {/* Escrow Address */}
+                                    {loan.escrowAddress && (
+                                      <div className="text-sm text-muted-foreground">
+                                        Escrow Address:{' '}
+                                        <a
+                                          href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-500 hover:underline font-mono"
+                                        >
+                                          {loan.escrowAddress.slice(0, 12)}...{loan.escrowAddress.slice(-8)}
+                                          <ExternalLink className="h-3 w-3 inline ml-1" />
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
                         );
                       })}
                   </TableBody>
