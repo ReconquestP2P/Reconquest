@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -1033,6 +1033,112 @@ export default function LenderDashboard() {
                     </div>
                   </div>
 
+                  {/* Collateral Deposit History */}
+                  {(() => {
+                    const deposits = [];
+                    const currentCollateral = parseFloat(loan.collateralBtc || 0);
+                    const previousCollateral = parseFloat(loan.previousCollateralBtc || 0);
+                    const pendingTopUp = parseFloat(loan.pendingTopUpBtc || 0);
+                    
+                    if (previousCollateral > 0) {
+                      deposits.push({
+                        type: 'Initial Deposit',
+                        amount: previousCollateral,
+                        txid: loan.depositTxid,
+                        status: 'confirmed'
+                      });
+                      if (currentCollateral > previousCollateral) {
+                        deposits.push({
+                          type: 'Top-Up',
+                          amount: currentCollateral - previousCollateral,
+                          txid: loan.topUpTxid,
+                          status: 'confirmed'
+                        });
+                      }
+                    } else {
+                      deposits.push({
+                        type: 'Initial Deposit',
+                        amount: currentCollateral,
+                        txid: loan.depositTxid,
+                        status: 'confirmed'
+                      });
+                    }
+                    
+                    if (loan.topUpMonitoringActive && pendingTopUp > 0) {
+                      deposits.push({
+                        type: 'Pending Top-Up',
+                        amount: pendingTopUp,
+                        txid: loan.topUpTxid,
+                        status: loan.topUpDetectedInMempoolAt ? 'mempool' : 'pending'
+                      });
+                    }
+                    
+                    return (
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          <Bitcoin className="h-4 w-4 text-orange-500" />
+                          Collateral Deposit History
+                        </h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-100 dark:bg-gray-700">
+                              <tr>
+                                <th className="text-left p-2 font-medium">Type</th>
+                                <th className="text-left p-2 font-medium">Amount</th>
+                                <th className="text-left p-2 font-medium">Status</th>
+                                <th className="text-left p-2 font-medium">Transaction</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {deposits.map((deposit, idx) => (
+                                <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                  <td className="p-2">
+                                    <span className={deposit.type.includes('Top-Up') ? 'text-amber-600 font-medium' : ''}>
+                                      {deposit.type}
+                                    </span>
+                                  </td>
+                                  <td className="p-2 font-mono text-xs">{deposit.amount.toFixed(8)} BTC</td>
+                                  <td className="p-2">
+                                    {deposit.status === 'confirmed' && (
+                                      <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                                        ✓ Confirmed
+                                      </Badge>
+                                    )}
+                                    {deposit.status === 'mempool' && (
+                                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs">
+                                        ⏳ Mempool
+                                      </Badge>
+                                    )}
+                                    {deposit.status === 'pending' && (
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                                        🔍 Monitoring
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="p-2">
+                                    {deposit.txid ? (
+                                      <a
+                                        href={`https://mempool.space/testnet4/tx/${deposit.txid}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
+                                      >
+                                        {deposit.txid.slice(0, 6)}...
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    ) : (
+                                      <span className="text-gray-400 text-xs">-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Escrow Link */}
                   {loan.escrowAddress && (
                     <div className="text-center">
@@ -1040,10 +1146,11 @@ export default function LenderDashboard() {
                         href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-1"
                         data-testid="link-escrow-mempool"
                       >
-                        🔍 View Escrow on Mempool →
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View Escrow on Mempool
                       </a>
                     </div>
                   )}
