@@ -2552,6 +2552,49 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // DEVELOPMENT ONLY: Recover remaining collateral from escrow (for testing)
+  app.post("/api/test/recover-escrow/:loanId", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { destinationAddress } = req.body;
+      
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Use provided address or lender's address
+      let targetAddress = destinationAddress;
+      if (!targetAddress && loan.lenderId) {
+        const lender = await storage.getUser(loan.lenderId);
+        targetAddress = lender?.btcAddress;
+      }
+      
+      if (!targetAddress) {
+        return res.status(400).json({ message: "No destination address available" });
+      }
+      
+      const { releaseCollateralToAddress } = await import('./services/CollateralReleaseService.js');
+      const result = await releaseCollateralToAddress(loanId, targetAddress);
+      
+      res.json({
+        success: result.success,
+        message: result.success 
+          ? `Recovered remaining collateral to ${targetAddress}` 
+          : result.error,
+        txid: result.txid,
+        broadcastUrl: result.broadcastUrl
+      });
+    } catch (error: any) {
+      console.error("Error recovering escrow:", error);
+      res.status(500).json({ message: error.message || "Failed to recover escrow" });
+    }
+  });
+
   // Test email endpoint
   app.post("/api/test-email", async (req, res) => {
     try {
