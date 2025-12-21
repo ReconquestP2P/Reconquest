@@ -218,7 +218,7 @@ export class LtvMonitoringService {
   private async executeLiquidation(
     loan: Loan, 
     currentLtv: number, 
-    collateralValueUsd: number,
+    collateralValueEur: number,
     btcPriceUsd: number
   ): Promise<void> {
     try {
@@ -249,7 +249,7 @@ export class LtvMonitoringService {
         });
 
         // Send notifications
-        await this.sendLiquidationNotifications(loan, lender, currentLtv, collateralValueUsd, btcPriceUsd, txid);
+        await this.sendLiquidationNotifications(loan, lender, currentLtv, collateralValueEur, btcPriceUsd, txid);
       } else {
         // No pre-signed tx - use CollateralReleaseService to create and broadcast
         console.log(`[LtvMonitor] Creating liquidation tx for loan #${loan.id} -> ${lender.btcAddress}`);
@@ -270,7 +270,7 @@ export class LtvMonitoringService {
           });
 
           // Send notifications
-          await this.sendLiquidationNotifications(loan, lender, currentLtv, collateralValueUsd, btcPriceUsd, result.txid!);
+          await this.sendLiquidationNotifications(loan, lender, currentLtv, collateralValueEur, btcPriceUsd, result.txid!);
         } else {
           console.error(`[LtvMonitor] Liquidation failed for loan #${loan.id}: ${result.error}`);
         }
@@ -287,7 +287,7 @@ export class LtvMonitoringService {
     loan: Loan,
     lender: any,
     currentLtv: number,
-    collateralValueUsd: number,
+    collateralValueEur: number,
     btcPriceUsd: number,
     txid: string
   ): Promise<void> {
@@ -296,9 +296,8 @@ export class LtvMonitoringService {
       const collateralBtc = parseFloat(String(loan.collateralBtc));
       const loanAmount = parseFloat(String(loan.amount));
       
-      // Convert to EUR (using 0.85 conversion rate)
+      // Convert BTC price to EUR (collateralValueEur is already in EUR from caller)
       const btcPriceEur = btcPriceUsd * 0.85;
-      const collateralValueEur = collateralValueUsd * 0.85;
 
       // Email to borrower
       if (borrower?.email) {
