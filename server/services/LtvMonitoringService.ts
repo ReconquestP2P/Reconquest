@@ -295,6 +295,10 @@ export class LtvMonitoringService {
       const borrower = await storage.getUser(loan.borrowerId);
       const collateralBtc = parseFloat(String(loan.collateralBtc));
       const loanAmount = parseFloat(String(loan.amount));
+      
+      // Convert to EUR (using 0.85 conversion rate)
+      const btcPriceEur = btcPriceUsd * 0.85;
+      const collateralValueEur = collateralValueUsd * 0.85;
 
       // Email to borrower
       if (borrower?.email) {
@@ -309,8 +313,8 @@ export class LtvMonitoringService {
               <ul style="color: #991B1B;">
                 <li>Loan Amount: €${loanAmount.toLocaleString()}</li>
                 <li>Collateral: ${collateralBtc.toFixed(8)} BTC</li>
-                <li>BTC Price at Liquidation: $${btcPriceUsd.toLocaleString()}</li>
-                <li>Collateral Value: $${collateralValueUsd.toFixed(2)}</li>
+                <li>BTC Price at Liquidation: €${btcPriceEur.toLocaleString()}</li>
+                <li>Collateral Value: €${collateralValueEur.toFixed(2)}</li>
                 <li>LTV at Liquidation: ${(currentLtv * 100).toFixed(1)}%</li>
               </ul>
             </div>
@@ -344,7 +348,7 @@ export class LtvMonitoringService {
               <ul style="color: #065F46;">
                 <li>Amount: ${collateralBtc.toFixed(8)} BTC</li>
                 <li>Your Address: ${lender.btcAddress}</li>
-                <li>BTC Price at Liquidation: $${btcPriceUsd.toLocaleString()}</li>
+                <li>BTC Price at Liquidation: €${btcPriceEur.toLocaleString()}</li>
               </ul>
             </div>
 
