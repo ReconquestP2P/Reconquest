@@ -2449,7 +2449,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
   
-  // Trigger immediate LTV check for a specific loan
+  // Trigger immediate LTV check for a specific loan (uses real market price only)
   app.post("/api/admin/ltv/check/:loanId", authenticateToken, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
@@ -2457,13 +2457,12 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       
       const loanId = parseInt(req.params.loanId);
-      const { overridePrice } = req.body;
       
       if (isNaN(loanId)) {
         return res.status(400).json({ message: "Invalid loan ID" });
       }
       
-      const result = await ltvMonitoring.checkSpecificLoan(loanId, overridePrice);
+      const result = await ltvMonitoring.checkSpecificLoan(loanId);
       
       if (!result) {
         return res.status(404).json({ message: "Loan not found" });

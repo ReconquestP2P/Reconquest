@@ -557,17 +557,17 @@ export class LtvMonitoringService {
   }
 
   /**
-   * Manual check for a specific loan
+   * Manual check for a specific loan (uses real market price only)
    */
-  async checkSpecificLoan(loanId: number, overridePrice?: number): Promise<LtvCheckResult | null> {
+  async checkSpecificLoan(loanId: number): Promise<LtvCheckResult | null> {
     const loan = await storage.getLoan(loanId);
     if (!loan) {
       console.log(`[LtvMonitor] Loan #${loanId} not found`);
       return null;
     }
 
-    const btcPriceUsd = overridePrice || (await getBtcPrice()).usd;
-    return await this.checkLoanLtv(loan, btcPriceUsd);
+    const priceData = await getBtcPrice();
+    return await this.checkLoanLtv(loan, priceData.usd);
   }
 }
 
