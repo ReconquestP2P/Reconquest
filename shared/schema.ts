@@ -299,13 +299,12 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const disputes = pgTable("disputes", {
   id: serial("id").primaryKey(),
   loanId: integer("loan_id").notNull(),
-  filedBy: integer("filed_by").notNull(), // userId of party filing dispute
+  raisedBy: integer("raised_by").notNull(), // userId of party filing dispute
   disputeType: text("dispute_type").notNull(), // "borrower_default", "lender_non_payout", "other"
-  evidenceJson: text("evidence_json").notNull(), // JSON blob with evidence from both parties
   status: text("status").notNull().default("open"), // open, under_review, resolved, dismissed
   resolution: text("resolution"), // Resolution decision
   broadcastTxid: text("broadcast_txid"), // TXID of broadcast tx if dispute resulted in on-chain action
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  raisedAt: timestamp("raised_at").notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at"),
 });
 

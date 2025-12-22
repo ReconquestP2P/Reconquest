@@ -3057,9 +3057,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Create dispute
       const dispute = await storage.createDispute({
         loanId,
-        filedBy: userId,
+        raisedBy: userId,
         disputeType,
-        evidenceJson: JSON.stringify(evidence || {}),
         status: "open",
       });
 
