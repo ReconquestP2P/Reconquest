@@ -2598,6 +2598,142 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       await storage.createDisputeAuditLog(auditLog);
       
+      // Send email notifications to both parties
+      const calc = payoutResult.calculation;
+      if (calc) {
+        const baseUrl = getBaseUrl();
+        const lenderBtc = (targetLenderSats / 100_000_000).toFixed(8);
+        const borrowerBtc = (targetBorrowerSats / 100_000_000).toFixed(8);
+        const lenderEur = (targetLenderSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
+        const borrowerEur = (targetBorrowerSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
+        const priceTimestamp = calc.priceTimestamp || new Date().toISOString();
+        const txExplorerUrl = payoutResult.txid ? `https://mempool.space/testnet4/tx/${payoutResult.txid}` : null;
+        
+        // Get user info for emails
+        let lenderEmail = '';
+        let borrowerEmail = '';
+        if (loan.lenderId) {
+          const lender = await storage.getUser(loan.lenderId);
+          lenderEmail = lender?.email || '';
+        }
+        if (loan.borrowerId) {
+          const borrower = await storage.getUser(loan.borrowerId);
+          borrowerEmail = borrower?.email || '';
+        }
+        
+        // Send email to LENDER with full breakdown
+        if (lenderEmail) {
+          const lenderSubject = decision === 'BORROWER_WINS' 
+            ? `Dispute Resolved - Loan #${loanId}`
+            : `💰 Collateral Distribution Complete - Loan #${loanId}`;
+          
+          await sendEmail({
+            to: lenderEmail,
+            from: 'Reconquest <noreply@reconquestp2p.com>',
+            subject: lenderSubject,
+            html: `
+              <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                </div>
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
+                  <h1 style="color: white; margin: 0; text-align: center;">Dispute Resolution Complete</h1>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                  <p>Dear Lender,</p>
+                  <p>The dispute for <strong>Loan #${loanId}</strong> has been resolved. Here is the detailed breakdown of the collateral distribution:</p>
+                  
+                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                    <h3 style="margin-top: 0; color: #333;">📊 Distribution Summary</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decision.replace('_', ' ')}</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Borrower Receives:</td><td style="padding: 8px 0;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Network Fee:</td><td style="padding: 8px 0;">${calc.networkFeeSats} sats</td></tr>
+                    </table>
+                  </div>
+                  
+                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #4A90E2;">
+                    <h3 style="margin-top: 0; color: #333;">💱 Price Calculation Details</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0; color: #666;">BTC/EUR Price Used:</td><td style="padding: 8px 0; font-weight: bold;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Price Timestamp:</td><td style="padding: 8px 0;">${new Date(priceTimestamp).toLocaleString()}</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Your Claim (Principal + Interest):</td><td style="padding: 8px 0;">€${calc.debtEur.toFixed(2)}</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Total Collateral Value:</td><td style="padding: 8px 0;">€${calc.collateralValueEur.toFixed(2)}</td></tr>
+                    </table>
+                    <p style="font-size: 12px; color: #888; margin-top: 15px;">
+                      <strong>How your BTC amount was calculated:</strong><br>
+                      Your claim of €${calc.debtEur.toFixed(2)} ÷ BTC price of €${calc.btcPriceEur.toFixed(2)} = ${lenderBtc} BTC
+                    </p>
+                  </div>
+                  
+                  ${txExplorerUrl ? `
+                  <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>✅ Transaction Broadcast:</strong></p>
+                    <a href="${txExplorerUrl}" style="color: #1976d2; word-break: break-all;">${payoutResult.txid}</a>
+                  </div>
+                  ` : ''}
+                  
+                  <p style="color: #666; font-size: 14px;">
+                    The BTC has been sent to your registered Bitcoin address: <code style="background: #eee; padding: 2px 6px; border-radius: 3px;">${effectiveLenderAddress}</code>
+                  </p>
+                  
+                  <p>If you have any questions about this distribution, please contact our support team.</p>
+                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                </div>
+              </div>
+            `,
+          });
+          console.log(`📧 Fair split email sent to lender: ${lenderEmail}`);
+        }
+        
+        // Send email to BORROWER
+        if (borrowerEmail && targetBorrowerSats > 0) {
+          await sendEmail({
+            to: borrowerEmail,
+            from: 'Reconquest <noreply@reconquestp2p.com>',
+            subject: `Dispute Resolved - Loan #${loanId}`,
+            html: `
+              <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                </div>
+                <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
+                  <h1 style="color: white; margin: 0; text-align: center;">Dispute Resolution Complete</h1>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                  <p>Dear Borrower,</p>
+                  <p>The dispute for <strong>Loan #${loanId}</strong> has been resolved. Here is the distribution breakdown:</p>
+                  
+                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745;">
+                    <h3 style="margin-top: 0; color: #333;">📊 Your Collateral Return</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0; color: #666;">Your Return:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Lender Received:</td><td style="padding: 8px 0;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
+                    </table>
+                  </div>
+                  
+                  ${txExplorerUrl ? `
+                  <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>✅ Transaction:</strong></p>
+                    <a href="${txExplorerUrl}" style="color: #1976d2; word-break: break-all;">${payoutResult.txid}</a>
+                  </div>
+                  ` : ''}
+                  
+                  <p style="color: #666; font-size: 14px;">
+                    The BTC has been sent to your registered address: <code style="background: #eee; padding: 2px 6px; border-radius: 3px;">${effectiveBorrowerAddress}</code>
+                  </p>
+                  
+                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                </div>
+              </div>
+            `,
+          });
+          console.log(`📧 Fair split email sent to borrower: ${borrowerEmail}`);
+        }
+      }
+      
       // Return result with broadcast info
       res.json({
         success: true,
