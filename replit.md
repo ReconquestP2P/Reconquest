@@ -49,6 +49,20 @@ Preferred communication style: Simple, everyday language.
 ### Loan Flow
 The platform facilitates loan creation, lender commitment, borrower collateral deposit, and a dual key generation/transaction signing process where both parties generate ephemeral keys and download pre-signed recovery plans. The repayment flow involves cryptographic verification of both borrower and lender pre-signed transactions before broadcasting to the Bitcoin testnet.
 
+### Dispute Resolution & Fair Split
+- **2-of-3 Multisig Requirement**: Dispute resolution requires signatures from both platform AND lender (or borrower) to spend escrow funds.
+- **Pending Resolution Flow**:
+  1. Admin reviews dispute and selects decision (LENDER_WINS, BORROWER_WINS, TIMEOUT_DEFAULT)
+  2. Platform creates and signs a PSBT with the fair split distribution
+  3. PSBT is stored in loan record with `disputeStatus: 'pending_lender_signature'`
+  4. Lender receives email notification with distribution breakdown
+  5. Lender views pending resolution in dashboard "Resolutions" tab
+  6. Lender downloads PSBT, signs with their wallet (e.g., Sparrow), and submits signed PSBT
+  7. Platform combines signatures (2-of-3) and broadcasts to Bitcoin testnet
+  8. Both parties receive email confirmation with transaction link
+- **Fair Split Formula**: Based on Firefish distribution rules - lender receives debt (principal + interest) in BTC equivalent, borrower receives remainder minus network fees
+- **Schema fields for pending resolutions**: `pendingResolutionPsbt`, `pendingResolutionDecision`, `pendingResolutionLenderSats`, `pendingResolutionBorrowerSats`, `pendingResolutionBtcPrice`, `pendingResolutionCreatedAt`, `lenderSignatureHex`, `lenderSignedAt`
+
 ### LTV Monitoring & Collateral Top-Up
 - **Automated LTV Monitoring**: Every 60 seconds, the system checks all active loans' LTV ratios using real-time EUR prices.
 - **Two-Tier Warning System**: 

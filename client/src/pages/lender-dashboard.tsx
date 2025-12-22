@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
+import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown, AlertCircle, FileSignature } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -76,6 +76,52 @@ export default function LenderDashboard() {
     queryKey: ["/api/btc-price"],
     refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  // Fetch pending resolutions for dispute signing
+  interface PendingResolution {
+    loanId: number;
+    decision: string;
+    lenderPayoutSats: number;
+    borrowerPayoutSats: number;
+    btcPriceEur: number;
+    psbtBase64: string;
+    createdAt: string;
+    lenderPubkey: string;
+    escrowAddress: string;
+  }
+  
+  const { data: pendingResolutionsData, isLoading: resolutionsLoading } = useQuery<{ success: boolean; pendingResolutions: PendingResolution[] }>({
+    queryKey: ["/api/lender/pending-resolutions"],
+    refetchInterval: 30000,
+  });
+  
+  const pendingResolutions = pendingResolutionsData?.pendingResolutions || [];
+
+  // Mutation for signing resolution PSBT
+  const signResolutionMutation = useMutation({
+    mutationFn: async ({ loanId, signedPsbtBase64 }: { loanId: number; signedPsbtBase64: string }) => {
+      return apiRequest(`/api/lender/sign-resolution/${loanId}`, "POST", { signedPsbtBase64 });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lender/pending-resolutions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
+      setSigningResolution(null);
+      toast({
+        title: "Transaction Broadcast!",
+        description: `Your signature completed the resolution. TXID: ${data.txid?.substring(0, 16)}...`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Signing Failed",
+        description: error.message || "Failed to complete resolution signing",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // State for signing modal
+  const [signingResolution, setSigningResolution] = useState<PendingResolution | null>(null);
 
   // Helper function to calculate current LTV based on live BTC price
   const calculateCurrentLtv = (loan: any): number => {
@@ -276,13 +322,21 @@ export default function LenderDashboard() {
           <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <Tabs defaultValue={pendingResolutions.length > 0 ? "resolutions" : "overview"} className="w-full">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
           <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="active">Active Loans</TabsTrigger>
+          <TabsTrigger value="resolutions" className="relative">
+            Resolutions
+            {pendingResolutions.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {pendingResolutions.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -1057,6 +1111,130 @@ export default function LenderDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="resolutions" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileSignature className="h-5 w-5 text-orange-500" />
+                  Pending Resolution Signatures
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Disputes awaiting your signature to complete the collateral distribution
+                </p>
+              </div>
+              <Button 
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/lender/pending-resolutions"] })}
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                data-testid="button-refresh-resolutions"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {resolutionsLoading ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground mt-2">Loading pending resolutions...</p>
+                </div>
+              ) : pendingResolutions.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingResolutions.map((resolution) => {
+                    const lenderBtc = (resolution.lenderPayoutSats / 100_000_000).toFixed(8);
+                    const borrowerBtc = (resolution.borrowerPayoutSats / 100_000_000).toFixed(8);
+                    const lenderEur = (resolution.lenderPayoutSats / 100_000_000 * resolution.btcPriceEur).toFixed(2);
+                    const borrowerEur = (resolution.borrowerPayoutSats / 100_000_000 * resolution.btcPriceEur).toFixed(2);
+                    
+                    return (
+                      <Card key={resolution.loanId} className="border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10">
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <AlertCircle className="h-5 w-5 text-orange-500" />
+                                  <h3 className="text-lg font-semibold">Loan #{resolution.loanId.toString().padStart(6, '0')}</h3>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Dispute resolution ready - your signature is required
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 border-orange-300">
+                                {resolution.decision?.replace('_', ' ') || 'FAIR SPLIT'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border">
+                              <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">Distribution Summary</h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                                  <p className="text-sm text-muted-foreground">Your Payout</p>
+                                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{lenderBtc} BTC</p>
+                                  <p className="text-sm text-muted-foreground">({lenderEur} EUR)</p>
+                                </div>
+                                <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                                  <p className="text-sm text-muted-foreground">Borrower Receives</p>
+                                  <p className="text-xl font-bold">{borrowerBtc} BTC</p>
+                                  <p className="text-sm text-muted-foreground">({borrowerEur} EUR)</p>
+                                </div>
+                              </div>
+                              <div className="mt-3 text-sm text-muted-foreground">
+                                <span className="font-medium">BTC Price Used:</span>{' '}
+                                {resolution.btcPriceEur.toFixed(2)} EUR
+                              </div>
+                            </div>
+                            
+                            {resolution.escrowAddress && (
+                              <div className="text-sm flex items-center gap-2">
+                                <span className="text-muted-foreground">Escrow:</span>
+                                <a
+                                  href={`https://mempool.space/testnet4/address/${resolution.escrowAddress}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline font-mono"
+                                  data-testid={`link-escrow-${resolution.loanId}`}
+                                >
+                                  {resolution.escrowAddress.slice(0, 12)}...{resolution.escrowAddress.slice(-8)}
+                                  <ExternalLink className="h-3 w-3 inline ml-1" />
+                                </a>
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-3 pt-2">
+                              <Button 
+                                onClick={() => setSigningResolution(resolution)}
+                                className="flex-1 bg-orange-500 hover:bg-orange-600"
+                                disabled={signResolutionMutation.isPending}
+                                data-testid={`button-sign-resolution-${resolution.loanId}`}
+                              >
+                                <FileSignature className="h-4 w-4 mr-2" />
+                                {signResolutionMutation.isPending ? 'Signing...' : 'Sign Resolution'}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FileSignature className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                  <p className="text-muted-foreground">
+                    No pending resolution signatures
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Any disputes requiring your signature will appear here
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="achievements" className="space-y-6">
           <AchievementsDashboard userId={userId} />
         </TabsContent>
@@ -1318,6 +1496,145 @@ export default function LenderDashboard() {
                 </div>
               );
             })()}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Resolution Signing Modal */}
+      {signingResolution && (
+        <Dialog open={!!signingResolution} onOpenChange={() => setSigningResolution(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileSignature className="h-5 w-5 text-orange-500" />
+                Sign Resolution Transaction
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                <p className="text-sm text-orange-800 dark:text-orange-200">
+                  This transaction distributes the collateral from Loan #{signingResolution.loanId.toString().padStart(6, '0')}. 
+                  Review the distribution carefully before signing.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-muted-foreground">Your Payout</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {(signingResolution.lenderPayoutSats / 100_000_000).toFixed(8)} BTC
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ({(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)} EUR)
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                  <p className="text-sm text-muted-foreground">Borrower Receives</p>
+                  <p className="text-2xl font-bold">
+                    {(signingResolution.borrowerPayoutSats / 100_000_000).toFixed(8)} BTC
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ({(signingResolution.borrowerPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)} EUR)
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label>Platform-Signed PSBT (Base64)</Label>
+                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border text-xs font-mono break-all max-h-32 overflow-y-auto">
+                  {signingResolution.psbtBase64}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(signingResolution.psbtBase64);
+                      toast({
+                        title: "Copied!",
+                        description: "PSBT copied to clipboard",
+                      });
+                    }}
+                    data-testid="button-copy-psbt"
+                  >
+                    Copy PSBT
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const blob = new Blob([signingResolution.psbtBase64], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `resolution-loan-${signingResolution.loanId}.psbt`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    data-testid="button-download-psbt"
+                  >
+                    Download PSBT
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label>Your Signed PSBT (paste after signing externally)</Label>
+                <textarea
+                  className="w-full h-24 p-3 text-xs font-mono border rounded bg-background"
+                  placeholder="Paste your signed PSBT here after signing with your wallet (e.g., Sparrow)"
+                  id="signedPsbtInput"
+                  data-testid="input-signed-psbt"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Import the PSBT into your Bitcoin wallet (like Sparrow), sign it with your keys, then paste the signed PSBT above.
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setSigningResolution(null)}
+                  data-testid="button-cancel-signing"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  disabled={signResolutionMutation.isPending}
+                  onClick={() => {
+                    const signedPsbt = (document.getElementById('signedPsbtInput') as HTMLTextAreaElement)?.value;
+                    if (!signedPsbt) {
+                      toast({
+                        title: "Missing Signature",
+                        description: "Please paste your signed PSBT",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    signResolutionMutation.mutate({
+                      loanId: signingResolution.loanId,
+                      signedPsbtBase64: signedPsbt.trim(),
+                    });
+                  }}
+                  data-testid="button-submit-signature"
+                >
+                  {signResolutionMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Broadcasting...
+                    </>
+                  ) : (
+                    <>
+                      <FileSignature className="h-4 w-4 mr-2" />
+                      Submit Signature & Broadcast
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}

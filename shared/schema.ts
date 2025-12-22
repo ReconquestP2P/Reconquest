@@ -148,6 +148,16 @@ export const loans = pgTable("loans", {
   previousCollateralBtc: decimal("previous_collateral_btc", { precision: 10, scale: 8 }), // Collateral before top-up (for verification)
   topUpDetectedInMempoolAt: timestamp("top_up_detected_in_mempool_at"), // When we first saw the top-up in mempool
   topUpTxid: text("top_up_txid"), // Transaction ID of the top-up deposit
+  
+  // Dispute Resolution - Lender Signature Flow
+  pendingResolutionPsbt: text("pending_resolution_psbt"), // Base64 PSBT awaiting lender signature
+  pendingResolutionDecision: text("pending_resolution_decision"), // LENDER_WINS, BORROWER_WINS, etc.
+  pendingResolutionLenderSats: integer("pending_resolution_lender_sats"), // Lender's payout in sats
+  pendingResolutionBorrowerSats: integer("pending_resolution_borrower_sats"), // Borrower's payout in sats
+  pendingResolutionBtcPrice: decimal("pending_resolution_btc_price", { precision: 12, scale: 2 }), // BTC/EUR price used
+  pendingResolutionCreatedAt: timestamp("pending_resolution_created_at"), // When admin created the resolution
+  lenderSignatureHex: text("lender_signature_hex"), // Lender's signature once provided
+  lenderSignedAt: timestamp("lender_signed_at"), // When lender signed
 });
 
 export const loanOffers = pgTable("loan_offers", {

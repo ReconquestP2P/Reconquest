@@ -2474,7 +2474,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
-  // Resolve dispute with fair split payout
+  // Resolve dispute with fair split payout - creates pending resolution for lender to sign
   app.post("/api/admin/disputes/:loanId/resolve-fair-split", authenticateToken, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
@@ -2525,172 +2525,326 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Borrower address not found" });
       }
       
-      // Get platform private key for signing (must match the key used to create the escrow)
+      // Get platform private key for signing
       const { BitcoinEscrowService } = await import('./services/BitcoinEscrowService.js');
       const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
       
-      // Calculate the split first to preview
-      const { calculateSplit, executeSplitPayout } = await import('./services/SplitPayoutService.js');
-      const previewCalculation = await calculateSplit(loan);
+      // Create platform-signed PSBT for lender to co-sign
+      const { createPlatformSignedPsbt } = await import('./services/SplitPayoutService.js');
       
-      // Determine actual distribution based on decision
-      let targetLenderSats = 0;
-      let targetBorrowerSats = 0;
       let effectiveLenderAddress = lenderAddress;
       let effectiveBorrowerAddress = borrowerAddress;
       
       if (decision === 'BORROWER_WINS') {
-        // Borrower wins: they get full collateral minus fees (lender gets nothing)
-        targetBorrowerSats = previewCalculation.totalCollateralSats - previewCalculation.networkFeeSats;
-        targetLenderSats = 0;
-        // For borrower wins, we only need to send to borrower
-        effectiveLenderAddress = borrowerAddress; // Will get 0
-      } else {
-        // LENDER_WINS or TIMEOUT_DEFAULT: fair split (lender gets debt, borrower gets remainder)
-        targetLenderSats = previewCalculation.lenderPayoutSats;
-        targetBorrowerSats = previewCalculation.borrowerPayoutSats;
+        effectiveLenderAddress = borrowerAddress;
       }
       
-      // Execute the split payout - this broadcasts the Bitcoin transaction
-      console.log(`💰 Executing split payout for loan #${loanId}: decision=${decision}`);
-      const payoutResult = await executeSplitPayout(
+      const psbtResult = await createPlatformSignedPsbt(
         loan,
         effectiveLenderAddress,
         effectiveBorrowerAddress,
         platformPrivateKey
       );
       
-      // Update loan status based on result
-      const loanUpdates: any = {
-        disputeStatus: 'resolved',
-        disputeResolvedAt: new Date(),
-      };
-      
-      if (decision === 'BORROWER_WINS') {
-        loanUpdates.status = 'completed';
-      } else {
-        loanUpdates.status = 'defaulted';
+      if (!psbtResult.success || !psbtResult.psbtBase64) {
+        return res.status(400).json({ 
+          message: `Failed to create resolution transaction: ${psbtResult.error}` 
+        });
       }
+      
+      // Store pending resolution for lender to sign
+      const loanUpdates: any = {
+        disputeStatus: 'pending_lender_signature',
+        pendingResolutionPsbt: psbtResult.psbtBase64,
+        pendingResolutionDecision: decision,
+        pendingResolutionLenderSats: psbtResult.lenderPayoutSats,
+        pendingResolutionBorrowerSats: psbtResult.borrowerPayoutSats,
+        pendingResolutionBtcPrice: psbtResult.calculation?.btcPriceEur.toString(),
+        pendingResolutionCreatedAt: new Date(),
+      };
       
       await storage.updateLoan(loanId, loanUpdates);
       
-      // Create audit log with broadcast result
+      // Create audit log
       const auditLog = {
         loanId,
         disputeId: null,
         outcome: decision,
-        ruleFired: `FAIR_SPLIT_${decision}`,
+        ruleFired: `FAIR_SPLIT_${decision}_PENDING`,
         txTypeUsed: 'fair_split',
         evidenceSnapshot: JSON.stringify({
           decision,
           adminNotes,
-          calculation: payoutResult.calculation,
-          targetLenderSats,
-          targetBorrowerSats,
+          calculation: psbtResult.calculation,
+          lenderPayoutSats: psbtResult.lenderPayoutSats,
+          borrowerPayoutSats: psbtResult.borrowerPayoutSats,
+          status: 'pending_lender_signature',
           timestamp: new Date().toISOString(),
         }),
-        broadcastTxid: payoutResult.txid || null,
-        broadcastSuccess: payoutResult.success,
-        broadcastError: payoutResult.error || null,
+        broadcastTxid: null,
+        broadcastSuccess: false,
+        broadcastError: 'Awaiting lender signature',
         triggeredBy: req.user.id,
         triggeredByRole: 'admin',
       };
       
       await storage.createDisputeAuditLog(auditLog);
       
-      // Send email notifications to both parties
-      const calc = payoutResult.calculation;
-      if (calc) {
+      // Send email to lender requesting their signature
+      const calc = psbtResult.calculation;
+      const lenderSats = psbtResult.lenderPayoutSats || 0;
+      const borrowerSats = psbtResult.borrowerPayoutSats || 0;
+      
+      if (calc && loan.lenderId) {
         const baseUrl = getBaseUrl();
-        const lenderBtc = (targetLenderSats / 100_000_000).toFixed(8);
-        const borrowerBtc = (targetBorrowerSats / 100_000_000).toFixed(8);
-        const lenderEur = (targetLenderSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
-        const borrowerEur = (targetBorrowerSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
-        const priceTimestamp = calc.priceTimestamp || new Date().toISOString();
-        const txExplorerUrl = payoutResult.txid ? `https://mempool.space/testnet4/tx/${payoutResult.txid}` : null;
+        const lenderBtc = (lenderSats / 100_000_000).toFixed(8);
+        const borrowerBtc = (borrowerSats / 100_000_000).toFixed(8);
+        const lenderEur = (lenderSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
+        const borrowerEur = (borrowerSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
         
-        // Get user info for emails
-        let lenderEmail = '';
-        let borrowerEmail = '';
-        if (loan.lenderId) {
-          const lender = await storage.getUser(loan.lenderId);
-          lenderEmail = lender?.email || '';
-        }
-        if (loan.borrowerId) {
-          const borrower = await storage.getUser(loan.borrowerId);
-          borrowerEmail = borrower?.email || '';
-        }
-        
-        // Send email to LENDER with full breakdown
-        if (lenderEmail) {
-          const lenderSubject = decision === 'BORROWER_WINS' 
-            ? `Dispute Resolved - Loan #${loanId}`
-            : `💰 Collateral Distribution Complete - Loan #${loanId}`;
-          
+        const lender = await storage.getUser(loan.lenderId);
+        if (lender?.email) {
           await sendEmail({
-            to: lenderEmail,
+            to: lender.email,
             from: 'Reconquest <noreply@reconquestp2p.com>',
-            subject: lenderSubject,
+            subject: `🔐 Signature Required - Dispute Resolution for Loan #${loanId}`,
             html: `
               <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
                 <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
                   <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
                 </div>
                 <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
-                  <h1 style="color: white; margin: 0; text-align: center;">Dispute Resolution Complete</h1>
+                  <h1 style="color: white; margin: 0; text-align: center;">Your Signature is Required</h1>
                 </div>
                 <div style="padding: 20px; background: #f9f9f9;">
                   <p>Dear Lender,</p>
-                  <p>The dispute for <strong>Loan #${loanId}</strong> has been resolved. Here is the detailed breakdown of the collateral distribution:</p>
+                  <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and a resolution transaction has been prepared. Your signature is required to complete the distribution.</p>
+                  
+                  <div style="background: #fff3cd; border-radius: 8px; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                    <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please log in to your dashboard to review and sign the resolution transaction.</p>
+                  </div>
                   
                   <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                    <h3 style="margin-top: 0; color: #333;">📊 Distribution Summary</h3>
+                    <h3 style="margin-top: 0; color: #333;">📊 Proposed Distribution</h3>
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decision.replace('_', ' ')}</td></tr>
                       <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
                       <tr><td style="padding: 8px 0; color: #666;">Borrower Receives:</td><td style="padding: 8px 0;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Network Fee:</td><td style="padding: 8px 0;">${calc.networkFeeSats} sats</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
                     </table>
                   </div>
                   
-                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #4A90E2;">
-                    <h3 style="margin-top: 0; color: #333;">💱 Price Calculation Details</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; color: #666;">BTC/EUR Price Used:</td><td style="padding: 8px 0; font-weight: bold;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Price Timestamp:</td><td style="padding: 8px 0;">${new Date(priceTimestamp).toLocaleString()}</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Your Claim (Principal + Interest):</td><td style="padding: 8px 0;">€${calc.debtEur.toFixed(2)}</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Total Collateral Value:</td><td style="padding: 8px 0;">€${calc.collateralValueEur.toFixed(2)}</td></tr>
-                    </table>
-                    <p style="font-size: 12px; color: #888; margin-top: 15px;">
-                      <strong>How your BTC amount was calculated:</strong><br>
-                      Your claim of €${calc.debtEur.toFixed(2)} ÷ BTC price of €${calc.btcPriceEur.toFixed(2)} = ${lenderBtc} BTC
-                    </p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${baseUrl}/lender" style="background: #D4AF37; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                      Sign Resolution Transaction
+                    </a>
                   </div>
                   
-                  ${txExplorerUrl ? `
-                  <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0;"><strong>✅ Transaction Broadcast:</strong></p>
-                    <a href="${txExplorerUrl}" style="color: #1976d2; word-break: break-all;">${payoutResult.txid}</a>
-                  </div>
-                  ` : ''}
-                  
-                  <p style="color: #666; font-size: 14px;">
-                    The BTC has been sent to your registered Bitcoin address: <code style="background: #eee; padding: 2px 6px; border-radius: 3px;">${effectiveLenderAddress}</code>
-                  </p>
-                  
-                  <p>If you have any questions about this distribution, please contact our support team.</p>
                   <p>Best regards,<br><strong>The Reconquest Team</strong></p>
                 </div>
               </div>
             `,
           });
-          console.log(`📧 Fair split email sent to lender: ${lenderEmail}`);
+          console.log(`📧 Signature request email sent to lender: ${lender.email}`);
         }
-        
-        // Send email to BORROWER
-        if (borrowerEmail && targetBorrowerSats > 0) {
+      }
+      
+      res.json({
+        success: true,
+        decision,
+        calculation: psbtResult.calculation,
+        lenderPayoutSats: lenderSats,
+        borrowerPayoutSats: borrowerSats,
+        status: 'pending_lender_signature',
+        message: `Resolution prepared. Awaiting lender signature. An email has been sent to the lender.`,
+      });
+    } catch (error) {
+      console.error("Error resolving dispute with fair split:", error);
+      res.status(500).json({ message: "Failed to resolve dispute" });
+    }
+  });
+
+  // ===== LENDER SIGNATURE ENDPOINTS FOR DISPUTE RESOLUTION =====
+  
+  // Get pending resolutions for lender to sign
+  app.get("/api/lender/pending-resolutions", authenticateToken, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Get all loans where this user is the lender with pending signatures
+      const allLoans = await storage.getLoans();
+      const pendingResolutions = allLoans.filter(loan => 
+        loan.lenderId === userId && 
+        loan.disputeStatus === 'pending_lender_signature' &&
+        loan.pendingResolutionPsbt
+      );
+      
+      const results = pendingResolutions.map(loan => ({
+        loanId: loan.id,
+        decision: loan.pendingResolutionDecision,
+        lenderPayoutSats: loan.pendingResolutionLenderSats,
+        borrowerPayoutSats: loan.pendingResolutionBorrowerSats,
+        btcPriceEur: parseFloat(loan.pendingResolutionBtcPrice || '0'),
+        psbtBase64: loan.pendingResolutionPsbt,
+        createdAt: loan.pendingResolutionCreatedAt,
+        lenderPubkey: loan.lenderPubkey,
+        escrowAddress: loan.escrowAddress,
+      }));
+      
+      res.json({
+        success: true,
+        pendingResolutions: results,
+      });
+    } catch (error) {
+      console.error("Error fetching pending resolutions:", error);
+      res.status(500).json({ message: "Failed to fetch pending resolutions" });
+    }
+  });
+  
+  // Submit lender's signed PSBT to complete the resolution
+  app.post("/api/lender/sign-resolution/:loanId", authenticateToken, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const loanId = parseInt(req.params.loanId);
+      
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const { signedPsbtBase64 } = req.body;
+      if (!signedPsbtBase64) {
+        return res.status(400).json({ message: "Signed PSBT is required" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.lenderId !== userId) {
+        return res.status(403).json({ message: "You are not the lender for this loan" });
+      }
+      
+      if (loan.disputeStatus !== 'pending_lender_signature') {
+        return res.status(400).json({ message: "No pending resolution for this loan" });
+      }
+      
+      if (!loan.pendingResolutionPsbt) {
+        return res.status(400).json({ message: "Platform PSBT not found" });
+      }
+      
+      // Combine signatures and broadcast
+      const { completePsbtWithLenderSignature } = await import('./services/SplitPayoutService.js');
+      const result = await completePsbtWithLenderSignature(
+        loan.pendingResolutionPsbt,
+        signedPsbtBase64
+      );
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: `Failed to complete transaction: ${result.error}` 
+        });
+      }
+      
+      // Update loan status
+      const finalStatus = loan.pendingResolutionDecision === 'BORROWER_WINS' ? 'completed' : 'defaulted';
+      
+      await storage.updateLoan(loanId, {
+        disputeStatus: 'resolved',
+        disputeResolvedAt: new Date(),
+        status: finalStatus,
+        lenderSignatureHex: signedPsbtBase64,
+        lenderSignedAt: new Date(),
+        pendingResolutionPsbt: null as any,
+        pendingResolutionDecision: null as any,
+        pendingResolutionCreatedAt: null as any,
+      });
+      
+      // Update audit log with broadcast result
+      const auditLog = {
+        loanId,
+        disputeId: null,
+        outcome: loan.pendingResolutionDecision || 'FAIR_SPLIT',
+        ruleFired: `LENDER_SIGNED_${loan.pendingResolutionDecision}`,
+        txTypeUsed: 'fair_split',
+        evidenceSnapshot: JSON.stringify({
+          lenderPayoutSats: loan.pendingResolutionLenderSats,
+          borrowerPayoutSats: loan.pendingResolutionBorrowerSats,
+          btcPrice: loan.pendingResolutionBtcPrice,
+          txid: result.txid,
+          timestamp: new Date().toISOString(),
+        }),
+        broadcastTxid: result.txid || null,
+        broadcastSuccess: true,
+        broadcastError: null,
+        triggeredBy: userId,
+        triggeredByRole: 'lender',
+      };
+      
+      await storage.createDisputeAuditLog(auditLog);
+      
+      // Send emails to both parties
+      const baseUrl = getBaseUrl();
+      const lenderSats = loan.pendingResolutionLenderSats || 0;
+      const borrowerSats = loan.pendingResolutionBorrowerSats || 0;
+      const btcPrice = parseFloat(loan.pendingResolutionBtcPrice || '0');
+      const lenderBtc = (lenderSats / 100_000_000).toFixed(8);
+      const borrowerBtc = (borrowerSats / 100_000_000).toFixed(8);
+      const lenderEur = (lenderSats / 100_000_000 * btcPrice).toFixed(2);
+      const borrowerEur = (borrowerSats / 100_000_000 * btcPrice).toFixed(2);
+      
+      // Get user addresses
+      let lenderAddress = '';
+      let borrowerAddress = '';
+      
+      if (loan.lenderId) {
+        const lender = await storage.getUser(loan.lenderId);
+        lenderAddress = lender?.btcAddress || '';
+        if (lender?.email) {
           await sendEmail({
-            to: borrowerEmail,
+            to: lender.email,
+            from: 'Reconquest <noreply@reconquestp2p.com>',
+            subject: `💰 Collateral Distribution Complete - Loan #${loanId}`,
+            html: `
+              <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                </div>
+                <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px;">
+                  <h1 style="color: white; margin: 0; text-align: center;">Transaction Broadcast Successfully!</h1>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                  <p>Dear Lender,</p>
+                  <p>Your signature has been received and the resolution transaction for <strong>Loan #${loanId}</strong> has been broadcast to the Bitcoin network.</p>
+                  
+                  <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0;"><strong>✅ Transaction ID:</strong></p>
+                    <a href="${result.broadcastUrl}" style="color: #1976d2; word-break: break-all;">${result.txid}</a>
+                  </div>
+                  
+                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                    <h3 style="margin-top: 0; color: #333;">📊 Final Distribution</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Borrower Receives:</td><td style="padding: 8px 0;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${btcPrice.toFixed(2)}</td></tr>
+                    </table>
+                  </div>
+                  
+                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                </div>
+              </div>
+            `,
+          });
+        }
+      }
+      
+      if (loan.borrowerId && borrowerSats > 0) {
+        const borrower = await storage.getUser(loan.borrowerId);
+        borrowerAddress = borrower?.btcAddress || '';
+        if (borrower?.email) {
+          await sendEmail({
+            to: borrower.email,
             from: 'Reconquest <noreply@reconquestp2p.com>',
             subject: `Dispute Resolved - Loan #${loanId}`,
             html: `
@@ -2703,57 +2857,38 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                 </div>
                 <div style="padding: 20px; background: #f9f9f9;">
                   <p>Dear Borrower,</p>
-                  <p>The dispute for <strong>Loan #${loanId}</strong> has been resolved. Here is the distribution breakdown:</p>
+                  <p>The dispute for <strong>Loan #${loanId}</strong> has been resolved. Your collateral return has been sent.</p>
                   
-                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745;">
-                    <h3 style="margin-top: 0; color: #333;">📊 Your Collateral Return</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; color: #666;">Your Return:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Lender Received:</td><td style="padding: 8px 0;">${lenderBtc} BTC (€${lenderEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
-                    </table>
-                  </div>
-                  
-                  ${txExplorerUrl ? `
                   <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
                     <p style="margin: 0;"><strong>✅ Transaction:</strong></p>
-                    <a href="${txExplorerUrl}" style="color: #1976d2; word-break: break-all;">${payoutResult.txid}</a>
+                    <a href="${result.broadcastUrl}" style="color: #1976d2; word-break: break-all;">${result.txid}</a>
                   </div>
-                  ` : ''}
                   
-                  <p style="color: #666; font-size: 14px;">
-                    The BTC has been sent to your registered address: <code style="background: #eee; padding: 2px 6px; border-radius: 3px;">${effectiveBorrowerAddress}</code>
-                  </p>
+                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745;">
+                    <h3 style="margin-top: 0; color: #333;">📊 Your Return</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Lender Received:</td><td style="padding: 8px 0;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                    </table>
+                  </div>
                   
                   <p>Best regards,<br><strong>The Reconquest Team</strong></p>
                 </div>
               </div>
             `,
           });
-          console.log(`📧 Fair split email sent to borrower: ${borrowerEmail}`);
         }
       }
       
-      // Return result with broadcast info
       res.json({
         success: true,
-        decision,
-        calculation: payoutResult.calculation,
-        lenderAddress: effectiveLenderAddress,
-        borrowerAddress: effectiveBorrowerAddress,
-        broadcast: {
-          success: payoutResult.success,
-          txid: payoutResult.txid,
-          error: payoutResult.error,
-          url: payoutResult.broadcastUrl,
-        },
-        message: payoutResult.success 
-          ? `Dispute resolved! Transaction broadcast: ${payoutResult.txid}`
-          : `Dispute resolved but broadcast failed: ${payoutResult.error}`,
+        txid: result.txid,
+        broadcastUrl: result.broadcastUrl,
+        message: `Transaction broadcast successfully! TXID: ${result.txid}`,
       });
     } catch (error) {
-      console.error("Error resolving dispute with fair split:", error);
-      res.status(500).json({ message: "Failed to resolve dispute" });
+      console.error("Error completing lender signature:", error);
+      res.status(500).json({ message: "Failed to complete resolution" });
     }
   });
 

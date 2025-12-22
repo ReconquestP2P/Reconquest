@@ -408,6 +408,189 @@ export async function executeSplitPayout(
 }
 
 /**
+ * Create a PSBT signed by platform, ready for lender to sign
+ * Returns base64 PSBT for the lender to sign client-side
+ */
+export interface CreateResolutionPsbtResult {
+  success: boolean;
+  psbtBase64?: string;
+  calculation?: SplitCalculation;
+  lenderPayoutSats?: number;
+  borrowerPayoutSats?: number;
+  error?: string;
+}
+
+export async function createPlatformSignedPsbt(
+  loan: Loan,
+  lenderAddress: string,
+  borrowerAddress: string,
+  platformPrivateKeyHex: string
+): Promise<CreateResolutionPsbtResult> {
+  console.log(`📝 Creating platform-signed PSBT for loan #${loan.id}`);
+  
+  const calculation = await calculateSplit(loan);
+  
+  try {
+    if (!loan.escrowAddress) {
+      return { success: false, error: 'No escrow address found' };
+    }
+    
+    const utxos = await fetchUTXOs(loan.escrowAddress);
+    if (utxos.length === 0) {
+      return { success: false, error: 'No UTXOs found in escrow' };
+    }
+    
+    if (!loan.lenderPubkey || !loan.platformPubkey) {
+      return { success: false, error: 'Missing lender or platform public key' };
+    }
+    
+    // For 2-of-3 multisig, we need: lender + platform (borrower key may be missing)
+    // Use the escrow witness script if available, otherwise build from available keys
+    let witnessScript: Buffer;
+    
+    if (loan.escrowWitnessScript) {
+      witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
+    } else if (loan.borrowerPubkey) {
+      const pubkeys = [loan.borrowerPubkey, loan.lenderPubkey, loan.platformPubkey];
+      witnessScript = buildWitnessScript(pubkeys);
+    } else {
+      // If no borrower pubkey, build 2-of-2 with lender + platform
+      // This is a fallback for legacy escrows
+      return { success: false, error: 'Missing borrower public key and no witness script' };
+    }
+    
+    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    
+    let totalInputSats = 0;
+    for (const utxo of utxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript },
+            network: TESTNET4_NETWORK,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+      totalInputSats += utxo.value;
+    }
+    
+    // Calculate actual payouts based on real UTXO total
+    const actualFeeSats = calculation.networkFeeSats;
+    let actualLenderSats = calculation.lenderPayoutSats;
+    let actualBorrowerSats = calculation.borrowerPayoutSats;
+    
+    if (totalInputSats !== calculation.totalCollateralSats) {
+      if (totalInputSats < actualLenderSats + actualFeeSats) {
+        actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
+        actualBorrowerSats = 0;
+      } else {
+        actualBorrowerSats = totalInputSats - actualLenderSats - actualFeeSats;
+        if (actualBorrowerSats < DUST_THRESHOLD) {
+          actualLenderSats = totalInputSats - actualFeeSats;
+          actualBorrowerSats = 0;
+        }
+      }
+    }
+    
+    // Add outputs
+    psbt.addOutput({
+      address: lenderAddress,
+      value: BigInt(actualLenderSats),
+    });
+    
+    if (actualBorrowerSats >= DUST_THRESHOLD) {
+      psbt.addOutput({
+        address: borrowerAddress,
+        value: BigInt(actualBorrowerSats),
+      });
+    }
+    
+    // Sign with platform key
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, platformPrivateKeyHex, witnessScript);
+    }
+    console.log(`✍️ Platform signed ${utxos.length} input(s)`);
+    
+    // Return the partially signed PSBT (not finalized)
+    const psbtBase64 = psbt.toBase64();
+    
+    return {
+      success: true,
+      psbtBase64,
+      calculation: {
+        ...calculation,
+        lenderPayoutSats: actualLenderSats,
+        borrowerPayoutSats: actualBorrowerSats,
+        totalCollateralSats: totalInputSats,
+      },
+      lenderPayoutSats: actualLenderSats,
+      borrowerPayoutSats: actualBorrowerSats,
+    };
+  } catch (error: any) {
+    console.error('Error creating platform-signed PSBT:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Complete the PSBT with lender's signature and broadcast
+ */
+export interface CompletePsbtResult {
+  success: boolean;
+  txid?: string;
+  broadcastUrl?: string;
+  error?: string;
+}
+
+export async function completePsbtWithLenderSignature(
+  platformSignedPsbtBase64: string,
+  lenderSignedPsbtBase64: string
+): Promise<CompletePsbtResult> {
+  console.log(`🔗 Combining signatures and finalizing transaction...`);
+  
+  try {
+    // Parse both PSBTs
+    const platformPsbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network: TESTNET4_NETWORK });
+    const lenderPsbt = bitcoin.Psbt.fromBase64(lenderSignedPsbtBase64, { network: TESTNET4_NETWORK });
+    
+    // Combine signatures from lender PSBT into platform PSBT
+    platformPsbt.combine(lenderPsbt);
+    
+    // Finalize all inputs (now should have 2-of-3 signatures)
+    platformPsbt.finalizeAllInputs();
+    console.log(`✅ Transaction finalized with 2-of-3 signatures`);
+    
+    const tx = platformPsbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`📝 Transaction ready: ${txid}`);
+    
+    // Broadcast
+    const broadcastResult = await broadcastTransaction(txHex);
+    
+    if (!broadcastResult.success) {
+      return { success: false, error: broadcastResult.error || 'Broadcast failed' };
+    }
+    
+    console.log(`✅ Transaction broadcast successful: ${broadcastResult.txid}`);
+    
+    return {
+      success: true,
+      txid: broadcastResult.txid,
+      broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastResult.txid}`,
+    };
+  } catch (error: any) {
+    console.error('Error completing PSBT:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Preview split calculation without executing
  */
 export async function previewSplit(loan: Loan): Promise<{
