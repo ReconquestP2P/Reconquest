@@ -279,7 +279,7 @@ export async function executeSplitPayout(
             redeem: { output: witnessScript },
             network: TESTNET4_NETWORK,
           }).output!,
-          value: utxo.value,
+          value: BigInt(utxo.value),
         },
         witnessScript: witnessScript,
       });
@@ -315,7 +315,7 @@ export async function executeSplitPayout(
     // Output 1: Lender payout
     psbt.addOutput({
       address: lenderAddress,
-      value: actualLenderSats,
+      value: BigInt(actualLenderSats),
     });
     console.log(`📤 Output 1: ${actualLenderSats} sats to lender (${lenderAddress.substring(0, 20)}...)`);
     
@@ -323,33 +323,35 @@ export async function executeSplitPayout(
     if (actualBorrowerSats >= DUST_THRESHOLD) {
       psbt.addOutput({
         address: borrowerAddress,
-        value: actualBorrowerSats,
+        value: BigInt(actualBorrowerSats),
       });
       console.log(`📤 Output 2: ${actualBorrowerSats} sats to borrower (${borrowerAddress.substring(0, 20)}...)`);
     }
     
-    // Sign with platform key
+    // Sign ALL inputs with platform key
+    console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
     for (let i = 0; i < utxos.length; i++) {
       signPsbtInput(psbt, i, platformPrivateKeyHex, witnessScript);
     }
     console.log(`✍️ Signed with platform key`);
     
-    // For dispute resolution, platform acts as 2nd signer
-    // In a full implementation, we'd collect the other party's signature
-    // For now, we'll use platform's deterministic key generation
+    // On testnet, platform has authority to finalize transactions for dispute resolution
+    // In production, this would use pre-signed recovery transactions from both parties
+    console.log(`🔑 Platform dispute resolution authority - finalizing...`);
     
     // Finalize and extract
+    // Note: For testnet dispute resolution, platform has authority to finalize
+    // In production, this would require combining pre-signed transactions from both parties
     try {
       psbt.finalizeAllInputs();
-    } catch (err) {
-      // Need second signature - for demo/testing, we'll use a mock approach
-      console.log(`⚠️ Transaction needs second signature - using platform authority`);
+      console.log(`✅ Transaction finalized successfully`);
+    } catch (err: any) {
+      console.log(`⚠️ Failed to finalize transaction: ${err.message}`);
       
-      // In production, this would require the winning party's pre-signed signature
-      // For now, return calculation without broadcast
+      // Return detailed error for debugging
       return {
         success: false,
-        error: 'Transaction requires second signature from winning party',
+        error: `Transaction requires 2-of-3 multisig signatures. Platform signed once but finalization failed: ${err.message}. In production, use pre-signed recovery transactions.`,
         calculation: {
           ...calculation,
           lenderPayoutSats: actualLenderSats,

@@ -2525,30 +2525,42 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Borrower address not found" });
       }
       
-      // Get platform private key for signing
-      const { generateTestnet4Multisig } = await import('./services/testnet4-deterministic-keys.js');
-      const multisig = generateTestnet4Multisig();
-      const platformPrivateKey = multisig.keypairs.platform.privateKeyHex;
+      // Get platform private key for signing (must match the key used to create the escrow)
+      const { BitcoinEscrowService } = await import('./services/BitcoinEscrowService.js');
+      const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
       
-      // Calculate the split
-      const { calculateSplit, previewSplit } = await import('./services/SplitPayoutService.js');
-      const calculation = await calculateSplit(loan);
+      // Calculate the split first to preview
+      const { calculateSplit, executeSplitPayout } = await import('./services/SplitPayoutService.js');
+      const previewCalculation = await calculateSplit(loan);
       
       // Determine actual distribution based on decision
-      let actualLenderSats = 0;
-      let actualBorrowerSats = 0;
+      let targetLenderSats = 0;
+      let targetBorrowerSats = 0;
+      let effectiveLenderAddress = lenderAddress;
+      let effectiveBorrowerAddress = borrowerAddress;
       
       if (decision === 'BORROWER_WINS') {
         // Borrower wins: they get full collateral minus fees (lender gets nothing)
-        actualBorrowerSats = calculation.totalCollateralSats - calculation.networkFeeSats;
-        actualLenderSats = 0;
+        targetBorrowerSats = previewCalculation.totalCollateralSats - previewCalculation.networkFeeSats;
+        targetLenderSats = 0;
+        // For borrower wins, we only need to send to borrower
+        effectiveLenderAddress = borrowerAddress; // Will get 0
       } else {
         // LENDER_WINS or TIMEOUT_DEFAULT: fair split (lender gets debt, borrower gets remainder)
-        actualLenderSats = calculation.lenderPayoutSats;
-        actualBorrowerSats = calculation.borrowerPayoutSats;
+        targetLenderSats = previewCalculation.lenderPayoutSats;
+        targetBorrowerSats = previewCalculation.borrowerPayoutSats;
       }
       
-      // Update loan status
+      // Execute the split payout - this broadcasts the Bitcoin transaction
+      console.log(`💰 Executing split payout for loan #${loanId}: decision=${decision}`);
+      const payoutResult = await executeSplitPayout(
+        loan,
+        effectiveLenderAddress,
+        effectiveBorrowerAddress,
+        platformPrivateKey
+      );
+      
+      // Update loan status based on result
       const loanUpdates: any = {
         disputeStatus: 'resolved',
         disputeResolvedAt: new Date(),
@@ -2562,7 +2574,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       await storage.updateLoan(loanId, loanUpdates);
       
-      // Create audit log
+      // Create audit log with broadcast result
       const auditLog = {
         loanId,
         disputeId: null,
@@ -2572,36 +2584,36 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         evidenceSnapshot: JSON.stringify({
           decision,
           adminNotes,
-          calculation: {
-            totalCollateralSats: calculation.totalCollateralSats,
-            lenderPayoutSats: actualLenderSats,
-            borrowerPayoutSats: actualBorrowerSats,
-            btcPriceEur: calculation.btcPriceEur,
-            debtEur: calculation.debtEur,
-            isUnderwaterLoan: calculation.isUnderwaterLoan,
-          },
+          calculation: payoutResult.calculation,
+          targetLenderSats,
+          targetBorrowerSats,
           timestamp: new Date().toISOString(),
         }),
-        broadcastTxid: null, // Would be set if we broadcast
-        broadcastSuccess: false,
-        broadcastError: 'Fair split calculation recorded - manual broadcast required',
+        broadcastTxid: payoutResult.txid || null,
+        broadcastSuccess: payoutResult.success,
+        broadcastError: payoutResult.error || null,
         triggeredBy: req.user.id,
         triggeredByRole: 'admin',
       };
       
       await storage.createDisputeAuditLog(auditLog);
       
+      // Return result with broadcast info
       res.json({
         success: true,
         decision,
-        calculation: {
-          ...calculation,
-          lenderPayoutSats: actualLenderSats,
-          borrowerPayoutSats: actualBorrowerSats,
+        calculation: payoutResult.calculation,
+        lenderAddress: effectiveLenderAddress,
+        borrowerAddress: effectiveBorrowerAddress,
+        broadcast: {
+          success: payoutResult.success,
+          txid: payoutResult.txid,
+          error: payoutResult.error,
+          url: payoutResult.broadcastUrl,
         },
-        lenderAddress,
-        borrowerAddress,
-        message: `Dispute resolved with fair split. Lender: ${actualLenderSats} sats, Borrower: ${actualBorrowerSats} sats`,
+        message: payoutResult.success 
+          ? `Dispute resolved! Transaction broadcast: ${payoutResult.txid}`
+          : `Dispute resolved but broadcast failed: ${payoutResult.error}`,
       });
     } catch (error) {
       console.error("Error resolving dispute with fair split:", error);
