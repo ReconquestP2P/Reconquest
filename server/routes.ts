@@ -2428,6 +2428,187 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // Preview fair split calculation for a dispute
+  app.get("/api/admin/disputes/:loanId/preview-split", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Get borrower and lender addresses
+      let borrowerAddress = '';
+      let lenderAddress = '';
+      
+      if (loan.borrowerId) {
+        const borrower = await storage.getUser(loan.borrowerId);
+        borrowerAddress = borrower?.btcAddress || '';
+      }
+      if (loan.lenderId) {
+        const lender = await storage.getUser(loan.lenderId);
+        lenderAddress = lender?.btcAddress || '';
+      }
+      
+      const { previewSplit } = await import('./services/SplitPayoutService.js');
+      const preview = await previewSplit(loan);
+      
+      res.json({
+        success: true,
+        loanId,
+        borrowerAddress,
+        lenderAddress,
+        ...preview,
+      });
+    } catch (error) {
+      console.error("Error previewing split:", error);
+      res.status(500).json({ message: "Failed to preview split calculation" });
+    }
+  });
+
+  // Resolve dispute with fair split payout
+  app.post("/api/admin/disputes/:loanId/resolve-fair-split", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const { decision, adminNotes } = req.body;
+      
+      // Validate decision
+      const validDecisions = ['BORROWER_WINS', 'LENDER_WINS', 'TIMEOUT_DEFAULT'];
+      if (!validDecisions.includes(decision)) {
+        return res.status(400).json({ message: "Invalid decision" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.disputeStatus !== 'under_review') {
+        return res.status(400).json({ message: "Loan must be under review to resolve" });
+      }
+      
+      // Get addresses
+      let borrowerAddress = '';
+      let lenderAddress = '';
+      
+      if (loan.borrowerId) {
+        const borrower = await storage.getUser(loan.borrowerId);
+        borrowerAddress = borrower?.btcAddress || '';
+      }
+      if (loan.lenderId) {
+        const lender = await storage.getUser(loan.lenderId);
+        lenderAddress = lender?.btcAddress || '';
+      }
+      
+      if (!lenderAddress) {
+        return res.status(400).json({ message: "Lender address not found" });
+      }
+      
+      // For BORROWER_WINS, we need borrower address
+      if (decision === 'BORROWER_WINS' && !borrowerAddress) {
+        return res.status(400).json({ message: "Borrower address not found" });
+      }
+      
+      // Get platform private key for signing
+      const { generateTestnet4Multisig } = await import('./services/testnet4-deterministic-keys.js');
+      const multisig = generateTestnet4Multisig();
+      const platformPrivateKey = multisig.keypairs.platform.privateKeyHex;
+      
+      // Calculate the split
+      const { calculateSplit, previewSplit } = await import('./services/SplitPayoutService.js');
+      const calculation = await calculateSplit(loan);
+      
+      // Determine actual distribution based on decision
+      let actualLenderSats = 0;
+      let actualBorrowerSats = 0;
+      
+      if (decision === 'BORROWER_WINS') {
+        // Borrower wins: they get full collateral minus fees (lender gets nothing)
+        actualBorrowerSats = calculation.totalCollateralSats - calculation.networkFeeSats;
+        actualLenderSats = 0;
+      } else {
+        // LENDER_WINS or TIMEOUT_DEFAULT: fair split (lender gets debt, borrower gets remainder)
+        actualLenderSats = calculation.lenderPayoutSats;
+        actualBorrowerSats = calculation.borrowerPayoutSats;
+      }
+      
+      // Update loan status
+      const loanUpdates: any = {
+        disputeStatus: 'resolved',
+        disputeResolvedAt: new Date(),
+      };
+      
+      if (decision === 'BORROWER_WINS') {
+        loanUpdates.status = 'completed';
+      } else {
+        loanUpdates.status = 'defaulted';
+      }
+      
+      await storage.updateLoan(loanId, loanUpdates);
+      
+      // Create audit log
+      const auditLog = {
+        loanId,
+        disputeId: null,
+        outcome: decision,
+        ruleFired: `FAIR_SPLIT_${decision}`,
+        txTypeUsed: 'fair_split',
+        evidenceSnapshot: JSON.stringify({
+          decision,
+          adminNotes,
+          calculation: {
+            totalCollateralSats: calculation.totalCollateralSats,
+            lenderPayoutSats: actualLenderSats,
+            borrowerPayoutSats: actualBorrowerSats,
+            btcPriceEur: calculation.btcPriceEur,
+            debtEur: calculation.debtEur,
+            isUnderwaterLoan: calculation.isUnderwaterLoan,
+          },
+          timestamp: new Date().toISOString(),
+        }),
+        broadcastTxid: null, // Would be set if we broadcast
+        broadcastSuccess: false,
+        broadcastError: 'Fair split calculation recorded - manual broadcast required',
+        triggeredBy: req.user.id,
+        triggeredByRole: 'admin',
+      };
+      
+      await storage.createDisputeAuditLog(auditLog);
+      
+      res.json({
+        success: true,
+        decision,
+        calculation: {
+          ...calculation,
+          lenderPayoutSats: actualLenderSats,
+          borrowerPayoutSats: actualBorrowerSats,
+        },
+        lenderAddress,
+        borrowerAddress,
+        message: `Dispute resolved with fair split. Lender: ${actualLenderSats} sats, Borrower: ${actualBorrowerSats} sats`,
+      });
+    } catch (error) {
+      console.error("Error resolving dispute with fair split:", error);
+      res.status(500).json({ message: "Failed to resolve dispute" });
+    }
+  });
+
   // ===== LTV MONITORING ADMIN ENDPOINTS =====
   
   // Get current LTV status for all active loans

@@ -39,6 +39,38 @@ interface ResolveDisputeResult {
   auditLogId?: number;
 }
 
+interface SplitCalculation {
+  totalCollateralSats: number;
+  lenderPayoutSats: number;
+  borrowerPayoutSats: number;
+  networkFeeSats: number;
+  btcPriceEur: number;
+  btcPriceUsd: number;
+  debtEur: number;
+  collateralValueEur: number;
+  isUnderwaterLoan: boolean;
+  lenderReceivesFullCollateral: boolean;
+  priceTimestamp: string;
+}
+
+interface SplitPreview {
+  success: boolean;
+  loanId: number;
+  borrowerAddress: string;
+  lenderAddress: string;
+  calculation: SplitCalculation;
+  summary: string;
+}
+
+interface FairSplitResult {
+  success: boolean;
+  decision: DisputeDecision;
+  calculation: SplitCalculation;
+  lenderAddress: string;
+  borrowerAddress: string;
+  message: string;
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case "posted":
@@ -109,6 +141,8 @@ export default function AdminDashboard() {
 
   const { toast } = useToast();
   const [resolvingLoanId, setResolvingLoanId] = useState<number | null>(null);
+  const [splitPreview, setSplitPreview] = useState<SplitPreview | null>(null);
+  const [previewingLoanId, setPreviewingLoanId] = useState<number | null>(null);
 
   // Refetch all admin data when authentication state changes to true
   useEffect(() => {
@@ -164,6 +198,45 @@ export default function AdminDashboard() {
       toast({
         title: "❌ Failed",
         description: error.message || "Failed to set loan under review",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const fetchSplitPreview = async (loanId: number) => {
+    setPreviewingLoanId(loanId);
+    try {
+      const response = await apiRequest(`/api/admin/disputes/${loanId}/preview-split`, "GET");
+      const data = await response.json();
+      setSplitPreview(data);
+    } catch (error: any) {
+      toast({
+        title: "❌ Failed to load split preview",
+        description: error.message || "Could not calculate fair split",
+        variant: "destructive",
+      });
+    }
+    setPreviewingLoanId(null);
+  };
+
+  const fairSplitMutation = useMutation({
+    mutationFn: async ({ loanId, decision }: { loanId: number; decision: DisputeDecision }): Promise<FairSplitResult> => {
+      const response = await apiRequest(`/api/admin/disputes/${loanId}/resolve-fair-split`, "POST", { decision });
+      return response.json();
+    },
+    onSuccess: (data: FairSplitResult) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      setSplitPreview(null);
+      toast({
+        title: "✅ Fair Split Resolved",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Resolution Failed",
+        description: error.message || "Failed to resolve with fair split",
         variant: "destructive",
       });
     },
@@ -522,10 +595,10 @@ export default function AdminDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Gavel className="h-5 w-5" />
-                Dispute Resolution
+                Fair Split Dispute Resolution
               </CardTitle>
               <CardDescription>
-                Resolve disputes by selecting a deterministic outcome. Each decision maps to a pre-signed transaction.
+                Resolve disputes with fair collateral distribution. Lender receives principal + interest, borrower receives remaining collateral.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -536,77 +609,190 @@ export default function AdminDashboard() {
                       <TableHead>Loan ID</TableHead>
                       <TableHead>Borrower</TableHead>
                       <TableHead>Lender</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>Debt (P+I)</TableHead>
                       <TableHead>Collateral</TableHead>
-                      <TableHead>Dispute Type</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {disputes?.map((loan) => (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">#{loan.id}</TableCell>
-                        <TableCell>{loan.borrowerId}</TableCell>
-                        <TableCell>{loan.lenderId || "N/A"}</TableCell>
-                        <TableCell>{formatCurrency(Number(loan.amount))} {loan.currency}</TableCell>
-                        <TableCell>{Number(loan.collateralBtc).toFixed(4)} BTC</TableCell>
-                        <TableCell>
-                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                            {loan.dispute?.disputeType || "under_review"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2 flex-wrap">
-                            {(["BORROWER_WINS", "LENDER_WINS", "TIMEOUT_DEFAULT"] as DisputeDecision[]).map((decision) => (
-                              <AlertDialog key={decision}>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant={decision === "BORROWER_WINS" ? "default" : decision === "LENDER_WINS" ? "secondary" : "outline"}
-                                    data-testid={`button-resolve-${loan.id}-${decision}`}
-                                    disabled={resolveDisputeMutation.isPending}
-                                  >
-                                    {DECISION_LABELS[decision].icon} {DECISION_LABELS[decision].title}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2">
-                                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                                      Confirm Dispute Resolution
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      <div className="space-y-3">
-                                        <p>You are about to resolve dispute for <strong>Loan #{loan.id}</strong>.</p>
-                                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                                          <p className="font-semibold">{DECISION_LABELS[decision].icon} {DECISION_LABELS[decision].title}</p>
-                                          <p className="text-sm text-muted-foreground">{DECISION_LABELS[decision].description}</p>
-                                        </div>
-                                        <p className="text-red-600 dark:text-red-400 font-medium">
-                                          This action will broadcast a Bitcoin transaction and cannot be undone.
-                                        </p>
-                                      </div>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => resolveDisputeMutation.mutate({ loanId: loan.id, decision })}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
-                                      Confirm Resolution
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            ))}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {disputes?.map((loan) => {
+                      const principal = Number(loan.amount);
+                      const interestRate = Number(loan.interestRate || 0);
+                      const termMonths = Number(loan.termMonths || 3);
+                      const interest = principal * (interestRate / 100) * (termMonths / 12);
+                      const totalDebt = principal + interest;
+                      
+                      return (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">#{loan.id}</TableCell>
+                          <TableCell>{loan.borrowerId}</TableCell>
+                          <TableCell>{loan.lenderId || "N/A"}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <div>{formatCurrency(totalDebt)} EUR</div>
+                              <div className="text-xs text-muted-foreground">
+                                P: {formatCurrency(principal)} + I: {formatCurrency(interest)}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{Number(loan.collateralBtc).toFixed(4)} BTC</TableCell>
+                          <TableCell>
+                            <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                              {loan.dispute?.disputeType || "under_review"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => fetchSplitPreview(loan.id)}
+                                disabled={previewingLoanId === loan.id}
+                                data-testid={`button-preview-split-${loan.id}`}
+                              >
+                                {previewingLoanId === loan.id ? "Loading..." : "📊 Preview Split"}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+              
+              {/* Split Preview Panel */}
+              {splitPreview && (
+                <div className="mt-6 p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950">
+                  <h3 className="font-semibold text-lg mb-4">Fair Split Preview - Loan #{splitPreview.loanId}</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Total Collateral</p>
+                      <p className="text-xl font-bold">{(splitPreview.calculation.totalCollateralSats / 100_000_000).toFixed(8)} BTC</p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(splitPreview.calculation.collateralValueEur)} EUR</p>
+                    </div>
+                    <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Debt Owed (P+I)</p>
+                      <p className="text-xl font-bold">{formatCurrency(splitPreview.calculation.debtEur)} EUR</p>
+                      <p className="text-sm text-muted-foreground">@ {formatCurrency(splitPreview.calculation.btcPriceEur)} EUR/BTC</p>
+                    </div>
+                    <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Network Fee</p>
+                      <p className="text-xl font-bold">{splitPreview.calculation.networkFeeSats} sats</p>
+                    </div>
+                  </div>
+                  
+                  {splitPreview.calculation.isUnderwaterLoan && (
+                    <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                      <p className="text-red-800 dark:text-red-200 font-medium">
+                        ⚠️ Underwater Loan: Collateral value is less than debt. Lender receives full collateral.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 bg-blue-100 dark:bg-blue-900 rounded-lg border-2 border-blue-300 dark:border-blue-700">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">💰 Lender Receives</p>
+                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                        {(splitPreview.calculation.lenderPayoutSats / 100_000_000).toFixed(8)} BTC
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        ({splitPreview.calculation.lenderPayoutSats.toLocaleString()} sats)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        To: {splitPreview.lenderAddress?.substring(0, 20)}...
+                      </p>
+                    </div>
+                    <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg border-2 border-green-300 dark:border-green-700">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200">✅ Borrower Receives</p>
+                      <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                        {(splitPreview.calculation.borrowerPayoutSats / 100_000_000).toFixed(8)} BTC
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        ({splitPreview.calculation.borrowerPayoutSats.toLocaleString()} sats)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        To: {splitPreview.borrowerAddress?.substring(0, 20)}...
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 flex-wrap">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid={`button-fair-split-lender-${splitPreview.loanId}`}
+                        >
+                          💰 Lender Wins (Fair Split)
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirm Fair Split - Lender Wins</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            <div className="space-y-2">
+                              <p>Lender receives: <strong>{(splitPreview.calculation.lenderPayoutSats / 100_000_000).toFixed(8)} BTC</strong> (debt repayment)</p>
+                              <p>Borrower receives: <strong>{(splitPreview.calculation.borrowerPayoutSats / 100_000_000).toFixed(8)} BTC</strong> (remaining collateral)</p>
+                              <p className="text-red-600 font-medium mt-2">This action cannot be undone.</p>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'LENDER_WINS' })}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            Confirm Fair Split
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          className="bg-green-600 hover:bg-green-700"
+                          data-testid={`button-fair-split-borrower-${splitPreview.loanId}`}
+                        >
+                          ✅ Borrower Wins (Full Refund)
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirm Full Refund - Borrower Wins</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            <div className="space-y-2">
+                              <p>Borrower receives: <strong>100% of collateral</strong> (minus network fee)</p>
+                              <p>Lender receives: <strong>0 BTC</strong></p>
+                              <p className="text-red-600 font-medium mt-2">This action cannot be undone.</p>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'BORROWER_WINS' })}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Confirm Borrower Refund
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSplitPreview(null)}
+                    >
+                      Close Preview
+                    </Button>
+                  </div>
+                </div>
+              )}
               
               {(!disputes || disputes.length === 0) && (
                 <div className="text-center py-8">
