@@ -46,6 +46,17 @@ Preferred communication style: Simple, everyday language.
 - **Signing Library Compatibility**: `tiny-secp256k1` is used for all Bitcoin transaction signing to ensure compatibility with Bitcoin Core.
 - **Bitcoin Testnet Integration**: Real Bitcoin RPC support for multisig, pre-signed transaction building with ephemeral keys, and broadcasting to the testnet. Includes a graceful fallback to mock mode if RPC is unavailable.
 
+### Key Ceremony & Multisig Creation
+- **Mandatory Key Ceremony**: Before escrow address creation, ALL 3 public keys (borrower, lender, platform) must be collected and validated as UNIQUE
+- **Uniqueness Validation**: `validateKeysAreUnique()` in BitcoinEscrowService ensures no duplicate keys (prevents fund lockup)
+- **Flow Gating**: 
+  1. Loan offer created by lender
+  2. Borrower accepts offer → Both borrowerPubkey and lenderPubkey are required at acceptance time
+  3. Escrow address generated ONLY after 3 unique keys validated
+  4. Deposit confirmation blocked without complete keys
+- **2-of-3 Spending**: Once escrow is created with 3 unique keys, any 2 signatures (platform+lender OR platform+borrower) can spend the funds
+- **Critical Safety**: This design ensures funds can ALWAYS be recovered via 2-of-3 multisig in dispute scenarios
+
 ### Loan Flow
 The platform facilitates loan creation, lender commitment, borrower collateral deposit, and a dual key generation/transaction signing process where both parties generate ephemeral keys and download pre-signed recovery plans. The repayment flow involves cryptographic verification of both borrower and lender pre-signed transactions before broadcasting to the Bitcoin testnet.
 

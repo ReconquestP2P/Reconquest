@@ -51,6 +51,7 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
   /**
    * Generates a 2-of-3 multisig escrow address using the Python Bitcoin library
    * Requires public keys from borrower, lender, and platform
+   * CRITICAL: All 3 public keys must be unique and valid
    */
   async generateMultisigEscrowAddress(
     borrowerPubkey: string, 
@@ -65,6 +66,10 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
       this.validatePublicKey(borrowerPubkey, 'borrower');
       this.validatePublicKey(lenderPubkey, 'lender');
       this.validatePublicKey(actualPlatformPubkey, 'platform');
+      
+      // CRITICAL: Validate all 3 keys are unique
+      // This prevents the 2-of-3 multisig from becoming unspendable
+      this.validateKeysAreUnique(borrowerPubkey, lenderPubkey, actualPlatformPubkey);
       
       console.log('Creating multisig escrow address for loan matching...');
       console.log(`Borrower: ${borrowerPubkey}`);
@@ -158,6 +163,32 @@ except Exception as e:
     if (!pubkey.startsWith('02') && !pubkey.startsWith('03')) {
       throw new Error(`${type} public key must be compressed (start with 02 or 03)`);
     }
+  }
+
+  /**
+   * CRITICAL: Validates that all 3 public keys are unique
+   * A 2-of-3 multisig with duplicate keys cannot be properly spent
+   * and funds would become permanently locked
+   */
+  private validateKeysAreUnique(borrowerPubkey: string, lenderPubkey: string, platformPubkey: string): void {
+    const keys = [borrowerPubkey.toLowerCase(), lenderPubkey.toLowerCase(), platformPubkey.toLowerCase()];
+    const uniqueKeys = new Set(keys);
+    
+    if (uniqueKeys.size !== 3) {
+      // Identify which keys are duplicated
+      if (borrowerPubkey.toLowerCase() === lenderPubkey.toLowerCase()) {
+        throw new Error('CRITICAL: Borrower and lender public keys cannot be the same. Each party must generate unique keys.');
+      }
+      if (borrowerPubkey.toLowerCase() === platformPubkey.toLowerCase()) {
+        throw new Error('CRITICAL: Borrower public key matches platform key. This would create an invalid multisig.');
+      }
+      if (lenderPubkey.toLowerCase() === platformPubkey.toLowerCase()) {
+        throw new Error('CRITICAL: Lender public key matches platform key. This would create an invalid multisig.');
+      }
+      throw new Error('CRITICAL: All three public keys (borrower, lender, platform) must be unique for 2-of-3 multisig.');
+    }
+    
+    console.log('✓ All 3 public keys validated as unique - safe to create multisig');
   }
 
   /**

@@ -1299,6 +1299,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // CRITICAL: Verify complete key ceremony before confirming deposit
+      // All 3 unique public keys must exist for 2-of-3 multisig to be spendable
+      if (!loan.borrowerPubkey || !loan.lenderPubkey) {
+        return res.status(400).json({ 
+          message: "CRITICAL: Cannot confirm deposit - key ceremony incomplete. Both borrower and lender must provide unique public keys before deposit can be confirmed." 
+        });
+      }
+      
       // Update loan to deposit_confirmed state
       const updatedLoan = await storage.updateLoan(loanId, {
         escrowState: "deposit_confirmed",
