@@ -1,0 +1,23 @@
+{
+  "loanId": 183,
+  "role": "lender",
+  "publicKey": "0267d4a33a84a472df87a4286877c2290a4660ea7a63a794d09017525d4d963e62",
+  "signedTransactions": [
+    {
+      "type": "cooperative_close",
+      "psbt": "cHNidP8BAFICAAAAAZfyriB6rNEK9t4p/yZq1WXvdgNguApKXiyEDLu8/Tb5AAAAAAD/////AbwEBAAAAAAAFgAU3pfD26xNvgXjp0us8O6fGmC/gi8AAAAAAAEBK3AFBAAAAAAAIgAgdfpbfS1xJq2jP8/DCyRhwzNXVtmX55EVtMDvzGEeyBwBBWlSIQORwbBkSnmcgSXq+DqRTfnRMgH25revn8eatidg8P19qCEDsdFozN+ic2Rpd5eQkXDakXfblUSfeo71MRvos3cXl24hA7HRaMzfonNkaXeXkJFw2pF325VEn3qO9TEb6LN3F5duU64AAA==",
+      "signature": "53,9,163,225,124,245,252,163,164,236,11,237,27,204,221,35,22,179,254,173,102,34,55,88,101,102,133,76,137,6,16,114,70,245,79,139,182,49,211,28,6,174,64,165,64,50,42,201,0,188,113,82,222,178,143,136,197,76,32,186,246,73,252,81",
+      "txHash": "020000000197f2ae207aacd10af6de29ff266ad565ef760360b80a4a5e2c840c"
+    },
+    {
+      "type": "default",
+      "psbt": "cHNidP8BAFICAAAAAZfyriB6rNEK9t4p/yZq1WXvdgNguApKXiyEDLu8/Tb5AAAAAAD/////AbwEBAAAAAAAFgAUU6MRmi6vGTyAMyBNRYYmT4HSmoUAAAAAAAEBK3AFBAAAAAAAIgAgdfpbfS1xJq2jP8/DCyRhwzNXVtmX55EVtMDvzGEeyBwBBWlSIQORwbBkSnmcgSXq+DqRTfnRMgH25revn8eatidg8P19qCEDsdFozN+ic2Rpd5eQkXDakXfblUSfeo71MRvos3cXl24hA7HRaMzfonNkaXeXkJFw2pF325VEn3qO9TEb6LN3F5duU64AAA==",
+      "signature": "1,150,236,169,10,90,120,247,178,21,66,166,171,249,27,7,82,56,167,63,230,41,78,160,186,59,54,146,165,105,37,141,81,187,183,201,13,27,14,30,144,166,234,71,103,178,193,193,50,86,119,242,109,251,16,10,205,53,106,15,1,234,16,215",
+      "txHash": "020000000197f2ae207aacd10af6de29ff266ad565ef760360b80a4a5e2c840c",
+      "validAfter": 1797470850873
+    }
+  ],
+  "createdAt": "2025-12-22T01:27:32.197Z",
+  "version": "1.0",
+  "notice": "This file contains pre-signed Bitcoin transactions. Your private key was discarded after signing for security."
+}
