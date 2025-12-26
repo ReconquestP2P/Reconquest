@@ -3,13 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Shield, CheckCircle, Key, Lock, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, CheckCircle, Key, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { generatePublicKeyFromPin } from "@/lib/deterministic-key";
+import { deriveKeyFromPin } from "@/lib/deterministic-key";
+import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
 import type { Loan } from "@shared/schema";
 
 interface LenderFundingModalProps {
@@ -28,11 +27,9 @@ export default function LenderFundingModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [step, setStep] = useState<'confirm' | 'pin' | 'generating' | 'funded'>('confirm');
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [pinError, setPinError] = useState<string | null>(null);
+  const [step, setStep] = useState<'confirm' | 'generating' | 'funded'>('confirm');
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
+  const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
 
   const fundLoan = useMutation({
     mutationFn: async (data: { lenderPubkey: string; plannedStartDate: string; plannedEndDate: string }) => {
@@ -47,7 +44,7 @@ export default function LenderFundingModal({
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     },
     onError: (error: any) => {
-      setStep('pin');
+      setStep('confirm');
       setIsGeneratingKeys(false);
       
       toast({
@@ -58,43 +55,40 @@ export default function LenderFundingModal({
     },
   });
 
-  const handleProceedToPin = () => {
-    setStep('pin');
-  };
-
   const handleKeyCeremony = async () => {
-    setPinError(null);
-    
-    if (pin.length < 8) {
-      setPinError('Passphrase must be at least 8 characters for security');
-      return;
-    }
-    
-    if (!/[a-zA-Z]/.test(pin) || !/[0-9]/.test(pin)) {
-      setPinError('Passphrase must contain both letters and numbers');
-      return;
-    }
-    
-    if (pin !== confirmPin) {
-      setPinError('Passphrases do not match');
-      return;
-    }
-    
     setIsGeneratingKeys(true);
     setStep('generating');
     
     try {
-      console.log("Starting Firefish key ceremony for lender (Phase 1 - Key Derivation)...");
+      console.log("Starting Firefish key ceremony for lender (Phase 1 - Key Generation)...");
       
-      const publicKeyHex = generatePublicKeyFromPin(loan.id, userId, 'lender', pin);
-      console.log(`Derived lender pubkey: ${publicKeyHex.slice(0, 20)}...`);
-      console.log("Private key NOT stored - will be re-derived from passphrase after deposit for signing.");
+      const randomSecret = crypto.getRandomValues(new Uint8Array(32));
+      const secretHex = Array.from(randomSecret).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      const { privateKey, publicKey } = deriveKeyFromPin(loan.id, userId, 'lender', secretHex);
+      
+      console.log(`Generated lender pubkey: ${publicKey.slice(0, 20)}...`);
+      
+      await storeKey(loan.id, 'lender', privateKey, publicKey);
+      console.log("Private key stored securely in browser vault");
+      
+      const bundle = createRecoveryBundle(
+        loan.id, 
+        'lender', 
+        privateKey, 
+        publicKey, 
+        loan.escrowAddress || 'pending'
+      );
+      setRecoveryBundle(bundle);
+      
+      privateKey.fill(0);
+      console.log("Private key wiped from working memory");
       
       const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const endDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
       
       await fundLoan.mutateAsync({ 
-        lenderPubkey: publicKeyHex,
+        lenderPubkey: publicKey,
         plannedStartDate: startDate.toISOString(),
         plannedEndDate: endDate.toISOString()
       });
@@ -108,19 +102,36 @@ export default function LenderFundingModal({
       
     } catch (error) {
       console.error('Key ceremony failed:', error);
-      setStep('pin');
+      setStep('confirm');
       setIsGeneratingKeys(false);
     } finally {
       setIsGeneratingKeys(false);
     }
   };
 
+  const downloadRecoveryBundle = () => {
+    if (!recoveryBundle) return;
+    
+    const blob = new Blob([recoveryBundle], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reconquest-lender-recovery-loan-${loan.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Recovery File Downloaded",
+      description: "Keep this file safe - you'll need it to sign from another device.",
+    });
+  };
+
   const handleClose = () => {
     setStep('confirm');
-    setPin('');
-    setConfirmPin('');
-    setPinError(null);
     setIsGeneratingKeys(false);
+    setRecoveryBundle(null);
     onClose();
   };
 
@@ -173,15 +184,12 @@ export default function LenderFundingModal({
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <Shield className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm space-y-2">
-                <p className="font-semibold">Firefish Security Model (3 Phases):</p>
-                <ol className="list-decimal ml-4 space-y-1">
-                  <li><strong>Key Ceremony</strong> - Create passphrase → derive pubkey → register commitment</li>
-                  <li><strong>Deposit</strong> - Borrower sends BTC to escrow address</li>
-                  <li><strong>Signing Ceremony</strong> - Re-enter passphrase → sign ALL transactions → key wiped</li>
-                </ol>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Your passphrase deterministically derives your key. The same passphrase always produces the same key.
-                </p>
+                <p className="font-semibold">Firefish Security Model:</p>
+                <ul className="list-disc ml-4 space-y-1">
+                  <li>Your Bitcoin key will be generated and stored securely in your browser</li>
+                  <li>You'll download a recovery file for backup</li>
+                  <li>After the borrower deposits BTC, you'll complete the signing ceremony</li>
+                </ul>
               </AlertDescription>
             </Alert>
 
@@ -194,89 +202,20 @@ export default function LenderFundingModal({
                 Cancel
               </Button>
               <Button 
-                onClick={handleProceedToPin}
-                className="flex-1"
-                data-testid="button-continue-to-pin"
-              >
-                Continue
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === 'pin' && (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Create Your Escrow Passphrase
-              </DialogTitle>
-              <DialogDescription>
-                This passphrase derives your Bitcoin key. You'll use it again after deposit to sign transactions.
-              </DialogDescription>
-            </DialogHeader>
-
-            <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-sm">
-                <p className="font-semibold">Remember your passphrase!</p>
-                <p className="mt-1">Write it down securely. You'll need it again for the signing ceremony after the borrower deposits BTC.</p>
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="pin">Create Passphrase (min 8 chars, letters + numbers)</Label>
-                <Input
-                  id="pin"
-                  type="password"
-                  placeholder="Enter your secret passphrase..."
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  data-testid="input-pin"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPin">Confirm Passphrase</Label>
-                <Input
-                  id="confirmPin"
-                  type="password"
-                  placeholder="Confirm your passphrase..."
-                  value={confirmPin}
-                  onChange={(e) => setConfirmPin(e.target.value)}
-                  data-testid="input-confirm-pin"
-                />
-              </div>
-              
-              {pinError && (
-                <p className="text-sm text-red-500" data-testid="text-pin-error">{pinError}</p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <Button 
-                onClick={() => setStep('confirm')} 
-                variant="outline"
-                data-testid="button-back"
-              >
-                Back
-              </Button>
-              <Button 
                 onClick={handleKeyCeremony}
                 className="flex-1"
-                disabled={isGeneratingKeys || pin.length < 8}
+                disabled={isGeneratingKeys}
                 data-testid="button-generate-key"
               >
                 {isGeneratingKeys ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Registering Key...
+                    Generating Key...
                   </>
                 ) : (
                   <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Register Funding Commitment
+                    <Key className="mr-2 h-4 w-4" />
+                    Generate Key & Commit
                   </>
                 )}
               </Button>
@@ -287,17 +226,17 @@ export default function LenderFundingModal({
         {step === 'generating' && (
           <>
             <DialogHeader>
-              <DialogTitle>Registering Key...</DialogTitle>
+              <DialogTitle>Generating Your Key...</DialogTitle>
               <DialogDescription>
-                Deriving your Bitcoin key and registering your funding commitment
+                Creating secure Bitcoin key for escrow
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <div className="text-sm text-muted-foreground space-y-1 text-center">
-                <p>Deriving Bitcoin key from passphrase...</p>
-                <p>Registering your commitment...</p>
+                <p>Generating cryptographic key pair...</p>
+                <p>Storing securely in browser...</p>
               </div>
             </div>
           </>
@@ -317,40 +256,39 @@ export default function LenderFundingModal({
               <AlertDescription className="text-sm">
                 <p className="font-semibold">Phase 1 Complete</p>
                 <ul className="list-disc ml-4 mt-2 space-y-1">
-                  <li>Your key was derived from your passphrase</li>
-                  <li>Your public key was registered</li>
-                  <li>Private key NOT stored (only you can re-derive it)</li>
+                  <li>Your Bitcoin key has been generated</li>
+                  <li>Your public key is registered with the platform</li>
+                  <li>Private key stored securely in your browser</li>
                 </ul>
               </AlertDescription>
             </Alert>
 
-            <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <AlertDescription className="text-sm space-y-2">
-                <p className="font-semibold">Next Steps:</p>
-                <ol className="list-decimal ml-4 space-y-1">
-                  <li>Borrower will complete their key ceremony</li>
-                  <li>Escrow address will be created</li>
-                  <li>Borrower will deposit BTC</li>
-                  <li>You'll complete the <strong>Signing Ceremony</strong> to pre-sign all transactions</li>
-                </ol>
-              </AlertDescription>
-            </Alert>
-
             <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <Download className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-sm">
-                <p className="font-semibold">Remember your passphrase!</p>
-                <p className="mt-1">You'll need it again for the signing ceremony after the borrower deposits BTC.</p>
+                <p className="font-semibold">Download Recovery File (Recommended)</p>
+                <p className="mt-1">If you need to sign from another device, you'll need this file.</p>
               </AlertDescription>
             </Alert>
 
-            <Button 
-              onClick={handleClose}
-              className="w-full"
-              data-testid="button-close-success"
-            >
-              Close
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={downloadRecoveryBundle}
+                variant="outline"
+                className="flex-1"
+                data-testid="button-download-recovery"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Recovery File
+              </Button>
+              <Button 
+                onClick={handleClose}
+                className="flex-1"
+                data-testid="button-close-success"
+              >
+                Close
+              </Button>
+            </div>
           </>
         )}
       </DialogContent>
