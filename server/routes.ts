@@ -6,6 +6,7 @@ import { insertLoanSchema, insertLoanOfferSchema, insertUserSchema } from "@shar
 import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
+import { EncryptionService } from "./services/EncryptionService";
 import { releaseCollateral } from "./services/CollateralReleaseService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
@@ -1149,7 +1150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Fund a loan (lender commits to funding - generates pubkey, creates escrow, notifies borrower)
+  // Fund a loan (lender commits to funding - BITCOIN-BLIND lender design)
+  // Platform generates and controls the lender key - lender never handles Bitcoin keys
   app.post("/api/loans/:id/fund", authenticateToken, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     
@@ -1174,46 +1176,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Loan is not available for funding" });
       }
       
-      // Extract and validate lender's Bitcoin public key (NO transaction signing yet)
-      const { lenderPubkey, plannedStartDate, plannedEndDate } = req.body;
+      // Extract dates only - NO lenderPubkey from client (Bitcoin-blind lender)
+      const { plannedStartDate, plannedEndDate } = req.body;
       
-      // Validate public key format
-      if (!lenderPubkey || typeof lenderPubkey !== 'string') {
-        return res.status(400).json({ 
-          message: "Lender Bitcoin public key is required" 
-        });
-      }
+      // BITCOIN-BLIND LENDER: Generate lender key server-side
+      // The lender never sees or handles Bitcoin keys - platform operates this key
+      console.log(`🔐 [Bitcoin-Blind] Generating platform-controlled lender key for Loan #${loanId}`);
       
-      if (lenderPubkey.length !== 66) {
-        return res.status(400).json({ 
-          message: "Lender public key must be exactly 66 characters (33 bytes compressed)" 
-        });
-      }
+      const escrowService = new BitcoinEscrowService();
+      const lenderKeyPair = escrowService.generateLenderKeyPair(loanId);
+      const lenderPubkey = lenderKeyPair.publicKey;
       
-      if (!/^[0-9a-fA-F]{66}$/.test(lenderPubkey)) {
-        return res.status(400).json({ 
-          message: "Lender public key must be valid hexadecimal" 
-        });
-      }
+      console.log(`🔑 [Bitcoin-Blind] Lender pubkey generated (platform-operated): ${lenderPubkey.slice(0, 20)}...`);
+      console.log(`⚠️ [Bitcoin-Blind] Lender is completely Bitcoin-blind - they only confirm fiat transfers`);
       
-      const prefix = lenderPubkey.substring(0, 2);
-      if (prefix !== '02' && prefix !== '03') {
-        return res.status(400).json({ 
-          message: "Lender public key must start with 02 or 03 (compressed format)" 
-        });
-      }
+      // Encrypt the lender private key for secure storage
+      // In production, use HSM/KMS. For testnet, uses AES-256-GCM with env key
+      const lenderPrivateKeyEncrypted = EncryptionService.encrypt(lenderKeyPair.privateKey);
+      console.log(`🔒 [Bitcoin-Blind] Lender private key encrypted for secure storage`);
       
-      // CRITICAL: Cryptographically verify the public key is a valid secp256k1 point
-      try {
-        const secp256k1 = await import('@noble/secp256k1');
-        await secp256k1.Point.fromHex(lenderPubkey);
-      } catch (error) {
-        return res.status(400).json({ 
-          message: `Lender public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
-        });
-      }
-      
-      const PLATFORM_PUBKEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
+      const PLATFORM_PUBKEY = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
       
       // IMPORTANT: Do NOT create escrow yet - wait for borrower to provide their key
       // This prevents the duplicate key bug that locked funds in loan #183
@@ -1222,9 +1204,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔐 Lender committed to Loan #${loanId} - awaiting borrower key for escrow creation`);
       
       // Update loan with lender info but NO escrow yet
+      // Store platform-generated lender key (encrypted in production)
       const updatedLoan = await storage.updateLoan(loanId, {
         lenderId,
-        lenderPubkey,
+        lenderPubkey,  // Platform-generated pubkey (lender never sees this)
+        lenderPrivateKeyEncrypted,  // Platform stores this for signing (encrypted in production)
         platformPubkey: PLATFORM_PUBKEY,
         // NO escrowAddress yet - will be created when borrower provides their key
         escrowState: "awaiting_borrower_key", // New state: waiting for borrower to provide their key

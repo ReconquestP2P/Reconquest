@@ -3,15 +3,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Shield, CheckCircle, Key, Download, Lock, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, CheckCircle, Lock, DollarSign, Clock, Percent } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { deriveKeyFromPin } from "@/lib/deterministic-key";
-import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
 import type { Loan } from "@shared/schema";
 
 interface LenderFundingModalProps {
@@ -21,6 +18,23 @@ interface LenderFundingModalProps {
   userId: number;
 }
 
+/**
+ * LenderFundingModal - Bitcoin-Blind Lender Design
+ * 
+ * CRITICAL: Lenders NEVER handle Bitcoin keys.
+ * - No passphrase creation
+ * - No key ceremony
+ * - No transaction signing
+ * 
+ * Lenders only:
+ * 1. Review loan terms
+ * 2. Confirm fiat commitment
+ * 3. Transfer fiat to borrower (off-chain)
+ * 4. Confirm fiat transfer in dashboard
+ * 
+ * The platform generates and controls the "lender key" in the 3-of-3 multisig.
+ * Platform signs with this key after verifying fiat confirmations.
+ */
 export default function LenderFundingModal({ 
   isOpen, 
   onClose, 
@@ -30,30 +44,31 @@ export default function LenderFundingModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [step, setStep] = useState<'confirm' | 'passphrase' | 'generating' | 'funded'>('confirm');
-  const [passphrase, setPassphrase] = useState('');
-  const [confirmPassphrase, setConfirmPassphrase] = useState('');
-  const [passphraseError, setPassphraseError] = useState<string | null>(null);
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
-  const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
+  const [step, setStep] = useState<'confirm' | 'processing' | 'committed'>('confirm');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [understandRisks, setUnderstandRisks] = useState(false);
 
   const fundLoan = useMutation({
-    mutationFn: async (data: { lenderPubkey: string; plannedStartDate: string; plannedEndDate: string }) => {
+    mutationFn: async () => {
+      const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const endDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+      
       const response = await apiRequest(`/api/loans/${loan.id}/fund`, "POST", {
-        lenderPubkey: data.lenderPubkey,
-        plannedStartDate: data.plannedStartDate,
-        plannedEndDate: data.plannedEndDate
+        plannedStartDate: startDate.toISOString(),
+        plannedEndDate: endDate.toISOString()
       });
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
+      setStep('committed');
+      toast({
+        title: "Funding Commitment Complete!",
+        description: data.message || "Your investment commitment is registered. Waiting for borrower to deposit Bitcoin.",
+      });
     },
     onError: (error: any) => {
-      setStep('passphrase');
-      setIsGeneratingKeys(false);
-      
+      setStep('confirm');
       toast({
         title: "Cannot Fund Loan",
         description: error.message || "Failed to fund loan. Please try again.",
@@ -62,104 +77,29 @@ export default function LenderFundingModal({
     },
   });
 
-  const handleProceedToPassphrase = () => {
-    setStep('passphrase');
-  };
-
-  const handleKeyCeremony = async () => {
-    setPassphraseError(null);
-    
-    if (passphrase.length < 8) {
-      setPassphraseError('Passphrase must be at least 8 characters');
-      return;
-    }
-    
-    if (passphrase !== confirmPassphrase) {
-      setPassphraseError('Passphrases do not match');
-      return;
-    }
-    
-    setIsGeneratingKeys(true);
-    setStep('generating');
-    
-    try {
-      console.log("Starting Firefish key ceremony for lender (Phase 1 - Key Generation)...");
-      
-      const { privateKey, publicKey } = deriveKeyFromPin(loan.id, userId, 'lender', passphrase);
-      
-      console.log(`Derived lender pubkey: ${publicKey.slice(0, 20)}...`);
-      
-      if (rememberDevice) {
-        await storeKey(loan.id, 'lender', privateKey, publicKey);
-        console.log("Private key stored securely in browser vault");
-      }
-      
-      const bundle = await createRecoveryBundle(
-        loan.id, 
-        'lender', 
-        privateKey, 
-        publicKey, 
-        loan.escrowAddress || 'pending',
-        passphrase
-      );
-      setRecoveryBundle(bundle);
-      
-      privateKey.fill(0);
-      console.log("Private key wiped from working memory");
-      
-      const startDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const endDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
-      
-      await fundLoan.mutateAsync({ 
-        lenderPubkey: publicKey,
-        plannedStartDate: startDate.toISOString(),
-        plannedEndDate: endDate.toISOString()
-      });
-      
-      setStep('funded');
-      
+  const handleCommitFunding = async () => {
+    if (!termsAccepted || !understandRisks) {
       toast({
-        title: "Funding Commitment Complete!",
-        description: "Key registered. Waiting for borrower to provide their key and deposit BTC.",
+        title: "Please Accept Terms",
+        description: "You must accept the terms and acknowledge the risks to proceed.",
+        variant: "destructive",
       });
-      
-    } catch (error) {
-      console.error('Key ceremony failed:', error);
-      setStep('passphrase');
-      setIsGeneratingKeys(false);
-    } finally {
-      setIsGeneratingKeys(false);
+      return;
     }
-  };
-
-  const downloadRecoveryBundle = () => {
-    if (!recoveryBundle) return;
     
-    const blob = new Blob([recoveryBundle], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconquest-lender-recovery-loan-${loan.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Recovery File Downloaded",
-      description: "Keep this file safe - you can use it to sign from another device.",
-    });
+    setStep('processing');
+    fundLoan.mutate();
   };
 
   const handleClose = () => {
     setStep('confirm');
-    setPassphrase('');
-    setConfirmPassphrase('');
-    setPassphraseError(null);
-    setRememberDevice(true);
-    setIsGeneratingKeys(false);
-    setRecoveryBundle(null);
+    setTermsAccepted(false);
+    setUnderstandRisks(false);
     onClose();
+  };
+
+  const calculateEarnings = () => {
+    return parseFloat(loan.amount) * (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12);
   };
 
   return (
@@ -168,22 +108,31 @@ export default function LenderFundingModal({
         {step === 'confirm' && (
           <>
             <DialogHeader>
-              <DialogTitle>Investment Details</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Confirm Investment
+              </DialogTitle>
               <DialogDescription>
-                You are committing to fund {loan.amount} {loan.currency}. A secure escrow address will be created.
+                Review the loan details and confirm your commitment to fund this Bitcoin-backed loan.
               </DialogDescription>
             </DialogHeader>
 
             <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-4 space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-muted-foreground">Amount to invest</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    Amount to invest
+                  </p>
                   <p className="text-lg font-semibold" data-testid="text-invest-amount">
                     {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Period</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    Loan term
+                  </p>
                   <p className="text-lg font-semibold" data-testid="text-period">
                     {loan.termMonths} months
                   </p>
@@ -192,17 +141,18 @@ export default function LenderFundingModal({
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-muted-foreground">Interest rate (p.a.)</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Percent className="h-3.5 w-3.5" />
+                    Interest rate (p.a.)
+                  </p>
                   <p className="text-lg font-semibold" data-testid="text-interest-rate">
                     {parseFloat(loan.interestRate).toFixed(1)}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">You will earn</p>
+                  <p className="text-sm text-muted-foreground">Your earnings</p>
                   <p className="text-lg font-semibold text-green-600" data-testid="text-earnings">
-                    {loan.currency} {formatCurrency(
-                      parseFloat(loan.amount) * (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12)
-                    ).replace('€', '').replace('$', '')}
+                    {loan.currency} {formatCurrency(calculateEarnings()).replace('€', '').replace('$', '')}
                   </p>
                 </div>
               </div>
@@ -211,14 +161,41 @@ export default function LenderFundingModal({
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <Shield className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm space-y-2">
-                <p className="font-semibold">Secure 2-of-3 Multisig Escrow:</p>
+                <p className="font-semibold">How Your Investment is Protected:</p>
                 <ul className="list-disc ml-4 space-y-1">
-                  <li>Your Bitcoin key will be generated from a passphrase you create</li>
-                  <li>You can choose to remember the key on this device</li>
-                  <li>After the borrower deposits BTC, you'll complete the signing ceremony</li>
+                  <li><strong>Bitcoin Collateral:</strong> Borrower deposits BTC worth {loan.collateralBtc} to secure the loan</li>
+                  <li><strong>Platform Escrow:</strong> Collateral held in secure 3-of-3 multisig address</li>
+                  <li><strong>No Bitcoin Handling:</strong> You only manage fiat transfers - the platform handles all Bitcoin operations</li>
+                  <li><strong>Automated Liquidation:</strong> If collateral value drops too low, automatic protection triggers</li>
                 </ul>
               </AlertDescription>
             </Alert>
+
+            <div className="space-y-3">
+              <div className="flex items-start space-x-2">
+                <Checkbox 
+                  id="termsAccepted" 
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  data-testid="checkbox-terms"
+                />
+                <Label htmlFor="termsAccepted" className="text-sm cursor-pointer leading-snug">
+                  I confirm I will transfer {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')} to the borrower's bank account once the escrow is ready
+                </Label>
+              </div>
+              
+              <div className="flex items-start space-x-2">
+                <Checkbox 
+                  id="understandRisks" 
+                  checked={understandRisks}
+                  onCheckedChange={(checked) => setUnderstandRisks(checked === true)}
+                  data-testid="checkbox-risks"
+                />
+                <Label htmlFor="understandRisks" className="text-sm cursor-pointer leading-snug">
+                  I understand that while Bitcoin collateral secures this loan, cryptocurrency values can fluctuate and there are inherent risks
+                </Label>
+              </div>
+            </div>
 
             <div className="flex gap-3">
               <Button 
@@ -229,182 +206,78 @@ export default function LenderFundingModal({
                 Cancel
               </Button>
               <Button 
-                onClick={handleProceedToPassphrase}
+                onClick={handleCommitFunding}
                 className="flex-1"
-                data-testid="button-continue-to-passphrase"
+                disabled={!termsAccepted || !understandRisks}
+                data-testid="button-commit-funding"
               >
-                Continue
+                <Lock className="mr-2 h-4 w-4" />
+                Commit to Fund
               </Button>
             </div>
           </>
         )}
 
-        {step === 'passphrase' && (
+        {step === 'processing' && (
           <>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Create Your Escrow Passphrase
-              </DialogTitle>
+              <DialogTitle>Processing Your Commitment...</DialogTitle>
               <DialogDescription>
-                This passphrase derives your Bitcoin key. You only need to enter it once.
-              </DialogDescription>
-            </DialogHeader>
-
-            <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-sm">
-                <p>Your passphrase deterministically derives your key. With "Remember on this device" enabled, you won't need to enter it again on this browser.</p>
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="passphrase">Create Passphrase (min 8 characters)</Label>
-                <Input
-                  id="passphrase"
-                  type="password"
-                  placeholder="Enter your secret passphrase..."
-                  value={passphrase}
-                  onChange={(e) => setPassphrase(e.target.value)}
-                  data-testid="input-passphrase"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassphrase">Confirm Passphrase</Label>
-                <Input
-                  id="confirmPassphrase"
-                  type="password"
-                  placeholder="Confirm your passphrase..."
-                  value={confirmPassphrase}
-                  onChange={(e) => setConfirmPassphrase(e.target.value)}
-                  data-testid="input-confirm-passphrase"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="rememberDevice" 
-                  checked={rememberDevice}
-                  onCheckedChange={(checked) => setRememberDevice(checked === true)}
-                  data-testid="checkbox-remember-device"
-                />
-                <Label htmlFor="rememberDevice" className="text-sm cursor-pointer">
-                  Remember key on this device (recommended)
-                </Label>
-              </div>
-              
-              {passphraseError && (
-                <p className="text-sm text-red-500" data-testid="text-passphrase-error">{passphraseError}</p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <Button 
-                onClick={() => setStep('confirm')} 
-                variant="outline"
-                data-testid="button-back"
-              >
-                Back
-              </Button>
-              <Button 
-                onClick={handleKeyCeremony}
-                className="flex-1"
-                disabled={isGeneratingKeys || passphrase.length < 8}
-                data-testid="button-generate-key"
-              >
-                {isGeneratingKeys ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Key...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Generate Key & Commit
-                  </>
-                )}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {step === 'generating' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Generating Your Key...</DialogTitle>
-              <DialogDescription>
-                Creating secure Bitcoin key for escrow
+                Setting up your investment position
               </DialogDescription>
             </DialogHeader>
 
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <div className="text-sm text-muted-foreground space-y-1 text-center">
-                <p>Deriving key from passphrase (PBKDF2)...</p>
-                <p>Storing securely in browser...</p>
+                <p>Registering your commitment...</p>
+                <p>Creating escrow position...</p>
               </div>
             </div>
           </>
         )}
 
-        {step === 'funded' && (
+        {step === 'committed' && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-green-600">Key Ceremony Complete!</DialogTitle>
+              <DialogTitle className="text-green-600 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Investment Commitment Registered!
+              </DialogTitle>
               <DialogDescription>
-                Your funding commitment is registered. Waiting for borrower.
+                Waiting for borrower to deposit Bitcoin collateral
               </DialogDescription>
             </DialogHeader>
 
             <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-sm">
-                <p className="font-semibold">Phase 1 Complete</p>
+                <p className="font-semibold">Your commitment is confirmed!</p>
                 <ul className="list-disc ml-4 mt-2 space-y-1">
-                  <li>Your Bitcoin key has been generated from your passphrase</li>
-                  <li>Your public key is registered with the platform</li>
-                  {rememberDevice && <li>Private key stored securely in your browser</li>}
+                  <li>Your investment of {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')} is registered</li>
+                  <li>The platform has secured your position in the escrow</li>
+                  <li>No Bitcoin handling required on your part</li>
                 </ul>
               </AlertDescription>
             </Alert>
 
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <AlertDescription className="text-sm space-y-2">
-                <p className="font-semibold">Next Steps:</p>
+                <p className="font-semibold">What Happens Next:</p>
                 <ol className="list-decimal ml-4 space-y-1">
-                  <li>Borrower will complete their key ceremony</li>
-                  <li>Escrow address will be created</li>
-                  <li>Borrower will deposit BTC</li>
-                  <li>You'll complete the Signing Ceremony</li>
+                  <li>Borrower creates their escrow key and deposits Bitcoin</li>
+                  <li>You'll receive a notification when the loan is ready</li>
+                  <li>Transfer fiat to borrower's bank account</li>
+                  <li>Confirm the transfer in your dashboard</li>
+                  <li>Loan becomes active and you start earning interest</li>
                 </ol>
               </AlertDescription>
             </Alert>
 
-            {!rememberDevice && (
-              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-sm">
-                  <p className="font-semibold">Remember your passphrase!</p>
-                  <p className="mt-1">You chose not to save on this device. You'll need your passphrase for signing.</p>
-                </AlertDescription>
-              </Alert>
-            )}
-
             <div className="flex gap-3">
               <Button 
-                onClick={downloadRecoveryBundle}
-                variant="outline"
-                className="flex-1"
-                data-testid="button-download-recovery"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Recovery File
-              </Button>
-              <Button 
                 onClick={handleClose}
-                className="flex-1"
+                className="w-full"
                 data-testid="button-close-success"
               >
                 Close
