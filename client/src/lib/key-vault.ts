@@ -1,6 +1,7 @@
 const DB_NAME = 'reconquest-key-vault';
 const DB_VERSION = 1;
 const STORE_NAME = 'escrow-keys';
+const RECOVERY_VERSION = 2;
 
 interface StoredKey {
   loanId: number;
@@ -9,6 +10,19 @@ interface StoredKey {
   publicKey: string;
   iv: Uint8Array;
   createdAt: number;
+}
+
+interface RecoveryBundle {
+  version: number;
+  loanId: number;
+  role: 'borrower' | 'lender';
+  publicKey: string;
+  escrowAddress: string;
+  encryptedKeyHex: string;
+  ivHex: string;
+  saltHex: string;
+  createdAt: string;
+  warning: string;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -58,6 +72,30 @@ async function getDeviceKey(): Promise<CryptoKey> {
   localStorage.setItem('reconquest-device-key', JSON.stringify(exportedKey));
   
   return key;
+}
+
+async function deriveKeyFromPassphrase(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const passphraseKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  
+  return await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    passphraseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 export async function storeKey(
@@ -161,44 +199,120 @@ export async function hasStoredKey(
   });
 }
 
-export function createRecoveryBundle(
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+export async function createRecoveryBundle(
   loanId: number,
   role: 'borrower' | 'lender',
   privateKey: Uint8Array,
   publicKey: string,
-  escrowAddress: string
-): string {
-  const bundle = {
-    version: 1,
+  escrowAddress: string,
+  passphrase: string
+): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  const encryptionKey = await deriveKeyFromPassphrase(passphrase, salt);
+  
+  const encryptedKey = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    encryptionKey,
+    privateKey
+  );
+  
+  const bundle: RecoveryBundle = {
+    version: RECOVERY_VERSION,
     loanId,
     role,
     publicKey,
     escrowAddress,
-    privateKeyHex: Array.from(privateKey).map(b => b.toString(16).padStart(2, '0')).join(''),
+    encryptedKeyHex: bytesToHex(new Uint8Array(encryptedKey)),
+    ivHex: bytesToHex(iv),
+    saltHex: bytesToHex(salt),
     createdAt: new Date().toISOString(),
-    warning: 'KEEP THIS FILE SECURE. It contains your private key for signing escrow transactions.',
+    warning: 'This file contains your encrypted private key. You need your passphrase to decrypt it.',
   };
   
   return JSON.stringify(bundle, null, 2);
 }
 
-export function parseRecoveryBundle(bundleJson: string): {
+export async function parseRecoveryBundle(
+  bundleJson: string,
+  passphrase: string
+): Promise<{
   loanId: number;
   role: 'borrower' | 'lender';
   privateKey: Uint8Array;
   publicKey: string;
-} | null {
+} | null> {
   try {
-    const bundle = JSON.parse(bundleJson);
-    const privateKey = new Uint8Array(
-      bundle.privateKeyHex.match(/.{1,2}/g).map((byte: string) => parseInt(byte, 16))
-    );
-    return {
-      loanId: bundle.loanId,
-      role: bundle.role,
-      privateKey,
-      publicKey: bundle.publicKey,
-    };
+    const bundle = JSON.parse(bundleJson) as RecoveryBundle;
+    
+    if (bundle.version !== RECOVERY_VERSION) {
+      console.error('Unsupported recovery bundle version:', bundle.version);
+      return null;
+    }
+    
+    if (typeof bundle.loanId !== 'number' || bundle.loanId <= 0) {
+      console.error('Invalid loanId in recovery bundle');
+      return null;
+    }
+    
+    if (bundle.role !== 'borrower' && bundle.role !== 'lender') {
+      console.error('Invalid role in recovery bundle');
+      return null;
+    }
+    
+    if (typeof bundle.publicKey !== 'string' || bundle.publicKey.length !== 66) {
+      console.error('Invalid publicKey in recovery bundle');
+      return null;
+    }
+    
+    if (!bundle.encryptedKeyHex || !bundle.ivHex || !bundle.saltHex) {
+      console.error('Missing encryption data in recovery bundle');
+      return null;
+    }
+    
+    const salt = hexToBytes(bundle.saltHex);
+    const iv = hexToBytes(bundle.ivHex);
+    const encryptedKey = hexToBytes(bundle.encryptedKeyHex);
+    
+    const decryptionKey = await deriveKeyFromPassphrase(passphrase, salt);
+    
+    try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        decryptionKey,
+        encryptedKey
+      );
+      
+      const privateKey = new Uint8Array(decrypted);
+      
+      if (privateKey.length !== 32) {
+        console.error('Decrypted key has wrong length:', privateKey.length);
+        return null;
+      }
+      
+      return {
+        loanId: bundle.loanId,
+        role: bundle.role,
+        privateKey,
+        publicKey: bundle.publicKey,
+      };
+    } catch (e) {
+      console.error('Failed to decrypt recovery bundle - wrong passphrase?', e);
+      return null;
+    }
   } catch (e) {
     console.error('Failed to parse recovery bundle:', e);
     return null;

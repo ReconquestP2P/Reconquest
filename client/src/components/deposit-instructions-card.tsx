@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, AlertTriangle, Lock, Shield } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, Lock, Shield, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { generatePublicKeyFromPin } from "@/lib/deterministic-key";
+import { deriveKeyFromPin } from "@/lib/deterministic-key";
+import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
 import type { Loan } from "@shared/schema";
 
 interface DepositInstructionsCardProps {
@@ -21,11 +23,13 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [generatingKey, setGeneratingKey] = useState(false);
-  const [showPinInput, setShowPinInput] = useState(false);
-  const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [pinError, setPinError] = useState<string | null>(null);
+  const [showPassphraseInput, setShowPassphraseInput] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [confirmPassphrase, setConfirmPassphrase] = useState('');
+  const [passphraseError, setPassphraseError] = useState<string | null>(null);
+  const [rememberDevice, setRememberDevice] = useState(true);
   const [keyCeremonyComplete, setKeyCeremonyComplete] = useState(false);
+  const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
 
   const provideBorrowerKey = useMutation({
     mutationFn: async (borrowerPubkey: string) => {
@@ -36,9 +40,9 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     },
     onSuccess: (data) => {
       setKeyCeremonyComplete(true);
-      setShowPinInput(false);
-      setPin('');
-      setConfirmPin('');
+      setShowPassphraseInput(false);
+      setPassphrase('');
+      setConfirmPassphrase('');
       
       toast({
         title: "Key Ceremony Complete!",
@@ -77,33 +81,45 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   });
 
   const handleKeyCeremony = async () => {
-    setPinError(null);
+    setPassphraseError(null);
     
-    if (pin.length < 8) {
-      setPinError('Passphrase must be at least 8 characters for security');
+    if (passphrase.length < 8) {
+      setPassphraseError('Passphrase must be at least 8 characters');
       return;
     }
     
-    if (!/[a-zA-Z]/.test(pin) || !/[0-9]/.test(pin)) {
-      setPinError('Passphrase must contain both letters and numbers');
-      return;
-    }
-    
-    if (pin !== confirmPin) {
-      setPinError('Passphrases do not match');
+    if (passphrase !== confirmPassphrase) {
+      setPassphraseError('Passphrases do not match');
       return;
     }
     
     setGeneratingKey(true);
     
     try {
-      console.log("Starting Firefish key ceremony (Phase 1 - Key Derivation)...");
+      console.log("Starting Firefish key ceremony (Phase 1 - Key Generation)...");
       
-      const publicKeyHex = generatePublicKeyFromPin(loan.id, userId, 'borrower', pin);
-      console.log(`Derived borrower pubkey: ${publicKeyHex.slice(0, 20)}...`);
-      console.log("Private key NOT stored - will be re-derived from passphrase after deposit for signing.");
+      const { privateKey, publicKey } = deriveKeyFromPin(loan.id, userId, 'borrower', passphrase);
+      console.log(`Derived borrower pubkey: ${publicKey.slice(0, 20)}...`);
       
-      await provideBorrowerKey.mutateAsync(publicKeyHex);
+      if (rememberDevice) {
+        await storeKey(loan.id, 'borrower', privateKey, publicKey);
+        console.log("Private key stored securely in browser vault");
+      }
+      
+      const bundle = await createRecoveryBundle(
+        loan.id, 
+        'borrower', 
+        privateKey, 
+        publicKey, 
+        loan.escrowAddress || 'pending',
+        passphrase
+      );
+      setRecoveryBundle(bundle);
+      
+      privateKey.fill(0);
+      console.log("Private key wiped from working memory");
+      
+      await provideBorrowerKey.mutateAsync(publicKey);
       
     } catch (error: any) {
       console.error('Key ceremony failed:', error);
@@ -115,6 +131,25 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     } finally {
       setGeneratingKey(false);
     }
+  };
+
+  const downloadRecoveryBundle = () => {
+    if (!recoveryBundle) return;
+    
+    const blob = new Blob([recoveryBundle], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reconquest-borrower-recovery-loan-${loan.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Recovery File Downloaded",
+      description: "Keep this file safe - you can use it to sign from another device.",
+    });
   };
 
   const copyToClipboard = () => {
@@ -135,7 +170,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
             <Shield className="h-5 w-5" />
-            Firefish Key Ceremony - Phase 1
+            Key Ceremony - Phase 1
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -147,24 +182,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             </AlertDescription>
           </Alert>
 
-          {!showPinInput ? (
+          {!showPassphraseInput ? (
             <>
               <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
                 <AlertDescription className="text-sm space-y-2">
-                  <p className="font-semibold">Firefish Security Model (3 Phases):</p>
-                  <ol className="list-decimal ml-4 space-y-1">
-                    <li><strong>Key Ceremony</strong> - Create passphrase → derive pubkey → create escrow</li>
-                    <li><strong>Deposit</strong> - Send BTC to escrow address</li>
-                    <li><strong>Signing Ceremony</strong> - Re-enter passphrase → sign ALL transactions → key wiped</li>
-                  </ol>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Your passphrase deterministically derives your key. The same passphrase always produces the same key.
-                  </p>
+                  <p className="font-semibold">Secure 2-of-3 Multisig Escrow:</p>
+                  <ul className="list-disc ml-4 space-y-1">
+                    <li>Your Bitcoin key will be generated from a passphrase you create</li>
+                    <li>You can choose to remember the key on this device</li>
+                    <li>After depositing BTC, you'll complete the signing ceremony</li>
+                  </ul>
                 </AlertDescription>
               </Alert>
 
               <Button
-                onClick={() => setShowPinInput(true)}
+                onClick={() => setShowPassphraseInput(true)}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                 data-testid="button-start-key-ceremony"
               >
@@ -174,60 +206,71 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             </>
           ) : (
             <>
-              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+                <Shield className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-sm">
-                  <p className="font-semibold">Remember your passphrase!</p>
-                  <p className="mt-1">You'll need it again after deposit to sign your recovery transactions.</p>
+                  <p>Your passphrase deterministically derives your key. With "Remember on this device" enabled, you won't need to enter it again on this browser.</p>
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="pin">Create Passphrase (min 8 chars, letters + numbers)</Label>
+                  <Label htmlFor="passphrase">Create Passphrase (min 8 characters)</Label>
                   <Input
-                    id="pin"
+                    id="passphrase"
                     type="password"
                     placeholder="Enter your secret passphrase..."
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value)}
-                    data-testid="input-borrower-pin"
+                    value={passphrase}
+                    onChange={(e) => setPassphrase(e.target.value)}
+                    data-testid="input-borrower-passphrase"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPin">Confirm Passphrase</Label>
+                  <Label htmlFor="confirmPassphrase">Confirm Passphrase</Label>
                   <Input
-                    id="confirmPin"
+                    id="confirmPassphrase"
                     type="password"
                     placeholder="Confirm your passphrase..."
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value)}
-                    data-testid="input-borrower-confirm-pin"
+                    value={confirmPassphrase}
+                    onChange={(e) => setConfirmPassphrase(e.target.value)}
+                    data-testid="input-borrower-confirm-passphrase"
                   />
                 </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="rememberDevice" 
+                    checked={rememberDevice}
+                    onCheckedChange={(checked) => setRememberDevice(checked === true)}
+                    data-testid="checkbox-remember-device"
+                  />
+                  <Label htmlFor="rememberDevice" className="text-sm cursor-pointer">
+                    Remember key on this device (recommended)
+                  </Label>
+                </div>
                 
-                {pinError && (
-                  <p className="text-sm text-red-500" data-testid="text-pin-error">{pinError}</p>
+                {passphraseError && (
+                  <p className="text-sm text-red-500" data-testid="text-passphrase-error">{passphraseError}</p>
                 )}
               </div>
 
               <div className="flex gap-3">
                 <Button 
                   onClick={() => {
-                    setShowPinInput(false);
-                    setPin('');
-                    setConfirmPin('');
-                    setPinError(null);
+                    setShowPassphraseInput(false);
+                    setPassphrase('');
+                    setConfirmPassphrase('');
+                    setPassphraseError(null);
                   }}
                   variant="outline"
-                  data-testid="button-cancel-pin"
+                  data-testid="button-cancel-passphrase"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleKeyCeremony}
-                  disabled={generatingKey || provideBorrowerKey.isPending || pin.length < 8}
+                  disabled={generatingKey || provideBorrowerKey.isPending || passphrase.length < 8}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-generate-borrower-key"
                 >
@@ -270,8 +313,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <AlertDescription className="text-sm">
               <p className="font-semibold">Key Ceremony Complete!</p>
               <p className="mt-1">Escrow address created. Now deposit your BTC.</p>
+              {rememberDevice && <p className="mt-1 text-green-700">Your key is saved on this device.</p>}
             </AlertDescription>
           </Alert>
+        )}
+
+        {recoveryBundle && (
+          <Button 
+            onClick={downloadRecoveryBundle}
+            variant="outline"
+            className="w-full"
+            data-testid="button-download-recovery"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Recovery File (Recommended)
+          </Button>
         )}
 
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
@@ -308,14 +364,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
               <li>Click "Confirm Deposit" below</li>
               <li>Complete the <strong>Signing Ceremony</strong> to pre-sign all recovery transactions</li>
             </ol>
-          </AlertDescription>
-        </Alert>
-
-        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-sm">
-            <p className="font-semibold">Remember your passphrase!</p>
-            <p className="mt-1">You'll need it again for the signing ceremony after deposit.</p>
           </AlertDescription>
         </Alert>
 
