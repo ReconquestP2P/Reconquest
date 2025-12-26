@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-Bitcoin Testnet 2-of-2 Multisig Escrow Address Generator
+Bitcoin Testnet 3-of-3 Multisig Escrow Address Generator
 
-This module provides functionality to create a 2-of-2 multisig Bitcoin testnet 
-escrow address using the bitcoinlib library. The escrow involves two parties:
-- Borrower (controls their collateral)
-- Platform (Reconquest - enforces loan terms)
+This module provides functionality to create a 3-of-3 multisig Bitcoin testnet 
+escrow address using the bitcoinlib library. The escrow involves three parties:
+- Borrower (controls their own key - signs client-side)
+- Platform (Reconquest platform key)
+- Investor (platform-operated key on behalf of the lender)
 
-IMPORTANT: Lenders are Bitcoin-blind. They do NOT participate in Bitcoin signing.
-The lender's rights are enforced via platform logic and fiat transfer confirmations.
+IMPORTANT: Lenders are Bitcoin-blind!
+- The "investor key" is generated and controlled by the platform
+- Lenders NEVER create, see, or sign with Bitcoin keys
+- Lender rights are enforced via fiat transfer confirmations
+- Platform signs with BOTH platform key AND investor key after fiat verification
 
-Both signatures (borrower + platform) are required to release funds from the escrow.
+All 3 signatures are required to release funds from the escrow.
 """
 
 from bitcoinlib.keys import Key
@@ -88,13 +92,14 @@ def encode_bech32_address(hrp, witver, witprog):
     return ret
 
 
-def create_multisig_address(pubkey1: str, pubkey2: str) -> dict:
+def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
     """
-    Create a Bitcoin 2-of-2 multisig P2WSH address for testnet (Native SegWit).
+    Create a Bitcoin 3-of-3 multisig P2WSH address for testnet (Native SegWit).
     
     Args:
         pubkey1 (str): First compressed public key in hex format (66 chars)
         pubkey2 (str): Second compressed public key in hex format (66 chars)  
+        pubkey3 (str): Third compressed public key in hex format (66 chars)
         
     Returns:
         dict: Contains address (P2WSH starting with "tb1"), witness_script (hex), 
@@ -104,21 +109,26 @@ def create_multisig_address(pubkey1: str, pubkey2: str) -> dict:
         ValueError: If any public key is invalid or not compressed
         Exception: If address generation fails
     """
-    return create_2of2_escrow(pubkey1, pubkey2)
+    return create_multisig_escrow(pubkey1, pubkey2, pubkey3)
 
 
-def create_2of2_escrow(
+def create_multisig_escrow(
     borrower_pubkey_hex: str,
+    investor_pubkey_hex: str,
     platform_pubkey_hex: str
 ) -> Dict[str, Any]:
     """
-    Create a 2-of-2 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
+    Create a 3-of-3 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
     
-    IMPORTANT: This is a Bitcoin-blind lender design. Lenders do NOT have keys.
-    The lender's rights are enforced via platform logic (fiat transfer confirmations).
+    IMPORTANT: This implements a Bitcoin-blind lender design:
+    - The "investor_pubkey" is generated and controlled by the PLATFORM
+    - Lenders NEVER create, see, or handle Bitcoin private keys
+    - Lender rights are enforced via fiat transfer confirmations
+    - Platform signs with BOTH platform key AND investor key after fiat verification
     
     Args:
         borrower_pubkey_hex (str): Borrower's compressed public key in hex format
+        investor_pubkey_hex (str): Platform-operated investor key (for lender's position)
         platform_pubkey_hex (str): Platform's compressed public key in hex format
         
     Returns:
@@ -127,9 +137,9 @@ def create_2of2_escrow(
         - witness_script (str): The witness script in hex format
         - script_pubkey (str): The ScriptPubKey for P2WSH
         - script_hash (str): The SHA-256 script hash (32 bytes)
-        - public_keys (list): List of public keys used
-        - signatures_required (int): Number of signatures required (2)
-        - total_keys (int): Total number of keys (2)
+        - public_keys (list): List of public keys used (sorted)
+        - signatures_required (int): Number of signatures required (3)
+        - total_keys (int): Total number of keys (3)
         
     Raises:
         ValueError: If any public key is invalid or not compressed
@@ -137,12 +147,12 @@ def create_2of2_escrow(
     """
     
     try:
-        if not all([borrower_pubkey_hex, platform_pubkey_hex]):
-            raise ValueError("Both borrower and platform public keys must be provided")
+        if not all([borrower_pubkey_hex, investor_pubkey_hex, platform_pubkey_hex]):
+            raise ValueError("All three public keys must be provided")
             
         public_keys = []
-        pubkey_labels = ["borrower", "platform"]
-        hex_keys = [borrower_pubkey_hex, platform_pubkey_hex]
+        pubkey_labels = ["borrower", "investor", "platform"]
+        hex_keys = [borrower_pubkey_hex, investor_pubkey_hex, platform_pubkey_hex]
         
         for i, (label, hex_key) in enumerate(zip(pubkey_labels, hex_keys)):
             try:
@@ -168,14 +178,14 @@ def create_2of2_escrow(
         sorted_keys = sorted(public_keys, key=lambda k: k.public_hex)
         
         script_bytes = bytearray()
-        script_bytes.append(0x52)  # OP_2
+        script_bytes.append(0x53)  # OP_3 (require 3 signatures)
         
         for key in sorted_keys:
             pubkey_bytes = bytes.fromhex(key.public_hex)
             script_bytes.append(len(pubkey_bytes))
             script_bytes.extend(pubkey_bytes)
             
-        script_bytes.append(0x52)  # OP_2 (total keys)
+        script_bytes.append(0x53)  # OP_3 (total keys)
         script_bytes.append(0xae)  # OP_CHECKMULTISIG
         
         witness_script_bytes = bytes(script_bytes)
@@ -199,13 +209,14 @@ def create_2of2_escrow(
             'public_keys': [key.public_hex for key in sorted_keys],
             'public_keys_original_order': {
                 'borrower': borrower_pubkey_hex,
+                'investor': investor_pubkey_hex,
                 'platform': platform_pubkey_hex
             },
-            'signatures_required': 2,
-            'total_keys': 2,
+            'signatures_required': 3,
+            'total_keys': 3,
             'network': 'testnet',
             'address_type': 'P2WSH',
-            'lender_involved': False
+            'lender_bitcoin_blind': True
         }
         
         return result
@@ -213,25 +224,7 @@ def create_2of2_escrow(
     except ValueError:
         raise
     except Exception as e:
-        raise Exception(f"Failed to create 2-of-2 escrow address: {str(e)}")
-
-
-def create_multisig_escrow(
-    borrower_pubkey_hex: str,
-    lender_pubkey_hex: str,
-    platform_pubkey_hex: str
-) -> Dict[str, Any]:
-    """
-    DEPRECATED: Legacy 2-of-3 multisig function.
-    
-    This function is kept for backward compatibility but now creates a 2-of-2 escrow
-    using only borrower and platform keys. The lender key is ignored.
-    
-    Lenders are Bitcoin-blind - they do not hold keys or sign transactions.
-    """
-    print("WARNING: create_multisig_escrow is deprecated. Lender key is ignored.")
-    print("Creating 2-of-2 escrow with borrower and platform keys only.")
-    return create_2of2_escrow(borrower_pubkey_hex, platform_pubkey_hex)
+        raise Exception(f"Failed to create 3-of-3 escrow address: {str(e)}")
 
 
 def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
@@ -256,18 +249,22 @@ def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
 
 
 if __name__ == "__main__":
-    print("Bitcoin Testnet 2-of-2 Multisig Address Generator")
-    print("=" * 55)
-    print("DESIGN: Bitcoin-blind lenders - only borrower + platform keys")
-    print("=" * 55)
+    print("Bitcoin Testnet 3-of-3 Multisig Address Generator")
+    print("=" * 60)
+    print("DESIGN: Bitcoin-blind lenders")
+    print("  - Borrower: Client-side key (user controls)")
+    print("  - Platform: Platform signing key")
+    print("  - Investor: Platform-operated key (for lender's position)")
+    print("=" * 60)
     
     pubkey_borrower = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    pubkey_investor = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
     pubkey_platform = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
     
     try:
-        result = create_2of2_escrow(pubkey_borrower, pubkey_platform)
+        result = create_multisig_escrow(pubkey_borrower, pubkey_investor, pubkey_platform)
         
-        print(f"\n✓ Generated Bitcoin Testnet 2-of-2 Multisig Address:")
+        print(f"\n✓ Generated Bitcoin Testnet 3-of-3 Multisig Address:")
         print(f"Address:        {result['address']}")
         print(f"Witness Script: {result['witness_script']}")
         print(f"ScriptPubKey:   {result['script_pubkey']}")
@@ -275,7 +272,7 @@ if __name__ == "__main__":
         print(f"Requirements:   {result['signatures_required']} of {result['total_keys']} signatures")
         print(f"Network:        {result['network']}")
         print(f"Address Type:   {result['address_type']}")
-        print(f"Lender Keys:    NOT REQUIRED (Bitcoin-blind design)")
+        print(f"Lender Blind:   {result['lender_bitcoin_blind']}")
         
         is_valid = verify_multisig_address(result['address'], result['witness_script'])
         print(f"Verification:   {'✓ Valid' if is_valid else '✗ Invalid'}")
@@ -284,10 +281,11 @@ if __name__ == "__main__":
         for i, pubkey in enumerate(result['public_keys'], 1):
             print(f"  {i}. {pubkey}")
             
-        print(f"\n💡 This escrow requires BOTH signatures to spend:")
-        print(f"   - Borrower: Controls their collateral")
-        print(f"   - Platform: Enforces loan terms based on fiat confirmations")
-        print(f"   - Lender: NO BITCOIN INVOLVEMENT (fiat only)")
+        print(f"\n💡 Signing responsibilities:")
+        print(f"   - Borrower: Signs client-side with passphrase-derived key")
+        print(f"   - Platform: Signs with platform key (after verification)")
+        print(f"   - Investor: Platform signs after lender confirms fiat")
+        print(f"   - Lender: ONLY confirms fiat transfers (no Bitcoin interaction)")
             
     except Exception as e:
         print(f"❌ Error: {e}")
