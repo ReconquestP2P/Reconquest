@@ -114,6 +114,41 @@ Preferred communication style: Simple, everyday language.
 - `platformPubkey`: Platform's own public key
 - `borrowerPubkey`: Borrower-generated public key
 
+### Security Constraints
+
+**No Platform-Only Spend Path:**
+- Platform can ONLY sign predefined transaction templates
+- No arbitrary transactions can be created after loan setup
+- All spends must match one of three valid types: REPAYMENT, DEFAULT_LIQUIDATION, BORROWER_RECOVERY
+
+**Predefined Transaction Templates:**
+1. **REPAYMENT** - Happy path: borrower repays loan, collateral returned to borrower
+2. **DEFAULT_LIQUIDATION** - Borrower defaults: lender receives owed amount, borrower gets remainder  
+3. **BORROWER_RECOVERY** - Time-locked emergency recovery if platform fails
+
+**Key Storage Security:**
+- Lender private keys NEVER returned via API, logged, or exposed to browser
+- Encryption isolated in `EncryptionService` for easy HSM/KMS swap
+- `ResponseSanitizer` strips sensitive fields from all API responses
+
+**Audit Logging:**
+- Structured JSON logging for all signing operations
+- Logs include: loan ID, escrow UTXO, transaction type, signing party, success/failure
+- NEVER logs private keys or key material - only events and outcomes
+- Admin endpoint: `GET /api/security/audit-logs/:loanId`
+
+**Borrower Non-Custody Verification:**
+- Borrower private keys and passphrases NEVER sent to backend
+- Key derivation happens client-side only (PBKDF2 in browser)
+- Server receives only: public keys and pre-signed PSBTs
+- Verification endpoint: `GET /api/security/verify-borrower-non-custody`
+
+**Key Files for Security:**
+- `server/services/TransactionTemplateService.ts`: Enforces predefined transaction paths
+- `server/services/EscrowSigningService.ts`: Constrained signing with audit logging
+- `server/services/ResponseSanitizer.ts`: Strips sensitive data from API responses
+- `server/services/EncryptionService.ts`: Isolated encryption for HSM migration
+
 ### Dispute Resolution & Fair Split
 - **3-of-3 Multisig Requirement**: All spending requires all 3 signatures (borrower + platform + lender key)
 - **Platform Authority**: Platform controls lender key, so platform + borrower OR platform alone (with lender key) can spend

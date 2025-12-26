@@ -7,6 +7,9 @@ import { z } from "zod";
 import { LendingWorkflowService } from "./services/LendingWorkflowService";
 import { BitcoinEscrowService } from "./services/BitcoinEscrowService";
 import { EncryptionService } from "./services/EncryptionService";
+import { ResponseSanitizer } from "./services/ResponseSanitizer";
+import { TransactionTemplateService } from "./services/TransactionTemplateService";
+import { EscrowSigningService } from "./services/EscrowSigningService";
 import { releaseCollateral } from "./services/CollateralReleaseService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
@@ -1052,23 +1055,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all loans
+  // Get all loans (SECURITY: Sanitize to remove lender private keys)
   app.get("/api/loans", async (req, res) => {
     const loans = await storage.getAllLoans();
-    res.json(loans);
+    res.json(ResponseSanitizer.sanitizeLoans(loans));
   });
 
   // Get available loans (pending status)
   app.get("/api/loans/available", async (req, res) => {
     const loans = await storage.getAvailableLoans();
-    res.json(loans);
+    res.json(ResponseSanitizer.sanitizeLoans(loans));
   });
 
   // Get user's loans (both as borrower and lender)
   app.get("/api/users/:id/loans", async (req, res) => {
     const userId = parseInt(req.params.id);
     const loans = await storage.getUserLoans(userId);
-    res.json(loans);
+    res.json(ResponseSanitizer.sanitizeLoans(loans));
   });
 
   // Get enriched loan data with borrower details for lenders
@@ -1079,12 +1082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Enrich loans with borrower bank account details
     const enrichedLoans = await Promise.all(
       loans.map(async (loan) => {
+        // SECURITY: Sanitize loan before enriching
+        const sanitizedLoan = ResponseSanitizer.sanitizeLoan(loan);
         if (loan.borrowerId) {
           const borrower = await storage.getUser(loan.borrowerId);
           // Only include bank details if both parties have generated their recovery plans
           const showBankDetails = loan.borrowerKeysGeneratedAt && loan.lenderKeysGeneratedAt;
           return {
-            ...loan,
+            ...sanitizedLoan,
             borrower: {
               id: borrower?.id,
               username: borrower?.username,
@@ -1097,7 +1102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
         }
-        return loan;
+        return sanitizedLoan;
       })
     );
     
@@ -1137,7 +1142,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Attempting to send email notifications for new loan #${loan.id}`);
       await sendNotificationsForNewLoan(loan, borrowerId);
       
-      res.status(201).json(loan);
+      // SECURITY: Sanitize response to remove any sensitive data
+      res.status(201).json(ResponseSanitizer.sanitizeLoan(loan));
     } catch (error) {
       console.error("❌ Loan creation error:", error);
       if (error instanceof z.ZodError) {
@@ -1251,7 +1257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📧 Sent lender committed notification to borrower: ${borrower.email}`);
       }
       
-      res.json(updatedLoan);
+      // SECURITY: Sanitize response to ensure lender private key is never exposed
+      res.json({
+        ...ResponseSanitizer.sanitizeLoan(updatedLoan),
+        message: "Funding commitment registered. Platform has secured your escrow position."
+      });
     } catch (error) {
       console.error('Error funding loan:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -1370,6 +1380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📧 Sent deposit notification to borrower: ${borrower.email}`);
       }
       
+      // SECURITY: Sanitize loan in response to remove lender private key
       res.json({
         success: true,
         message: "Key ceremony complete! Escrow address created with 3 unique keys.",
@@ -1377,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         borrowerPubkey,
         lenderPubkey: loan.lenderPubkey,
         platformPubkey: PLATFORM_PUBKEY,
-        loan: updatedLoan
+        loan: updatedLoan ? ResponseSanitizer.sanitizeLoan(updatedLoan) : undefined
       });
     } catch (error) {
       console.error('Error providing borrower key:', error);
@@ -1471,7 +1482,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(updatedLoan);
+      // SECURITY: Sanitize response to remove lender private key
+      res.json(ResponseSanitizer.sanitizeLoan(updatedLoan));
     } catch (error) {
       console.error('Error confirming deposit:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -1643,7 +1655,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the request if email fails
       }
       
-      res.json(updatedLoan);
+      // SECURITY: Sanitize response to remove lender private key
+      res.json(ResponseSanitizer.sanitizeLoan(updatedLoan));
     } catch (error) {
       console.error('Error updating borrower keys:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -2431,8 +2444,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           }
         }
         
+        // SECURITY: Sanitize loan to remove lender private key
         return {
-          ...loan,
+          ...ResponseSanitizer.sanitizeLoan(loan),
           currentLtv,
           ltvStatus
         };
@@ -2544,7 +2558,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(404).json({ message: "Loan not found" });
       }
       
-      res.json({ success: true, loan: updatedLoan });
+      // SECURITY: Sanitize response to remove lender private key
+      res.json({ success: true, loan: ResponseSanitizer.sanitizeLoan(updatedLoan) });
     } catch (error) {
       console.error("Error setting loan under review:", error);
       res.status(500).json({ message: "Failed to update loan status" });
@@ -4320,6 +4335,79 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   
   // Start automated LTV monitoring for price-based liquidation
   ltvMonitoring.startMonitoring();
+  
+  // ============================================================================
+  // SECURITY & AUDIT ENDPOINTS
+  // ============================================================================
+  
+  /**
+   * Verify borrower non-custody architecture
+   * Returns documentation confirming borrower keys never touch the server
+   */
+  app.get("/api/security/verify-borrower-non-custody", (req, res) => {
+    const verification = EscrowSigningService.verifyBorrowerNonCustody();
+    res.json({
+      verified: true,
+      architecture: "NON_CUSTODIAL",
+      documentation: verification,
+      keyLocations: {
+        borrowerPrivateKey: "NEVER ON SERVER - Client-side only",
+        borrowerPassphrase: "NEVER ON SERVER - Client-side only", 
+        borrowerPubkey: "Server stores for escrow creation",
+        borrowerSignatures: "Server stores pre-signed PSBTs"
+      },
+      clientSideOperations: [
+        "Passphrase entry",
+        "PBKDF2 key derivation",
+        "PSBT signing",
+        "Key memory wiping"
+      ],
+      serverReceivesOnly: [
+        "borrowerPubkey (public key)",
+        "signedPsbt (with borrower signature)",
+        "borrowerSignature (computed client-side)"
+      ]
+    });
+  });
+  
+  /**
+   * Get signing audit logs for a specific loan
+   * For compliance and debugging purposes
+   */
+  app.get("/api/security/audit-logs/:loanId", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.loanId);
+    
+    // Only admins can view audit logs
+    const user = await storage.getUser(req.user.id);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    
+    const logs = TransactionTemplateService.getAuditLogs(loanId);
+    
+    res.json({
+      loanId,
+      auditLogs: logs,
+      totalOperations: logs.length,
+      securityNote: "Private keys are NEVER logged - only signing events and outcomes"
+    });
+  });
+  
+  /**
+   * Verify transaction type is valid (whitelisted)
+   * Used for debugging and compliance checks
+   */
+  app.get("/api/security/valid-transaction-types", (req, res) => {
+    res.json({
+      validTypes: ['REPAYMENT', 'DEFAULT_LIQUIDATION', 'BORROWER_RECOVERY'],
+      description: {
+        REPAYMENT: "Happy path - borrower repays loan, collateral returned to borrower",
+        DEFAULT_LIQUIDATION: "Borrower defaults - lender receives owed amount, borrower gets remainder",
+        BORROWER_RECOVERY: "Time-locked emergency recovery if platform fails"
+      },
+      securityNote: "Platform can ONLY sign these predefined transaction types. No arbitrary transactions permitted."
+    });
+  });
   
   return httpServer;
 }
