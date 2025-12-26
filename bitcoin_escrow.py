@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Bitcoin Testnet 2-of-3 Multisig Escrow Address Generator
+Bitcoin Testnet 2-of-2 Multisig Escrow Address Generator
 
-This module provides functionality to create a 2-of-3 multisig Bitcoin testnet 
-escrow address using the bitcoinlib library. The escrow involves three parties:
-- Borrower
-- Lender  
-- Platform (Reconquest)
+This module provides functionality to create a 2-of-2 multisig Bitcoin testnet 
+escrow address using the bitcoinlib library. The escrow involves two parties:
+- Borrower (controls their collateral)
+- Platform (Reconquest - enforces loan terms)
 
-Only 2 out of 3 signatures are required to release funds from the escrow.
+IMPORTANT: Lenders are Bitcoin-blind. They do NOT participate in Bitcoin signing.
+The lender's rights are enforced via platform logic and fiat transfer confirmations.
+
+Both signatures (borrower + platform) are required to release funds from the escrow.
 """
 
 from bitcoinlib.keys import Key
@@ -74,7 +76,6 @@ def convertbits(data, frombits, tobits, pad=True):
 
 def encode_bech32_address(hrp, witver, witprog):
     """Encode a witness program as a bech32 address using correct bech32 charset."""
-    # Standard bech32 character set (BIP-173)
     CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
     
     ret = hrp + '1'
@@ -87,14 +88,13 @@ def encode_bech32_address(hrp, witver, witprog):
     return ret
 
 
-def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
+def create_multisig_address(pubkey1: str, pubkey2: str) -> dict:
     """
-    Create a Bitcoin 2-of-3 multisig P2WSH address for testnet (Native SegWit).
+    Create a Bitcoin 2-of-2 multisig P2WSH address for testnet (Native SegWit).
     
     Args:
         pubkey1 (str): First compressed public key in hex format (66 chars)
         pubkey2 (str): Second compressed public key in hex format (66 chars)  
-        pubkey3 (str): Third compressed public key in hex format (66 chars)
         
     Returns:
         dict: Contains address (P2WSH starting with "tb1"), witness_script (hex), 
@@ -104,20 +104,21 @@ def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
         ValueError: If any public key is invalid or not compressed
         Exception: If address generation fails
     """
-    return create_multisig_escrow(pubkey1, pubkey2, pubkey3)
+    return create_2of2_escrow(pubkey1, pubkey2)
 
 
-def create_multisig_escrow(
+def create_2of2_escrow(
     borrower_pubkey_hex: str,
-    lender_pubkey_hex: str,
     platform_pubkey_hex: str
 ) -> Dict[str, Any]:
     """
-    Create a 2-of-3 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
+    Create a 2-of-2 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
+    
+    IMPORTANT: This is a Bitcoin-blind lender design. Lenders do NOT have keys.
+    The lender's rights are enforced via platform logic (fiat transfer confirmations).
     
     Args:
         borrower_pubkey_hex (str): Borrower's compressed public key in hex format
-        lender_pubkey_hex (str): Lender's compressed public key in hex format  
         platform_pubkey_hex (str): Platform's compressed public key in hex format
         
     Returns:
@@ -128,7 +129,7 @@ def create_multisig_escrow(
         - script_hash (str): The SHA-256 script hash (32 bytes)
         - public_keys (list): List of public keys used
         - signatures_required (int): Number of signatures required (2)
-        - total_keys (int): Total number of keys (3)
+        - total_keys (int): Total number of keys (2)
         
     Raises:
         ValueError: If any public key is invalid or not compressed
@@ -136,32 +137,25 @@ def create_multisig_escrow(
     """
     
     try:
-        # Validate input public keys
-        if not all([borrower_pubkey_hex, lender_pubkey_hex, platform_pubkey_hex]):
-            raise ValueError("All three public keys must be provided")
+        if not all([borrower_pubkey_hex, platform_pubkey_hex]):
+            raise ValueError("Both borrower and platform public keys must be provided")
             
-        # Convert hex strings to Key objects and validate
         public_keys = []
-        pubkey_labels = ["borrower", "lender", "platform"]
-        hex_keys = [borrower_pubkey_hex, lender_pubkey_hex, platform_pubkey_hex]
+        pubkey_labels = ["borrower", "platform"]
+        hex_keys = [borrower_pubkey_hex, platform_pubkey_hex]
         
         for i, (label, hex_key) in enumerate(zip(pubkey_labels, hex_keys)):
             try:
-                # Remove any whitespace or 0x prefix
                 clean_hex = hex_key.strip().replace('0x', '')
                 
-                # Validate hex format
                 if not all(c in '0123456789abcdefABCDEF' for c in clean_hex):
                     raise ValueError(f"Invalid hex format for {label} public key")
                 
-                # Check if compressed public key (33 bytes = 66 hex chars)
                 if len(clean_hex) != 66:
                     raise ValueError(f"{label} public key must be compressed (33 bytes/66 hex chars)")
                 
-                # Create Key object from hex
                 key = Key(clean_hex)
                 
-                # Verify it's a valid public key by checking if we can get the public hex
                 try:
                     _ = key.public_hex
                     public_keys.append(key)
@@ -171,58 +165,47 @@ def create_multisig_escrow(
             except Exception as e:
                 raise ValueError(f"Error processing {label} public key: {str(e)}")
         
-        # Sort public keys for deterministic script creation
-        # This ensures the same address is generated regardless of input order
         sorted_keys = sorted(public_keys, key=lambda k: k.public_hex)
         
-        # Create the multisig redeem script (2-of-3) manually
-        # Format: OP_2 <pubkey1> <pubkey2> <pubkey3> OP_3 OP_CHECKMULTISIG
-        
-        # Build script manually as bytes
         script_bytes = bytearray()
         script_bytes.append(0x52)  # OP_2
         
         for key in sorted_keys:
             pubkey_bytes = bytes.fromhex(key.public_hex)
-            script_bytes.append(len(pubkey_bytes))  # Push length
-            script_bytes.extend(pubkey_bytes)       # Push pubkey
+            script_bytes.append(len(pubkey_bytes))
+            script_bytes.extend(pubkey_bytes)
             
-        script_bytes.append(0x53)  # OP_3
+        script_bytes.append(0x52)  # OP_2 (total keys)
         script_bytes.append(0xae)  # OP_CHECKMULTISIG
         
         witness_script_bytes = bytes(script_bytes)
         
-        # Get script hash for P2WSH (Native SegWit) - SHA-256 only, no RIPEMD160
         script_hash = hashlib.sha256(witness_script_bytes).digest()
         
-        # Create P2WSH address on testnet using bech32 encoding
-        # Native SegWit addresses use bech32 with witness version 0
         address = encode_bech32_address('tb', 0, script_hash)
         
-        # Create ScriptPubKey for P2WSH (OP_0 <32-byte-script-hash>)
         script_pubkey_bytes = bytearray()
-        script_pubkey_bytes.append(0x00)  # OP_0 (witness version 0)
-        script_pubkey_bytes.append(0x20)  # Push 32 bytes (SHA-256 hash length)
+        script_pubkey_bytes.append(0x00)
+        script_pubkey_bytes.append(0x20)
         script_pubkey_bytes.extend(script_hash)
         script_pubkey = bytes(script_pubkey_bytes).hex()
 
-        # Prepare result
         result = {
             'address': address,
-            'witness_script': witness_script_bytes.hex(),  # P2WSH uses witness_script instead of redeem_script
-            'redeem_script': witness_script_bytes.hex(),   # Keep for backward compatibility
+            'witness_script': witness_script_bytes.hex(),
+            'redeem_script': witness_script_bytes.hex(),
             'script_pubkey': script_pubkey,
-            'script_hash': script_hash.hex(),              # P2WSH uses SHA-256 hash (32 bytes)
+            'script_hash': script_hash.hex(),
             'public_keys': [key.public_hex for key in sorted_keys],
             'public_keys_original_order': {
                 'borrower': borrower_pubkey_hex,
-                'lender': lender_pubkey_hex, 
                 'platform': platform_pubkey_hex
             },
             'signatures_required': 2,
-            'total_keys': 3,
+            'total_keys': 2,
             'network': 'testnet',
-            'address_type': 'P2WSH'                       # Updated to P2WSH (Native SegWit)
+            'address_type': 'P2WSH',
+            'lender_involved': False
         }
         
         return result
@@ -230,7 +213,25 @@ def create_multisig_escrow(
     except ValueError:
         raise
     except Exception as e:
-        raise Exception(f"Failed to create multisig escrow address: {str(e)}")
+        raise Exception(f"Failed to create 2-of-2 escrow address: {str(e)}")
+
+
+def create_multisig_escrow(
+    borrower_pubkey_hex: str,
+    lender_pubkey_hex: str,
+    platform_pubkey_hex: str
+) -> Dict[str, Any]:
+    """
+    DEPRECATED: Legacy 2-of-3 multisig function.
+    
+    This function is kept for backward compatibility but now creates a 2-of-2 escrow
+    using only borrower and platform keys. The lender key is ignored.
+    
+    Lenders are Bitcoin-blind - they do not hold keys or sign transactions.
+    """
+    print("WARNING: create_multisig_escrow is deprecated. Lender key is ignored.")
+    print("Creating 2-of-2 escrow with borrower and platform keys only.")
+    return create_2of2_escrow(borrower_pubkey_hex, platform_pubkey_hex)
 
 
 def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
@@ -245,60 +246,48 @@ def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
         bool: True if the address matches the witness script, False otherwise
     """
     try:
-        # Convert hex to bytes
         witness_script_bytes = bytes.fromhex(witness_script_hex)
-        
-        # Calculate script hash using SHA-256 only (P2WSH)
         script_hash = hashlib.sha256(witness_script_bytes).digest()
-        
-        # Generate P2WSH address from script hash
         calculated_address = encode_bech32_address('tb', 0, script_hash)
-        
         return address == calculated_address
         
     except Exception:
         return False
 
 
-# Example usage and testing
 if __name__ == "__main__":
-    # Example compressed public keys for testing (these are valid testnet keys)
-    # In production, these would come from the actual parties
-    
-    print("Bitcoin Testnet 2-of-3 Multisig Address Generator")
+    print("Bitcoin Testnet 2-of-2 Multisig Address Generator")
     print("=" * 55)
-    print("Requirements: pip install bitcoinlib")
+    print("DESIGN: Bitcoin-blind lenders - only borrower + platform keys")
     print("=" * 55)
     
-    # Example valid compressed public keys (33 bytes each = 66 hex chars)
-    # These are actual valid Bitcoin compressed public keys for testing
-    pubkey1 = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    pubkey2 = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-    pubkey3 = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
+    pubkey_borrower = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    pubkey_platform = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
     
     try:
-        # Call the requested function signature
-        result = create_multisig_address(pubkey1, pubkey2, pubkey3)
+        result = create_2of2_escrow(pubkey_borrower, pubkey_platform)
         
-        print(f"\n✓ Generated Bitcoin Testnet 2-of-3 Multisig Address:")
+        print(f"\n✓ Generated Bitcoin Testnet 2-of-2 Multisig Address:")
         print(f"Address:        {result['address']}")
-        print(f"Redeem Script:  {result['redeem_script']}")
+        print(f"Witness Script: {result['witness_script']}")
         print(f"ScriptPubKey:   {result['script_pubkey']}")
         print(f"Script Hash:    {result['script_hash']}")
         print(f"Requirements:   {result['signatures_required']} of {result['total_keys']} signatures")
         print(f"Network:        {result['network']}")
         print(f"Address Type:   {result['address_type']}")
+        print(f"Lender Keys:    NOT REQUIRED (Bitcoin-blind design)")
         
-        # Verify the address
-        is_valid = verify_multisig_address(result['address'], result['redeem_script'])
+        is_valid = verify_multisig_address(result['address'], result['witness_script'])
         print(f"Verification:   {'✓ Valid' if is_valid else '✗ Invalid'}")
         
         print(f"\nPublic Keys (sorted for deterministic script):")
         for i, pubkey in enumerate(result['public_keys'], 1):
             print(f"  {i}. {pubkey}")
             
-        print(f"\n💡 This address can be used for Bitcoin testnet P2P lending escrow.")
-        print(f"   Funds sent to this address require 2-of-3 signatures to release.")
+        print(f"\n💡 This escrow requires BOTH signatures to spend:")
+        print(f"   - Borrower: Controls their collateral")
+        print(f"   - Platform: Enforces loan terms based on fiat confirmations")
+        print(f"   - Lender: NO BITCOIN INVOLVEMENT (fiat only)")
             
     except Exception as e:
         print(f"❌ Error: {e}")
