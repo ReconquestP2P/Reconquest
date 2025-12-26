@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Shield, CheckCircle, Key, Download, Lock, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, CheckCircle, Key, Lock, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { deriveKeyFromPin } from "@/lib/deterministic-key";
-import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
+import { storeKeyOnServer } from "@/lib/key-vault";
 import type { Loan } from "@shared/schema";
 
 interface LenderFundingModalProps {
@@ -34,9 +33,7 @@ export default function LenderFundingModal({
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [passphraseError, setPassphraseError] = useState<string | null>(null);
-  const [rememberDevice, setRememberDevice] = useState(true);
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
-  const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
 
   const fundLoan = useMutation({
     mutationFn: async (data: { lenderPubkey: string; plannedStartDate: string; plannedEndDate: string }) => {
@@ -89,20 +86,11 @@ export default function LenderFundingModal({
       
       console.log(`Derived lender pubkey: ${publicKey.slice(0, 20)}...`);
       
-      if (rememberDevice) {
-        await storeKey(loan.id, 'lender', privateKey, publicKey);
-        console.log("Private key stored securely in browser vault");
+      const stored = await storeKeyOnServer(loan.id, 'lender', privateKey, publicKey, passphrase);
+      if (!stored) {
+        throw new Error("Failed to store encrypted key on server");
       }
-      
-      const bundle = await createRecoveryBundle(
-        loan.id, 
-        'lender', 
-        privateKey, 
-        publicKey, 
-        loan.escrowAddress || 'pending',
-        passphrase
-      );
-      setRecoveryBundle(bundle);
+      console.log("Encrypted key stored securely on server");
       
       privateKey.fill(0);
       console.log("Private key wiped from working memory");
@@ -132,33 +120,12 @@ export default function LenderFundingModal({
     }
   };
 
-  const downloadRecoveryBundle = () => {
-    if (!recoveryBundle) return;
-    
-    const blob = new Blob([recoveryBundle], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconquest-lender-recovery-loan-${loan.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Recovery File Downloaded",
-      description: "Keep this file safe - you can use it to sign from another device.",
-    });
-  };
-
   const handleClose = () => {
     setStep('confirm');
     setPassphrase('');
     setConfirmPassphrase('');
     setPassphraseError(null);
-    setRememberDevice(true);
     setIsGeneratingKeys(false);
-    setRecoveryBundle(null);
     onClose();
   };
 
@@ -214,8 +181,8 @@ export default function LenderFundingModal({
                 <p className="font-semibold">Secure 2-of-3 Multisig Escrow:</p>
                 <ul className="list-disc ml-4 space-y-1">
                   <li>Your Bitcoin key will be generated from a passphrase you create</li>
-                  <li>You can choose to remember the key on this device</li>
-                  <li>After the borrower deposits BTC, you'll complete the signing ceremony</li>
+                  <li>Your encrypted key is stored securely on the server</li>
+                  <li>Just remember your passphrase - no files to download</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -254,7 +221,7 @@ export default function LenderFundingModal({
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <Shield className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm">
-                <p>Your passphrase deterministically derives your key. With "Remember on this device" enabled, you won't need to enter it again on this browser.</p>
+                <p>Your passphrase encrypts your key on our server. You'll only need to enter it when signing transactions.</p>
               </AlertDescription>
             </Alert>
 
@@ -281,18 +248,6 @@ export default function LenderFundingModal({
                   onChange={(e) => setConfirmPassphrase(e.target.value)}
                   data-testid="input-confirm-passphrase"
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="rememberDevice" 
-                  checked={rememberDevice}
-                  onCheckedChange={(checked) => setRememberDevice(checked === true)}
-                  data-testid="checkbox-remember-device"
-                />
-                <Label htmlFor="rememberDevice" className="text-sm cursor-pointer">
-                  Remember key on this device (recommended)
-                </Label>
               </div>
               
               {passphraseError && (
@@ -343,7 +298,7 @@ export default function LenderFundingModal({
               <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
               <div className="text-sm text-muted-foreground space-y-1 text-center">
                 <p>Deriving key from passphrase (PBKDF2)...</p>
-                <p>Storing securely in browser...</p>
+                <p>Encrypting and storing on server...</p>
               </div>
             </div>
           </>
@@ -365,7 +320,7 @@ export default function LenderFundingModal({
                 <ul className="list-disc ml-4 mt-2 space-y-1">
                   <li>Your Bitcoin key has been generated from your passphrase</li>
                   <li>Your public key is registered with the platform</li>
-                  {rememberDevice && <li>Private key stored securely in your browser</li>}
+                  <li>Your encrypted key is stored securely on our server</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -382,26 +337,15 @@ export default function LenderFundingModal({
               </AlertDescription>
             </Alert>
 
-            {!rememberDevice && (
-              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-sm">
-                  <p className="font-semibold">Remember your passphrase!</p>
-                  <p className="mt-1">You chose not to save on this device. You'll need your passphrase for signing.</p>
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm">
+                <p className="font-semibold">Remember your passphrase!</p>
+                <p className="mt-1">You'll need it when signing transactions. No files to download - just your passphrase.</p>
+              </AlertDescription>
+            </Alert>
 
             <div className="flex gap-3">
-              <Button 
-                onClick={downloadRecoveryBundle}
-                variant="outline"
-                className="flex-1"
-                data-testid="button-download-recovery"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Recovery File
-              </Button>
               <Button 
                 onClick={handleClose}
                 className="flex-1"

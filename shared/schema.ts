@@ -536,3 +536,30 @@ export type InsertPreSignedTransaction = z.infer<typeof insertPreSignedTransacti
 // Dispute Audit Log Types
 export type DisputeAuditLog = typeof disputeAuditLogs.$inferSelect;
 export type InsertDisputeAuditLog = z.infer<typeof insertDisputeAuditLogSchema>;
+
+// =====================================================
+// SERVER-SIDE ENCRYPTED KEY VAULT
+// =====================================================
+// Stores passphrase-encrypted private keys on server
+// Users only need to remember their passphrase - no downloads required
+
+export const encryptedKeyVault = pgTable("encrypted_key_vault", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull(), // 'borrower' or 'lender'
+  publicKey: text("public_key").notNull(), // Unencrypted for matching
+  encryptedPrivateKey: text("encrypted_private_key").notNull(), // AES-GCM encrypted
+  iv: text("iv").notNull(), // Initialization vector (base64)
+  salt: text("salt").notNull(), // PBKDF2 salt (base64)
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertEncryptedKeyVaultSchema = createInsertSchema(encryptedKeyVault).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EncryptedKeyVault = typeof encryptedKeyVault.$inferSelect;
+export type InsertEncryptedKeyVault = z.infer<typeof insertEncryptedKeyVaultSchema>;

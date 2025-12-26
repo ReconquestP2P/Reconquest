@@ -1,6 +1,7 @@
 import { 
   users, loans, loanOffers, disputes, disputeAuditLogs,
   escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions, psbtTemplates,
+  encryptedKeyVault,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
   type LoanOffer, type InsertLoanOffer,
@@ -10,7 +11,8 @@ import {
   type PreSignedTransaction, type InsertPreSignedTransaction,
   type Dispute, type InsertDispute,
   type DisputeAuditLog, type InsertDisputeAuditLog,
-  type PsbtTemplate, type InsertPsbtTemplate
+  type PsbtTemplate, type InsertPsbtTemplate,
+  type EncryptedKeyVault, type InsertEncryptedKeyVault
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -88,6 +90,11 @@ export interface IStorage {
   // PSBT Template operations (Security: canonical template storage)
   storePsbtTemplate(template: InsertPsbtTemplate): Promise<PsbtTemplate>;
   getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined>;
+
+  // Encrypted Key Vault operations (server-side passphrase-encrypted key storage)
+  storeEncryptedKey(keyData: InsertEncryptedKeyVault): Promise<EncryptedKeyVault>;
+  getEncryptedKey(loanId: number, userId: number, role: string): Promise<EncryptedKeyVault | undefined>;
+  deleteEncryptedKey(loanId: number, userId: number, role: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -834,6 +841,36 @@ export class DatabaseStorage implements IStorage {
       .where(eq(psbtTemplates.loanId, loanId));
     
     return templates.find(t => t.txType === txType);
+  }
+
+  // Encrypted Key Vault Operations (server-side passphrase-encrypted key storage)
+  async storeEncryptedKey(keyData: InsertEncryptedKeyVault): Promise<EncryptedKeyVault> {
+    // Upsert: delete existing key for this loan/user/role, then insert new
+    await db
+      .delete(encryptedKeyVault)
+      .where(
+        eq(encryptedKeyVault.loanId, keyData.loanId)
+      );
+    
+    const [stored] = await db.insert(encryptedKeyVault).values(keyData).returning();
+    return stored;
+  }
+
+  async getEncryptedKey(loanId: number, userId: number, role: string): Promise<EncryptedKeyVault | undefined> {
+    const keys = await db
+      .select()
+      .from(encryptedKeyVault)
+      .where(eq(encryptedKeyVault.loanId, loanId));
+    
+    return keys.find(k => k.userId === userId && k.role === role);
+  }
+
+  async deleteEncryptedKey(loanId: number, userId: number, role: string): Promise<boolean> {
+    const result = await db
+      .delete(encryptedKeyVault)
+      .where(eq(encryptedKeyVault.loanId, loanId));
+    
+    return true;
   }
 }
 

@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, Lock, Shield, Download } from "lucide-react";
+import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, Lock, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { deriveKeyFromPin } from "@/lib/deterministic-key";
-import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
+import { storeKeyOnServer } from "@/lib/key-vault";
 import type { Loan } from "@shared/schema";
 
 interface DepositInstructionsCardProps {
@@ -27,9 +26,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [passphraseError, setPassphraseError] = useState<string | null>(null);
-  const [rememberDevice, setRememberDevice] = useState(true);
   const [keyCeremonyComplete, setKeyCeremonyComplete] = useState(false);
-  const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
 
   const provideBorrowerKey = useMutation({
     mutationFn: async (borrowerPubkey: string) => {
@@ -101,20 +98,11 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       const { privateKey, publicKey } = deriveKeyFromPin(loan.id, userId, 'borrower', passphrase);
       console.log(`Derived borrower pubkey: ${publicKey.slice(0, 20)}...`);
       
-      if (rememberDevice) {
-        await storeKey(loan.id, 'borrower', privateKey, publicKey);
-        console.log("Private key stored securely in browser vault");
+      const stored = await storeKeyOnServer(loan.id, 'borrower', privateKey, publicKey, passphrase);
+      if (!stored) {
+        throw new Error("Failed to store encrypted key on server");
       }
-      
-      const bundle = await createRecoveryBundle(
-        loan.id, 
-        'borrower', 
-        privateKey, 
-        publicKey, 
-        loan.escrowAddress || 'pending',
-        passphrase
-      );
-      setRecoveryBundle(bundle);
+      console.log("Encrypted key stored securely on server");
       
       privateKey.fill(0);
       console.log("Private key wiped from working memory");
@@ -131,25 +119,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     } finally {
       setGeneratingKey(false);
     }
-  };
-
-  const downloadRecoveryBundle = () => {
-    if (!recoveryBundle) return;
-    
-    const blob = new Blob([recoveryBundle], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconquest-borrower-recovery-loan-${loan.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Recovery File Downloaded",
-      description: "Keep this file safe - you can use it to sign from another device.",
-    });
   };
 
   const copyToClipboard = () => {
@@ -189,8 +158,8 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                   <p className="font-semibold">Secure 2-of-3 Multisig Escrow:</p>
                   <ul className="list-disc ml-4 space-y-1">
                     <li>Your Bitcoin key will be generated from a passphrase you create</li>
-                    <li>You can choose to remember the key on this device</li>
-                    <li>After depositing BTC, you'll complete the signing ceremony</li>
+                    <li>Your encrypted key is stored securely on the server</li>
+                    <li>Just remember your passphrase - no files to download</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -209,7 +178,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
               <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
                 <Shield className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-sm">
-                  <p>Your passphrase deterministically derives your key. With "Remember on this device" enabled, you won't need to enter it again on this browser.</p>
+                  <p>Your passphrase encrypts your key on our server. You'll only need to enter it when signing transactions.</p>
                 </AlertDescription>
               </Alert>
 
@@ -236,18 +205,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                     onChange={(e) => setConfirmPassphrase(e.target.value)}
                     data-testid="input-borrower-confirm-passphrase"
                   />
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="rememberDevice" 
-                    checked={rememberDevice}
-                    onCheckedChange={(checked) => setRememberDevice(checked === true)}
-                    data-testid="checkbox-remember-device"
-                  />
-                  <Label htmlFor="rememberDevice" className="text-sm cursor-pointer">
-                    Remember key on this device (recommended)
-                  </Label>
                 </div>
                 
                 {passphraseError && (
@@ -312,22 +269,10 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-sm">
               <p className="font-semibold">Key Ceremony Complete!</p>
-              <p className="mt-1">Escrow address created. Now deposit your BTC.</p>
-              {rememberDevice && <p className="mt-1 text-green-700">Your key is saved on this device.</p>}
+              <p className="mt-1">Escrow address created. Your encrypted key is stored on the server.</p>
+              <p className="mt-1 text-green-700">Remember your passphrase for signing.</p>
             </AlertDescription>
           </Alert>
-        )}
-
-        {recoveryBundle && (
-          <Button 
-            onClick={downloadRecoveryBundle}
-            variant="outline"
-            className="w-full"
-            data-testid="button-download-recovery"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download Recovery File (Recommended)
-          </Button>
         )}
 
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
