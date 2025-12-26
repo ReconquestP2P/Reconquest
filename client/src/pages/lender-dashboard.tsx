@@ -1250,6 +1250,7 @@ export default function LenderDashboard() {
             setSelectedLoan(null);
           }}
           loan={selectedLoan}
+          userId={userId}
         />
       )}
 

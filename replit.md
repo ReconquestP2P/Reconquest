@@ -41,21 +41,30 @@ Preferred communication style: Simple, everyday language.
 - **Ephemeral Key Model**: Maximum security Bitcoin key management where private keys are generated client-side, used to pre-sign recovery transactions, then immediately discarded from memory. Users NEVER see their private keys.
 - **Deterministic Outcome Engine**: A pure function maps objective facts to one of the pre-signed transaction types (COOPERATIVE_CLOSE, DEFAULT, LIQUIDATION, CANCELLATION, RECOVERY, UNDER_REVIEW) for fair and transparent dispute resolution.
 
-### Security Architecture
-- **Ephemeral Key Model**: Private keys are generated client-side, used to pre-sign all necessary transactions (recovery, cooperative close, default), and then immediately wiped from memory. Keys are never stored or displayed. Users download pre-signed recovery transaction files, not private keys.
-- **Signing Library Compatibility**: `tiny-secp256k1` is used for all Bitcoin transaction signing to ensure compatibility with Bitcoin Core.
-- **Bitcoin Testnet Integration**: Real Bitcoin RPC support for multisig, pre-signed transaction building with ephemeral keys, and broadcasting to the testnet. Includes a graceful fallback to mock mode if RPC is unavailable.
+### Security Architecture - Firefish Model
+- **PIN-Based Deterministic Key Derivation**: Users create a secret PIN that derives their Bitcoin key using PBKDF2 (100,000 iterations). The same PIN always regenerates the same key for a given loan/user/role combination.
+- **Key Derivation Formula**: `PBKDF2(SHA256, PIN, salt="reconquest:{loanId}:{userId}:{role}:escrow-key-v1", iterations=100000, keyLen=32)`
+- **Ephemeral Key Model**: Private keys are derived from PIN, used to sign transactions, then immediately wiped from memory. Keys are NEVER stored or displayed. Users download pre-signed recovery transaction files, not private keys.
+- **Signing Library Compatibility**: `@noble/secp256k1` for key derivation and signing, `tiny-secp256k1` for Bitcoin transaction signing to ensure compatibility with Bitcoin Core.
+- **Bitcoin Testnet Integration**: Real Bitcoin RPC support for multisig, pre-signed transaction building, and broadcasting to the testnet.
 
 ### Key Ceremony & Multisig Creation
 - **Mandatory Key Ceremony**: Before escrow address creation, ALL 3 public keys (borrower, lender, platform) must be collected and validated as UNIQUE
 - **Uniqueness Validation**: `validateKeysAreUnique()` in BitcoinEscrowService ensures no duplicate keys (prevents fund lockup)
-- **Flow Gating**: 
-  1. Loan offer created by lender
-  2. Borrower accepts offer → Both borrowerPubkey and lenderPubkey are required at acceptance time
-  3. Escrow address generated ONLY after 3 unique keys validated
-  4. Deposit confirmation blocked without complete keys
+- **PIN-Based Flow**: 
+  1. Lender commits to fund → Creates PIN → Derives pubkey → State: "awaiting_borrower_key"
+  2. Borrower accepts → Creates PIN → Derives pubkey → Escrow created with 3 unique keys
+  3. Borrower deposits BTC to escrow address
+  4. Both parties sign using their PINs → Pre-signed transactions stored + downloaded
+  5. Loan activates
 - **2-of-3 Spending**: Once escrow is created with 3 unique keys, any 2 signatures (platform+lender OR platform+borrower) can spend the funds
 - **Critical Safety**: This design ensures funds can ALWAYS be recovered via 2-of-3 multisig in dispute scenarios
+
+### Key Files for Firefish Implementation
+- `client/src/lib/deterministic-key.ts`: PIN-based key derivation using PBKDF2
+- `client/src/components/lender-funding-modal.tsx`: Lender PIN creation and key generation
+- `client/src/components/deposit-instructions-card.tsx`: Borrower PIN creation and key generation
+- `client/src/components/signing-ceremony-modal.tsx`: PIN-based transaction signing
 
 ### Loan Flow
 The platform facilitates loan creation, lender commitment, borrower collateral deposit, and a dual key generation/transaction signing process where both parties generate ephemeral keys and download pre-signed recovery plans. The repayment flow involves cryptographic verification of both borrower and lender pre-signed transactions before broadcasting to the Bitcoin testnet.
