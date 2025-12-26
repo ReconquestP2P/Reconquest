@@ -717,7 +717,7 @@ export default function BorrowerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {borrowerLoans.filter(loan => (loan.escrowState === 'escrow_created' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed').length === 0 ? (
+              {borrowerLoans.filter(loan => (loan.escrowState === 'escrow_created' || loan.escrowState === 'awaiting_borrower_key' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed').length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
                     No loans awaiting BTC deposit. Once a lender commits to fund your loan request, it will appear here.
@@ -726,7 +726,7 @@ export default function BorrowerDashboard() {
               ) : (
                 <div className="space-y-6">
                   {borrowerLoans
-                    .filter(loan => (loan.escrowState === 'escrow_created' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed')
+                    .filter(loan => (loan.escrowState === 'escrow_created' || loan.escrowState === 'awaiting_borrower_key' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed')
                     .map((loan) => (
                       <DepositInstructionsCard key={loan.id} loan={loan} userId={userId} />
                     ))}

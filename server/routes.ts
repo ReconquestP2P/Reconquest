@@ -1213,29 +1213,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Create 2-of-3 multisig escrow address using lender + platform pubkeys
-      // Borrower pubkey will be added later after deposit confirmation
-      const { createMultisigAddress } = await import('./utils/multisig-creator.js');
       const PLATFORM_PUBKEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
       
-      // Use platform pubkey as placeholder for borrower (will be replaced after deposit)
-      const multisig = await createMultisigAddress(
-        PLATFORM_PUBKEY, // Placeholder borrower pubkey
-        lenderPubkey,
-        PLATFORM_PUBKEY
-      );
+      // IMPORTANT: Do NOT create escrow yet - wait for borrower to provide their key
+      // This prevents the duplicate key bug that locked funds in loan #183
+      // Escrow will be created in /api/loans/:id/provide-borrower-key when borrower provides their key
       
-      console.log(`🔐 Created escrow for Loan #${loanId}: ${multisig.address}`);
+      console.log(`🔐 Lender committed to Loan #${loanId} - awaiting borrower key for escrow creation`);
       
-      // Update loan with lender info and escrow details
+      // Update loan with lender info but NO escrow yet
       const updatedLoan = await storage.updateLoan(loanId, {
         lenderId,
         lenderPubkey,
         platformPubkey: PLATFORM_PUBKEY,
-        escrowAddress: multisig.address,
-        escrowWitnessScript: multisig.witnessScript,
-        escrowScriptHash: multisig.scriptHash,
-        escrowState: "escrow_created", // New state: escrow created, awaiting borrower deposit
+        // NO escrowAddress yet - will be created when borrower provides their key
+        escrowState: "awaiting_borrower_key", // New state: waiting for borrower to provide their key
         status: "funded", // Lender has committed
         fundedAt: new Date(),
         plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -1245,7 +1237,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get borrower details for email notification
       const borrower = await storage.getUser(loan.borrowerId);
       if (borrower && updatedLoan) {
-        // Send email to borrower with deposit instructions
+        // Send email to borrower notifying them a lender has committed
+        // They need to provide their key first before getting the escrow address
+        const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+        
+        await sendEmail({
+          to: borrower.email,
+          from: 'noreply@reconquestp2p.com',
+          subject: `🎉 Lender Committed - Loan #${loan.id} - Action Required`,
+          html: `
+            <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+              <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 20px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: white; margin: 0; text-align: center;">Lender Has Committed!</h1>
+              </div>
+              <div style="padding: 30px; background: #f8f9fa;">
+                <p>Dear ${borrower.username},</p>
+                <p>Great news! A lender has committed to fund your loan #${loan.id}.</p>
+                <p><strong>Next Step:</strong> Please go to your dashboard to complete the key ceremony and receive your escrow deposit address.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${baseUrl}/borrower" style="display: inline-block; background: #e74c3c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    Go to Dashboard
+                  </a>
+                </div>
+              </div>
+            </div>
+          `
+        });
+        
+        console.log(`📧 Sent lender committed notification to borrower: ${borrower.email}`);
+      }
+      
+      res.json(updatedLoan);
+    } catch (error) {
+      console.error('Error funding loan:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Borrower provides their public key to complete key ceremony and create escrow
+  app.post("/api/loans/:id/provide-borrower-key", authenticateToken, async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    const borrowerId = req.user.id;
+    
+    try {
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify the user is the borrower
+      if (loan.borrowerId !== borrowerId) {
+        return res.status(403).json({ message: "Only the borrower can provide their key" });
+      }
+      
+      // Verify loan is awaiting borrower key
+      if (loan.escrowState !== "awaiting_borrower_key") {
+        return res.status(400).json({ 
+          message: "Loan is not awaiting borrower key. Current state: " + loan.escrowState 
+        });
+      }
+      
+      // Verify lender has already provided their key
+      if (!loan.lenderPubkey) {
+        return res.status(400).json({ message: "Lender has not provided their key yet" });
+      }
+      
+      const { borrowerPubkey } = req.body;
+      
+      // Validate borrower public key format
+      if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
+        return res.status(400).json({ message: "Borrower Bitcoin public key is required" });
+      }
+      
+      if (borrowerPubkey.length !== 66) {
+        return res.status(400).json({ 
+          message: "Borrower public key must be exactly 66 characters (33 bytes compressed)" 
+        });
+      }
+      
+      if (!/^[0-9a-fA-F]{66}$/.test(borrowerPubkey)) {
+        return res.status(400).json({ message: "Borrower public key must be valid hexadecimal" });
+      }
+      
+      const prefix = borrowerPubkey.substring(0, 2);
+      if (prefix !== '02' && prefix !== '03') {
+        return res.status(400).json({ 
+          message: "Borrower public key must start with 02 or 03 (compressed format)" 
+        });
+      }
+      
+      // CRITICAL: Cryptographically verify the public key
+      try {
+        const secp256k1 = await import('@noble/secp256k1');
+        await secp256k1.Point.fromHex(borrowerPubkey);
+      } catch (error) {
+        return res.status(400).json({ 
+          message: `Borrower public key failed cryptographic validation: ${error instanceof Error ? error.message : 'invalid curve point'}` 
+        });
+      }
+      
+      const PLATFORM_PUBKEY = loan.platformPubkey || "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
+      
+      // CRITICAL: Validate all 3 keys are unique BEFORE creating escrow
+      const keys = [borrowerPubkey.toLowerCase(), loan.lenderPubkey.toLowerCase(), PLATFORM_PUBKEY.toLowerCase()];
+      const uniqueKeys = new Set(keys);
+      if (uniqueKeys.size !== 3) {
+        return res.status(400).json({ 
+          message: "CRITICAL: All 3 public keys (borrower, lender, platform) must be unique. Duplicate keys would lock funds permanently." 
+        });
+      }
+      
+      // NOW create the 2-of-3 multisig escrow with all 3 unique keys
+      const { createMultisigAddress } = await import('./utils/multisig-creator.js');
+      const multisig = await createMultisigAddress(
+        borrowerPubkey,
+        loan.lenderPubkey,
+        PLATFORM_PUBKEY
+      );
+      
+      console.log(`🔐 Created escrow for Loan #${loanId} with 3 unique keys: ${multisig.address}`);
+      
+      // Update loan with borrower key and escrow details
+      const updatedLoan = await storage.updateLoan(loanId, {
+        borrowerPubkey,
+        escrowAddress: multisig.address,
+        escrowWitnessScript: multisig.witnessScript,
+        escrowScriptHash: multisig.scriptHash,
+        escrowState: "escrow_created", // Now escrow is properly created with all 3 keys
+      });
+      
+      // Send email to borrower with deposit instructions
+      const borrower = await storage.getUser(borrowerId);
+      if (borrower && updatedLoan) {
         const { sendBorrowerDepositNotification } = await import('./email.js');
         const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
         
@@ -1263,9 +1386,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📧 Sent deposit notification to borrower: ${borrower.email}`);
       }
       
-      res.json(updatedLoan);
+      res.json({
+        success: true,
+        message: "Key ceremony complete! Escrow address created with 3 unique keys.",
+        escrowAddress: multisig.address,
+        borrowerPubkey,
+        lenderPubkey: loan.lenderPubkey,
+        platformPubkey: PLATFORM_PUBKEY,
+        loan: updatedLoan
+      });
     } catch (error) {
-      console.error('Error funding loan:', error);
+      console.error('Error providing borrower key:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
