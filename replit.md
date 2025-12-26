@@ -48,17 +48,31 @@ Preferred communication style: Simple, everyday language.
 - **Signing Library Compatibility**: `@noble/secp256k1` for key derivation and signing, `tiny-secp256k1` for Bitcoin transaction signing to ensure compatibility with Bitcoin Core.
 - **Bitcoin Testnet Integration**: Real Bitcoin RPC support for multisig, pre-signed transaction building, and broadcasting to the testnet.
 
-### Key Ceremony & Multisig Creation
-- **Mandatory Key Ceremony**: Before escrow address creation, ALL 3 public keys (borrower, lender, platform) must be collected and validated as UNIQUE
-- **Uniqueness Validation**: `validateKeysAreUnique()` in BitcoinEscrowService ensures no duplicate keys (prevents fund lockup)
-- **PIN-Based Flow**: 
-  1. Lender commits to fund → Creates PIN → Derives pubkey → State: "awaiting_borrower_key"
-  2. Borrower accepts → Creates PIN → Derives pubkey → Escrow created with 3 unique keys
-  3. Borrower deposits BTC to escrow address
-  4. Both parties sign using their PINs → Pre-signed transactions stored + downloaded
-  5. Loan activates
-- **2-of-3 Spending**: Once escrow is created with 3 unique keys, any 2 signatures (platform+lender OR platform+borrower) can spend the funds
-- **Critical Safety**: This design ensures funds can ALWAYS be recovered via 2-of-3 multisig in dispute scenarios
+### Key Ceremony & Multisig Creation (3-Phase Firefish Model)
+
+**Phase 1 - Key Ceremony (before deposit):**
+- Lender creates passphrase → derives pubkey → registers funding commitment
+- Borrower creates passphrase → derives pubkey → escrow created with 3 unique keys
+- Private keys are NOT stored - only pubkeys registered
+- Passphrase deterministically derives the same key via PBKDF2 (100k iterations)
+
+**Phase 2 - Deposit:**
+- Borrower deposits BTC to escrow address
+- No signing happens yet (requires UTXO to exist first)
+
+**Phase 3 - Signing Ceremony (after deposit):**
+- Both parties re-enter their SAME passphrase
+- `deriveKeyFromPin()` re-derives the SAME key (deterministic)
+- Signs ALL PSBTs (recovery, cooperative_close, default)
+- Private key wiped from memory immediately after signing
+- Signed PSBTs stored on server + downloaded as recovery file
+
+**Critical Security Properties:**
+- **Mandatory Key Ceremony**: ALL 3 public keys (borrower, lender, platform) validated as UNIQUE
+- **Uniqueness Validation**: `validateKeysAreUnique()` in BitcoinEscrowService prevents fund lockup
+- **2-of-3 Spending**: Any 2 signatures (platform+lender OR platform+borrower) can spend funds
+- **Deterministic Keys**: Same passphrase → same key → keys match escrow witness script
+- **Key Never Stored**: Only re-derived when needed, wiped immediately after use
 
 ### Key Files for Firefish Implementation
 - `client/src/lib/deterministic-key.ts`: PIN-based key derivation using PBKDF2

@@ -88,8 +88,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
         if (recoveryPsbt) {
           const messageHash = sha256(new TextEncoder().encode(recoveryPsbt.psbtBase64));
           const signature = await secp256k1.sign(messageHash, privateKey);
-          // @ts-ignore - signature has toCompactRawBytes at runtime
-          const sigHex = bytesToHex(signature.toCompactRawBytes ? signature.toCompactRawBytes() : new Uint8Array(64));
+          const sigHex = serializeSignature(signature);
           
           signedTransactions.push({
             type: 'recovery',
@@ -105,8 +104,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
       if (cooperativePsbt) {
         const messageHash = sha256(new TextEncoder().encode(cooperativePsbt.psbtBase64));
         const signature = await secp256k1.sign(messageHash, privateKey);
-        // @ts-ignore - signature has toCompactRawBytes at runtime
-        const sigHex = bytesToHex(signature.toCompactRawBytes ? signature.toCompactRawBytes() : new Uint8Array(64));
+        const sigHex = serializeSignature(signature);
         
         signedTransactions.push({
           type: 'cooperative_close',
@@ -123,8 +121,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
         if (defaultPsbt) {
           const messageHash = sha256(new TextEncoder().encode(defaultPsbt.psbtBase64));
           const signature = await secp256k1.sign(messageHash, privateKey);
-          // @ts-ignore - signature has toCompactRawBytes at runtime
-          const sigHex = bytesToHex(signature.toCompactRawBytes ? signature.toCompactRawBytes() : new Uint8Array(64));
+          const sigHex = serializeSignature(signature);
           
           signedTransactions.push({
             type: 'default',
@@ -428,4 +425,31 @@ async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function serializeSignature(signature: any): string {
+  if (typeof signature === 'string') {
+    return signature;
+  }
+  
+  if (signature instanceof Uint8Array) {
+    return bytesToHex(signature);
+  }
+  
+  if (typeof signature.toCompactHex === 'function') {
+    return signature.toCompactHex();
+  }
+  
+  if (typeof signature.toCompactRawBytes === 'function') {
+    return bytesToHex(signature.toCompactRawBytes());
+  }
+  
+  if (signature.r !== undefined && signature.s !== undefined) {
+    const rHex = signature.r.toString(16).padStart(64, '0');
+    const sHex = signature.s.toString(16).padStart(64, '0');
+    return rHex + sHex;
+  }
+  
+  console.error('Unable to serialize signature:', signature);
+  throw new Error('Invalid signature format');
 }
