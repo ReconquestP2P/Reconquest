@@ -5,31 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, AlertTriangle, Lock, Download, Shield } from "lucide-react";
+import { Bitcoin, Copy, CheckCircle, AlertCircle, Key, Loader2, AlertTriangle, Lock, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { deriveKeyFromPin } from "@/lib/deterministic-key";
-import * as secp256k1 from '@noble/secp256k1';
-import { sha256 } from '@noble/hashes/sha2.js';
-import { hmac } from '@noble/hashes/hmac.js';
+import { generatePublicKeyFromPin } from "@/lib/deterministic-key";
 import type { Loan } from "@shared/schema";
-
-secp256k1.hashes.sha256 = (msg: Uint8Array): Uint8Array => sha256(msg);
-secp256k1.hashes.hmacSha256 = (key: Uint8Array, ...msgs: Uint8Array[]): Uint8Array => {
-  const concatenated = secp256k1.etc.concatBytes(...msgs);
-  return hmac(sha256, key, concatenated);
-};
 
 interface DepositInstructionsCardProps {
   loan: Loan;
   userId: number;
-}
-
-interface SignedPSBT {
-  txType: string;
-  psbt: string;
-  signature: string;
-  txHash: string;
 }
 
 export default function DepositInstructionsCard({ loan, userId }: DepositInstructionsCardProps) {
@@ -42,7 +26,34 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const [confirmPin, setConfirmPin] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [keyCeremonyComplete, setKeyCeremonyComplete] = useState(false);
-  const [signedPsbts, setSignedPsbts] = useState<SignedPSBT[]>([]);
+
+  const provideBorrowerKey = useMutation({
+    mutationFn: async (borrowerPubkey: string) => {
+      const response = await apiRequest(`/api/loans/${loan.id}/provide-borrower-key`, "POST", { 
+        borrowerPubkey 
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setKeyCeremonyComplete(true);
+      setShowPinInput(false);
+      setPin('');
+      setConfirmPin('');
+      
+      toast({
+        title: "Key Ceremony Complete!",
+        description: `Escrow address created: ${data.escrowAddress?.slice(0, 20)}...`,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create escrow. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const confirmDeposit = useMutation({
     mutationFn: async () => {
@@ -52,7 +63,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     onSuccess: () => {
       toast({
         title: "Deposit Confirmed!",
-        description: "Your loan is now being processed.",
+        description: "Now complete the signing ceremony to pre-sign your recovery transactions.",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
     },
@@ -65,7 +76,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     },
   });
 
-  const handleFullKeyCeremony = async () => {
+  const handleKeyCeremony = async () => {
     setPinError(null);
     
     if (pin.length < 8) {
@@ -86,96 +97,13 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     setGeneratingKey(true);
     
     try {
-      console.log("Starting FULL Firefish key ceremony...");
+      console.log("Starting Firefish key ceremony (Phase 1 - Key Derivation)...");
       
-      const { privateKey, publicKey } = deriveKeyFromPin(loan.id, userId, 'borrower', pin);
-      console.log(`Derived borrower pubkey: ${publicKey.slice(0, 20)}...`);
+      const publicKeyHex = generatePublicKeyFromPin(loan.id, userId, 'borrower', pin);
+      console.log(`Derived borrower pubkey: ${publicKeyHex.slice(0, 20)}...`);
+      console.log("Private key NOT stored - will be re-derived from passphrase after deposit for signing.");
       
-      console.log("Step 1: Providing borrower key to create escrow...");
-      const escrowResponse = await apiRequest(`/api/loans/${loan.id}/provide-borrower-key`, "POST", { 
-        borrowerPubkey: publicKey 
-      });
-      const escrowData = await escrowResponse.json();
-      
-      if (!escrowData.escrowAddress) {
-        throw new Error("Escrow creation failed - no address returned");
-      }
-      
-      console.log(`Escrow created: ${escrowData.escrowAddress}`);
-      
-      console.log("Step 2: Fetching PSBT templates and signing ALL immediately...");
-      const txTypes = ['recovery', 'cooperative_close'];
-      const signedTransactions: SignedPSBT[] = [];
-      
-      for (const txType of txTypes) {
-        try {
-          const templateResponse = await fetch(`/api/loans/${loan.id}/psbt-template?txType=${txType}`, {
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-            },
-          });
-          
-          if (templateResponse.ok) {
-            const template = await templateResponse.json();
-            
-            const messageHash = sha256(new TextEncoder().encode(template.psbtBase64));
-            const signature = await secp256k1.sign(messageHash, privateKey);
-            // @ts-ignore
-            const sigHex = bytesToHex(signature.toCompactRawBytes ? signature.toCompactRawBytes() : new Uint8Array(64));
-            
-            signedTransactions.push({
-              txType,
-              psbt: template.psbtBase64,
-              signature: sigHex,
-              txHash: template.txHash,
-            });
-            
-            console.log(`Signed ${txType} PSBT`);
-          } else {
-            console.log(`No PSBT template available for ${txType} yet (escrow not funded)`);
-          }
-        } catch (err) {
-          console.log(`Could not sign ${txType}: ${err}`);
-        }
-      }
-      
-      console.log("Step 3: WIPING private key from memory...");
-      privateKey.fill(0);
-      console.log("Private key wiped!");
-      
-      if (signedTransactions.length > 0) {
-        console.log("Step 4: Storing signed PSBTs on server...");
-        for (const tx of signedTransactions) {
-          await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
-            partyRole: 'borrower',
-            partyPubkey: publicKey,
-            txType: tx.txType,
-            psbt: tx.psbt,
-            signature: tx.signature,
-            txHash: tx.txHash,
-          });
-        }
-        
-        console.log("Step 5: Downloading recovery file...");
-        downloadRecoveryFile(loan.id, 'borrower', publicKey, signedTransactions);
-        
-        setSignedPsbts(signedTransactions);
-      }
-      
-      setKeyCeremonyComplete(true);
-      setShowPinInput(false);
-      setPin('');
-      setConfirmPin('');
-      
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
-      
-      toast({
-        title: "Key Ceremony Complete!",
-        description: signedTransactions.length > 0 
-          ? `Escrow created and ${signedTransactions.length} transactions pre-signed. Recovery file downloaded.`
-          : "Escrow created. You can now deposit BTC.",
-      });
+      await provideBorrowerKey.mutateAsync(publicKeyHex);
       
     } catch (error: any) {
       console.error('Key ceremony failed:', error);
@@ -207,7 +135,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
             <Shield className="h-5 w-5" />
-            Firefish Key Ceremony
+            Firefish Key Ceremony - Phase 1
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -223,14 +151,15 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <>
               <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
                 <AlertDescription className="text-sm space-y-2">
-                  <p className="font-semibold">What happens during key ceremony:</p>
+                  <p className="font-semibold">Firefish Security Model (3 Phases):</p>
                   <ol className="list-decimal ml-4 space-y-1">
-                    <li><strong>Create passphrase</strong> - Derives your Bitcoin key</li>
-                    <li><strong>Create escrow</strong> - 2-of-3 multisig address generated</li>
-                    <li><strong>Pre-sign ALL transactions</strong> - Recovery, cooperative close</li>
-                    <li><strong>Wipe key</strong> - Private key destroyed after signing</li>
-                    <li><strong>Download recovery file</strong> - Your signed transactions saved</li>
+                    <li><strong>Key Ceremony</strong> - Create passphrase → derive pubkey → create escrow</li>
+                    <li><strong>Deposit</strong> - Send BTC to escrow address</li>
+                    <li><strong>Signing Ceremony</strong> - Re-enter passphrase → sign ALL transactions → key wiped</li>
                   </ol>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Your passphrase deterministically derives your key. The same passphrase always produces the same key.
+                  </p>
                 </AlertDescription>
               </Alert>
 
@@ -249,7 +178,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-sm">
                   <p className="font-semibold">Remember your passphrase!</p>
-                  <p className="mt-1">This passphrase derives your Bitcoin key. Write it down securely - you cannot recover it later.</p>
+                  <p className="mt-1">You'll need it again after deposit to sign your recovery transactions.</p>
                 </AlertDescription>
               </Alert>
 
@@ -297,20 +226,20 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleFullKeyCeremony}
-                  disabled={generatingKey || pin.length < 8}
+                  onClick={handleKeyCeremony}
+                  disabled={generatingKey || provideBorrowerKey.isPending || pin.length < 8}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-generate-borrower-key"
                 >
-                  {generatingKey ? (
+                  {generatingKey || provideBorrowerKey.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Running Key Ceremony...
+                      Creating Escrow...
                     </>
                   ) : (
                     <>
                       <Lock className="h-4 w-4 mr-2" />
-                      Complete Key Ceremony
+                      Create Escrow Address
                     </>
                   )}
                 </Button>
@@ -331,16 +260,16 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
           <Bitcoin className="h-5 w-5" />
-          Deposit Your Bitcoin Collateral
+          Deposit Your Bitcoin Collateral - Phase 2
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {keyCeremonyComplete && signedPsbts.length > 0 && (
+        {keyCeremonyComplete && (
           <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-sm">
               <p className="font-semibold">Key Ceremony Complete!</p>
-              <p className="mt-1">{signedPsbts.length} transactions pre-signed and stored. Recovery file downloaded.</p>
+              <p className="mt-1">Escrow address created. Now deposit your BTC.</p>
             </AlertDescription>
           </Alert>
         )}
@@ -348,8 +277,8 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-sm">
-            <p className="font-semibold">Escrow address created!</p>
-            <p className="mt-1">Deposit {loan.collateralBtc} BTC to the address below.</p>
+            <p className="font-semibold">Deposit {loan.collateralBtc} BTC to the escrow address below.</p>
+            <p className="mt-1">After deposit confirms, you'll complete the signing ceremony.</p>
           </AlertDescription>
         </Alert>
 
@@ -375,10 +304,18 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <p className="font-semibold">Next Steps:</p>
             <ol className="list-decimal ml-4 space-y-1">
               <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> to the address above</li>
-              <li>Wait for blockchain confirmation (10-60 minutes)</li>
-              <li>Click "Confirm Deposit" button below</li>
-              <li>Your loan will become active</li>
+              <li>Wait for blockchain confirmation</li>
+              <li>Click "Confirm Deposit" below</li>
+              <li>Complete the <strong>Signing Ceremony</strong> to pre-sign all recovery transactions</li>
             </ol>
+          </AlertDescription>
+        </Alert>
+
+        <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-sm">
+            <p className="font-semibold">Remember your passphrase!</p>
+            <p className="mt-1">You'll need it again for the signing ceremony after deposit.</p>
           </AlertDescription>
         </Alert>
 
@@ -404,31 +341,4 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       </CardContent>
     </Card>
   );
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function downloadRecoveryFile(loanId: number, role: string, publicKey: string, signedTransactions: SignedPSBT[]) {
-  const backup = {
-    loanId,
-    role,
-    publicKey,
-    signedTransactions,
-    createdAt: new Date().toISOString(),
-    version: '2.0',
-    notice: 'This file contains pre-signed Bitcoin transactions. Your private key was discarded after signing.',
-  };
-  
-  const json = JSON.stringify(backup, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `reconquest-${role}-loan${loanId}-recovery.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
