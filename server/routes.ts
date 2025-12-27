@@ -2852,17 +2852,26 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         loan.pendingResolutionPsbt
       );
       
-      const results = pendingResolutions.map((loan: any) => ({
-        loanId: loan.id,
-        decision: loan.pendingResolutionDecision,
-        lenderPayoutSats: loan.pendingResolutionLenderSats,
-        borrowerPayoutSats: loan.pendingResolutionBorrowerSats,
-        btcPriceEur: parseFloat(loan.pendingResolutionBtcPrice || '0'),
-        psbtBase64: loan.pendingResolutionPsbt,
-        createdAt: loan.pendingResolutionCreatedAt,
-        lenderPubkey: loan.lenderPubkey,
-        escrowAddress: loan.escrowAddress,
+      // Get user addresses for display
+      const resultsWithAddresses = await Promise.all(pendingResolutions.map(async (loan: any) => {
+        const lender = await storage.getUser(loan.lenderId);
+        const borrower = await storage.getUser(loan.borrowerId);
+        return {
+          loanId: loan.id,
+          decision: loan.pendingResolutionDecision,
+          lenderPayoutSats: loan.pendingResolutionLenderSats,
+          borrowerPayoutSats: loan.pendingResolutionBorrowerSats,
+          btcPriceEur: parseFloat(loan.pendingResolutionBtcPrice || '0'),
+          psbtBase64: loan.pendingResolutionPsbt,
+          createdAt: loan.pendingResolutionCreatedAt,
+          lenderPubkey: loan.lenderPubkey,
+          escrowAddress: loan.escrowAddress,
+          lenderAddress: lender?.btcAddress || loan.lenderAddress || 'Not set',
+          borrowerAddress: borrower?.btcAddress || loan.borrowerAddress || 'Not set',
+        };
       }));
+      
+      const results = resultsWithAddresses;
       
       res.json({
         success: true,

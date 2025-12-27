@@ -88,6 +88,8 @@ export default function LenderDashboard() {
     createdAt: string;
     lenderPubkey: string;
     escrowAddress: string;
+    lenderAddress: string;
+    borrowerAddress: string;
   }
   
   const { data: pendingResolutionsData, isLoading: resolutionsLoading } = useQuery<{ success: boolean; pendingResolutions: PendingResolution[] }>({
@@ -1378,6 +1380,9 @@ export default function LenderDashboard() {
                   <p className="text-sm text-muted-foreground">
                     (€{(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
                   </p>
+                  <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
+                    → {signingResolution.lenderAddress}
+                  </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
                   <p className="text-sm text-muted-foreground">Borrower Receives</p>
@@ -1386,6 +1391,9 @@ export default function LenderDashboard() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     (€{(signingResolution.borrowerPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
+                    → {signingResolution.borrowerAddress}
                   </p>
                 </div>
               </div>
