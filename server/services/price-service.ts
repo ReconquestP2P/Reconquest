@@ -14,7 +14,25 @@ let cachedPrice: BtcPriceData | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION_MS = 60000; // 1 minute cache
 
+// Test override for stress testing LTV monitoring
+let testPriceOverride: BtcPriceData | null = null;
+
+export function setTestPriceOverride(priceData: BtcPriceData | null): void {
+  testPriceOverride = priceData;
+  console.log(`[PriceService] Test price override ${priceData ? `SET to $${priceData.usd} USD / €${priceData.eur} EUR` : 'CLEARED'}`);
+}
+
+export function getTestPriceOverride(): BtcPriceData | null {
+  return testPriceOverride;
+}
+
 export async function getBtcPrice(): Promise<BtcPriceData> {
+  // Return test override if set (for stress testing)
+  if (testPriceOverride) {
+    console.log(`[PriceService] Using test override price: $${testPriceOverride.usd}`);
+    return testPriceOverride;
+  }
+
   const now = Date.now();
   
   // Return cached price if still valid

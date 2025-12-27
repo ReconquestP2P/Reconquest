@@ -3146,6 +3146,93 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // STRESS TEST: Override BTC price to simulate market crash (admin only)
+  app.post("/api/admin/ltv/stress-test", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { priceDropPercent, clear } = req.body;
+      const { setTestPriceOverride, getBtcPrice, getTestPriceOverride } = await import('./services/price-service.js');
+      
+      if (clear) {
+        setTestPriceOverride(null);
+        return res.json({
+          success: true,
+          message: "Price override cleared - using real market price",
+          currentOverride: null
+        });
+      }
+      
+      if (typeof priceDropPercent !== 'number' || priceDropPercent < 0 || priceDropPercent > 99) {
+        return res.status(400).json({ 
+          message: "priceDropPercent must be a number between 0 and 99" 
+        });
+      }
+      
+      // Get current real price first
+      setTestPriceOverride(null); // Clear any existing override to get real price
+      const realPrice = await getBtcPrice();
+      
+      // Calculate stressed price (40% drop = multiply by 0.6)
+      const multiplier = 1 - (priceDropPercent / 100);
+      const stressedPrice = {
+        usd: Math.round(realPrice.usd * multiplier),
+        eur: Math.round(realPrice.eur * multiplier),
+        usd24hChange: -priceDropPercent,
+        lastUpdatedAt: Math.floor(Date.now() / 1000)
+      };
+      
+      setTestPriceOverride(stressedPrice);
+      
+      // Trigger immediate LTV check
+      const ltvResults = await ltvMonitoring.checkAllActiveLoans();
+      
+      res.json({
+        success: true,
+        message: `Price stress test activated: ${priceDropPercent}% drop`,
+        realPrice: { usd: realPrice.usd, eur: realPrice.eur },
+        stressedPrice: { usd: stressedPrice.usd, eur: stressedPrice.eur },
+        ltvResults,
+        warning: "This override affects all price checks until cleared!"
+      });
+    } catch (error) {
+      console.error("Error in stress test:", error);
+      res.status(500).json({ message: "Failed to run stress test" });
+    }
+  });
+
+  // Get current stress test status
+  app.get("/api/admin/ltv/stress-test/status", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { getTestPriceOverride, getBtcPrice } = await import('./services/price-service.js');
+      const override = getTestPriceOverride();
+      
+      if (override) {
+        res.json({
+          active: true,
+          overridePrice: { usd: override.usd, eur: override.eur },
+          message: "Stress test is ACTIVE - prices are overridden"
+        });
+      } else {
+        const realPrice = await getBtcPrice();
+        res.json({
+          active: false,
+          currentPrice: { usd: realPrice.usd, eur: realPrice.eur },
+          message: "No stress test active - using real market price"
+        });
+      }
+    } catch (error) {
+      console.error("Error checking stress test status:", error);
+      res.status(500).json({ message: "Failed to check stress test status" });
+    }
+  });
+
   // DEVELOPMENT ONLY: Recover remaining collateral from escrow (for testing)
   app.post("/api/test/recover-escrow/:loanId", async (req, res) => {
     try {

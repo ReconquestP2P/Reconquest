@@ -590,14 +590,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveLoansForLtvCheck(): Promise<Loan[]> {
-    const { and, isNotNull } = await import('drizzle-orm');
+    const { and, isNotNull, or } = await import('drizzle-orm');
     return await db
       .select()
       .from(loans)
       .where(
         and(
           eq(loans.status, 'active'),
-          eq(loans.escrowState, 'keys_generated'),
+          or(
+            eq(loans.escrowState, 'keys_generated'),
+            eq(loans.escrowState, 'deposit_confirmed')
+          ),
           isNotNull(loans.escrowAddress)
         )
       );
