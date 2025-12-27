@@ -591,6 +591,79 @@ export async function completePsbtWithLenderSignature(
 }
 
 /**
+ * BITCOIN-BLIND LENDER: Sign PSBT with platform-controlled lender key and broadcast
+ * The lender never handles Bitcoin keys - platform signs on their behalf
+ */
+export async function completePsbtWithPlatformLenderKey(
+  platformSignedPsbtBase64: string,
+  encryptedLenderPrivateKey: string,
+  lenderPubkey: string,
+  witnessScript: string
+): Promise<CompletePsbtResult> {
+  console.log(`🔐 [Bitcoin-Blind] Platform signing with controlled lender key...`);
+  
+  try {
+    const { EncryptionService } = await import('./EncryptionService.js');
+    
+    // Decrypt the platform-controlled lender private key
+    const lenderPrivateKeyHex = EncryptionService.decrypt(encryptedLenderPrivateKey);
+    const lenderPrivateKey = Buffer.from(lenderPrivateKeyHex, 'hex');
+    
+    console.log(`🔓 Decrypted lender key for signing (pubkey: ${lenderPubkey.slice(0, 16)}...)`);
+    
+    // Parse the platform-signed PSBT
+    const psbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network: TESTNET4_NETWORK });
+    
+    // Get witness script buffer
+    const witnessScriptBuf = Buffer.from(witnessScript, 'hex');
+    
+    // Sign each input with the lender key
+    for (let i = 0; i < psbt.data.inputs.length; i++) {
+      // Create ECPair for lender
+      const lenderKeyPair = {
+        publicKey: Buffer.from(lenderPubkey, 'hex'),
+        sign: (hash: Buffer) => {
+          const signature = ecc.sign(hash, lenderPrivateKey);
+          return Buffer.from(signature);
+        },
+      };
+      
+      psbt.signInput(i, lenderKeyPair);
+    }
+    
+    console.log(`✅ Lender key signed ${psbt.data.inputs.length} input(s) (platform-controlled)`);
+    
+    // Finalize all inputs (now should have 2-of-3 signatures: platform + lender)
+    psbt.finalizeAllInputs();
+    console.log(`✅ Transaction finalized with 2-of-3 signatures (platform + lender)`);
+    
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`📝 Transaction ready: ${txid}`);
+    
+    // Broadcast
+    const broadcastResult = await broadcastTransaction(txHex);
+    
+    if (!broadcastResult.success) {
+      return { success: false, error: broadcastResult.error || 'Broadcast failed' };
+    }
+    
+    console.log(`✅ [Bitcoin-Blind] Transaction broadcast successful: ${broadcastResult.txid}`);
+    
+    return {
+      success: true,
+      txid: broadcastResult.txid,
+      broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastResult.txid}`,
+    };
+  } catch (error: any) {
+    console.error('Error completing PSBT with platform lender key:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Preview split calculation without executing
  */
 export async function previewSplit(loan: Loan): Promise<{

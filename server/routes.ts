@@ -2839,7 +2839,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
   
-  // Submit lender's signed PSBT to complete the resolution
+  // BITCOIN-BLIND LENDER: Lender confirms resolution (platform signs with controlled lender key)
+  // Lender does NOT provide a signed PSBT - they just confirm, platform signs on their behalf
   app.post("/api/lender/sign-resolution/:loanId", authenticateToken, async (req, res) => {
     try {
       const userId = req.user.id;
@@ -2849,10 +2850,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Invalid loan ID" });
       }
       
-      const { signedPsbtBase64 } = req.body;
-      if (!signedPsbtBase64) {
-        return res.status(400).json({ message: "Signed PSBT is required" });
-      }
+      // BITCOIN-BLIND: Lender just confirms - no signedPsbtBase64 required!
+      // For backward compatibility, we still accept signedPsbtBase64 but don't use it
       
       const loan = await storage.getLoan(loanId);
       if (!loan) {
@@ -2871,11 +2870,25 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Platform PSBT not found" });
       }
       
-      // Combine signatures and broadcast
-      const { completePsbtWithLenderSignature } = await import('./services/SplitPayoutService.js');
-      const result = await completePsbtWithLenderSignature(
+      // BITCOIN-BLIND LENDER: Platform signs with the controlled lender key
+      // Lender never handles Bitcoin keys - platform operates their escrow position
+      if (!loan.lenderPrivateKeyEncrypted) {
+        return res.status(400).json({ message: "Platform-controlled lender key not found. This loan may have been created before the Bitcoin-blind update." });
+      }
+      
+      if (!loan.lenderPubkey || !loan.escrowWitnessScript) {
+        return res.status(400).json({ message: "Escrow data incomplete" });
+      }
+      
+      console.log(`🔐 [Bitcoin-Blind] Lender ${userId} confirmed resolution for Loan #${loanId}`);
+      console.log(`   Platform will sign with controlled lender key...`);
+      
+      const { completePsbtWithPlatformLenderKey } = await import('./services/SplitPayoutService.js');
+      const result = await completePsbtWithPlatformLenderKey(
         loan.pendingResolutionPsbt,
-        signedPsbtBase64
+        loan.lenderPrivateKeyEncrypted,
+        loan.lenderPubkey,
+        loan.escrowWitnessScript
       );
       
       if (!result.success) {
@@ -2891,7 +2904,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         disputeStatus: 'resolved',
         disputeResolvedAt: new Date(),
         status: finalStatus,
-        lenderSignatureHex: signedPsbtBase64,
+        lenderSignatureHex: 'platform-controlled-signature', // Bitcoin-blind: platform signed
         lenderSignedAt: new Date(),
         pendingResolutionPsbt: null as any,
         pendingResolutionDecision: null as any,
