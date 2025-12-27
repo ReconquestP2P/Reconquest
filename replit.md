@@ -164,6 +164,19 @@ Preferred communication style: Simple, everyday language.
 - **Collateral Top-Up Flow**: Borrowers can add collateral to the same escrow address.
 - **Schema fields for top-ups**: pendingTopUpBtc, topUpRequestedAt, topUpConfirmedAt, topUpMonitoringActive, previousCollateralBtc
 
+### Automatic Liquidation (Bitcoin-Blind Lender Model)
+- **Platform controls 2 of 3 keys**: platform key + platform-operated lender key
+- **No borrower participation needed**: Liquidation happens automatically to protect lender
+- **Signing flow**: Platform decrypts lender private key → signs with platform key → signs with lender key → broadcasts
+- **Collateral released to lender's BTC address**: Stored in user record
+- **Key file**: `server/services/CollateralReleaseService.ts` - `releaseCollateralToAddress()` function
+
+### Admin Stress Testing
+- **Endpoint**: `POST /api/admin/ltv/stress-test` - Simulates price drops for testing LTV triggers
+- **Parameters**: `{ priceDropPercent: number }` or `{ clear: true }` to reset
+- **Returns**: Real vs stressed prices, LTV results for all active loans
+- **Purpose**: Test email notifications and liquidation triggers before production
+
 ## External Dependencies
 
 - **Database**: Neon (PostgreSQL)
