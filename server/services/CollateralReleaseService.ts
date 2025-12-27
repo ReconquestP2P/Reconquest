@@ -106,6 +106,13 @@ function signPsbtInput(
 /**
  * Create and broadcast a cooperative close transaction
  * This releases the borrower's collateral after successful loan repayment
+ * 
+ * Bitcoin-Blind Lender Model: Platform controls 2 of 3 keys:
+ * - Platform's own key
+ * - Lender's key (generated and encrypted by platform)
+ * 
+ * This allows automatic collateral return without borrower participation
+ * when the lender confirms repayment has been received.
  */
 export async function releaseCollateral(
   storage: IStorage,
@@ -114,6 +121,9 @@ export async function releaseCollateral(
   console.log(`🔐 Starting collateral release for loan #${loanId}`);
   
   try {
+    // Dynamic import to avoid circular dependency
+    const { EncryptionService } = await import('./EncryptionService.js');
+    
     const loan = await storage.getLoan(loanId);
     if (!loan) {
       return { success: false, error: 'Loan not found' };
@@ -154,24 +164,22 @@ export async function releaseCollateral(
     }
     console.log(`   Total UTXOs: ${utxos.length}, Total value: ${totalInputValue} sats`);
     
-    // Get keys - we need 2 of 3
+    // Get platform's private key
     const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
-    const platformPubkey = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
     
-    // Get the stored public keys from the loan
-    const borrowerPubkey = loan.borrowerPubkey;
-    const lenderPubkey = loan.lenderPubkey;
-    
-    if (!borrowerPubkey && !lenderPubkey) {
-      return { success: false, error: 'No signing keys available' };
+    // Bitcoin-Blind Lender: Decrypt the lender's private key (platform-controlled)
+    let lenderPrivateKey: string | null = null;
+    if (loan.lenderPrivateKeyEncrypted) {
+      try {
+        lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+        console.log(`🔑 Decrypted lender private key for platform-controlled signing`);
+      } catch (decryptError: any) {
+        console.error(`Failed to decrypt lender private key:`, decryptError.message);
+        return { success: false, error: 'Failed to decrypt lender signing key' };
+      }
+    } else {
+      return { success: false, error: 'No encrypted lender key found - cannot sign' };
     }
-    
-    // Build witness script for signing
-    const pubkeys = [
-      borrowerPubkey || platformPubkey,
-      lenderPubkey || platformPubkey,
-      platformPubkey,
-    ].filter(Boolean) as string[];
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
@@ -212,82 +220,30 @@ export async function releaseCollateral(
       value: BigInt(outputValue),
     });
     
-    // Sign ALL inputs with platform key
+    // Sign ALL inputs with BOTH platform key AND lender key (2 of 3 signatures)
     console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
     for (let i = 0; i < utxos.length; i++) {
       signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
     }
     
-    // For testnet MVP: Check if we have both keys as platform key (simplified 2-of-3)
-    // In production, we'd need signatures from borrower/lender
-    // For now, we'll check if the multisig was created with platform key duplicated
-    
-    // Check if we can finalize with just platform signature
-    // This would work if platform key was used twice in the multisig
-    const sortedPubkeys = [...pubkeys].sort();
-    const platformKeyCount = sortedPubkeys.filter(pk => pk === platformPubkey).length;
-    
-    if (platformKeyCount >= 2) {
-      // Platform has 2 of 3 keys - sign again and finalize
-      console.log(`🔑 Platform controls 2 of 3 keys - signing again...`);
-      // Already signed once, need to finalize
-      try {
-        psbt.finalizeAllInputs();
-        const tx = psbt.extractTransaction();
-        const txHex = tx.toHex();
-        const txid = tx.getId();
-        
-        console.log(`✅ Transaction finalized: ${txid}`);
-        
-        // Broadcast
-        const broadcastTxid = await broadcastToTestnet4(txHex);
-        
-        return {
-          success: true,
-          txid: broadcastTxid,
-          broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastTxid}`,
-        };
-      } catch (finalizeError: any) {
-        console.error('Failed to finalize with platform-only signatures:', finalizeError.message);
-      }
+    console.log(`🔑 Signing ${utxos.length} input(s) with lender key (platform-controlled)...`);
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
     }
     
-    // Need to get stored signatures from pre_signed_transactions
-    console.log(`🔐 Looking for stored signatures from borrower/lender...`);
-    const preSignedTxs = await storage.getPreSignedTransactions(loanId, 'cooperative_close');
-    
-    // Check if we have real PSBTs with signatures
-    for (const tx of preSignedTxs) {
-      if (tx.partyRole === 'platform') continue;
-      
-      if (tx.psbt && tx.psbt.length > 100) {
-        try {
-          const storedPsbt = bitcoin.Psbt.fromBase64(tx.psbt);
-          
-          // Check if this PSBT has signatures for the same input
-          if (storedPsbt.data.inputs[0]?.partialSig) {
-            console.log(`   Found ${tx.partyRole} signature in stored PSBT`);
-            
-            // Combine PSBTs
-            psbt.combine(storedPsbt);
-          }
-        } catch (parseError: any) {
-          console.warn(`   Could not parse ${tx.partyRole} PSBT: ${parseError.message}`);
-        }
-      }
-    }
-    
-    // Try to finalize
+    // Now we have 2 of 3 signatures - finalize and broadcast
     try {
       psbt.finalizeAllInputs();
       const tx = psbt.extractTransaction();
       const txHex = tx.toHex();
       const txid = tx.getId();
       
-      console.log(`✅ Transaction finalized with combined signatures: ${txid}`);
+      console.log(`✅ Transaction finalized with platform + lender keys: ${txid}`);
       
       // Broadcast
       const broadcastTxid = await broadcastToTestnet4(txHex);
+      
+      console.log(`📡 Transaction broadcast successful: ${broadcastTxid}`);
       
       return {
         success: true,
@@ -299,7 +255,7 @@ export async function releaseCollateral(
       
       return {
         success: false,
-        error: `Could not finalize transaction: ${finalizeError.message}. Need 2 of 3 signatures.`,
+        error: `Could not finalize transaction: ${finalizeError.message}`,
       };
     }
     
