@@ -2647,7 +2647,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
-  // Resolve dispute with fair split payout - creates pending resolution for lender to confirm
+  // Resolve dispute with fair split payout - IMMEDIATE EXECUTION with notifications to both parties
   app.post("/api/admin/disputes/:loanId/resolve-fair-split", authenticateToken, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
@@ -2676,6 +2676,15 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Loan must be under review to resolve" });
       }
       
+      // Verify platform-controlled lender key exists
+      if (!loan.lenderPrivateKeyEncrypted) {
+        return res.status(400).json({ message: "Platform-controlled lender key not found. This loan may have been created before the Bitcoin-blind update." });
+      }
+      
+      if (!loan.lenderPubkey || !loan.escrowWitnessScript) {
+        return res.status(400).json({ message: "Escrow data incomplete" });
+      }
+      
       // Get addresses
       let borrowerAddress = '';
       let lenderAddress = '';
@@ -2702,8 +2711,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const { BitcoinEscrowService } = await import('./services/BitcoinEscrowService.js');
       const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
       
-      // Create platform-signed PSBT for lender to co-sign
-      const { createPlatformSignedPsbt } = await import('./services/SplitPayoutService.js');
+      // Create platform-signed PSBT
+      const { createPlatformSignedPsbt, completePsbtWithPlatformLenderKey } = await import('./services/SplitPayoutService.js');
       
       let effectiveLenderAddress = lenderAddress;
       let effectiveBorrowerAddress = borrowerAddress;
@@ -2725,25 +2734,42 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         });
       }
       
-      // Store pending resolution for lender to confirm
-      const loanUpdates: any = {
-        disputeStatus: 'pending_lender_signature',
-        pendingResolutionPsbt: psbtResult.psbtBase64,
+      console.log(`🔐 [Bitcoin-Blind] Admin executing immediate resolution for Loan #${loanId}`);
+      console.log(`   Platform signing with controlled lender key and broadcasting...`);
+      
+      // IMMEDIATE EXECUTION: Sign with platform-controlled lender key and broadcast
+      const result = await completePsbtWithPlatformLenderKey(
+        psbtResult.psbtBase64,
+        loan.lenderPrivateKeyEncrypted,
+        loan.lenderPubkey,
+        loan.escrowWitnessScript
+      );
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: `Failed to complete transaction: ${result.error}` 
+        });
+      }
+      
+      // Update loan status to resolved
+      const finalStatus = decision === 'BORROWER_NOT_DEFAULTED' ? 'completed' : 'defaulted';
+      
+      await storage.updateLoan(loanId, {
+        disputeStatus: 'resolved',
+        disputeResolvedAt: new Date(),
+        status: finalStatus,
         pendingResolutionDecision: decision,
         pendingResolutionLenderSats: psbtResult.lenderPayoutSats,
         pendingResolutionBorrowerSats: psbtResult.borrowerPayoutSats,
         pendingResolutionBtcPrice: psbtResult.calculation?.btcPriceEur.toString(),
-        pendingResolutionCreatedAt: new Date(),
-      };
-      
-      await storage.updateLoan(loanId, loanUpdates);
+      });
       
       // Create audit log
       const auditLog = {
         loanId,
         disputeId: null,
         outcome: decision,
-        ruleFired: `FAIR_SPLIT_${decision}_PENDING`,
+        ruleFired: `FAIR_SPLIT_${decision}_EXECUTED`,
         txTypeUsed: 'fair_split',
         evidenceSnapshot: JSON.stringify({
           decision,
@@ -2751,72 +2777,120 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           calculation: psbtResult.calculation,
           lenderPayoutSats: psbtResult.lenderPayoutSats,
           borrowerPayoutSats: psbtResult.borrowerPayoutSats,
-          status: 'pending_lender_signature',
+          txid: result.txid,
           timestamp: new Date().toISOString(),
         }),
-        broadcastTxid: null,
-        broadcastSuccess: false,
-        broadcastError: 'Awaiting lender signature',
+        broadcastTxid: result.txid || null,
+        broadcastSuccess: true,
+        broadcastError: null,
         triggeredBy: req.user.id,
         triggeredByRole: 'admin',
       };
       
       await storage.createDisputeAuditLog(auditLog);
       
-      // Send email to lender requesting their signature
+      // Send notification emails to both parties
       const calc = psbtResult.calculation;
       const lenderSats = psbtResult.lenderPayoutSats || 0;
       const borrowerSats = psbtResult.borrowerPayoutSats || 0;
+      const baseUrl = getBaseUrl();
       
-      if (calc && loan.lenderId) {
-        const baseUrl = getBaseUrl();
+      if (calc) {
         const lenderBtc = (lenderSats / 100_000_000).toFixed(8);
         const borrowerBtc = (borrowerSats / 100_000_000).toFixed(8);
         const lenderEur = (lenderSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
         const borrowerEur = (borrowerSats / 100_000_000 * calc.btcPriceEur).toFixed(2);
         
-        const lender = await storage.getUser(loan.lenderId);
-        if (lender?.email) {
-          await sendEmail({
-            to: lender.email,
-            from: 'Reconquest <noreply@reconquestp2p.com>',
-            subject: `🔐 Confirmation Required - Dispute Resolution for Loan #${loanId}`,
-            html: `
-              <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-                <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
-                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
-                </div>
-                <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
-                  <h1 style="color: white; margin: 0; text-align: center;">Your Confirmation is Required</h1>
-                </div>
-                <div style="padding: 20px; background: #f9f9f9;">
-                  <p>Dear Lender,</p>
-                  <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and a resolution has been prepared. Your confirmation is required to release the funds.</p>
-                  
-                  <div style="background: #fff3cd; border-radius: 8px; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                    <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please log in to your dashboard to review and confirm the resolution.</p>
+        // Email to lender
+        if (loan.lenderId) {
+          const lender = await storage.getUser(loan.lenderId);
+          if (lender?.email) {
+            const decisionLabel = decision === 'BORROWER_NOT_DEFAULTED' 
+              ? 'Borrower Not Defaulted - Collateral returned to borrower'
+              : 'Borrower Defaulted - Fair split distribution';
+            
+            await sendEmail({
+              to: lender.email,
+              from: 'Reconquest <noreply@reconquestp2p.com>',
+              subject: `📢 Dispute Resolved - Loan #${loanId}`,
+              html: `
+                <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                  <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                    <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
                   </div>
-                  
-                  <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                    <h3 style="margin-top: 0; color: #333;">📊 Proposed Distribution</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decision.replace('_', ' ')}</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
-                    </table>
+                  <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
+                    <h1 style="color: white; margin: 0; text-align: center;">Dispute Resolution Complete</h1>
                   </div>
-                  
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${baseUrl}/lender" style="background: #D4AF37; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                      Confirm Resolution
-                    </a>
+                  <div style="padding: 20px; background: #f9f9f9;">
+                    <p>Dear Lender,</p>
+                    <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and resolved by the platform.</p>
+                    
+                    <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                      <p style="margin: 0;"><strong>✅ Transaction Broadcast:</strong></p>
+                      <a href="${result.broadcastUrl}" style="color: #1976d2; word-break: break-all;">${result.txid}</a>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                      <h3 style="margin-top: 0; color: #333;">📊 Resolution Details</h3>
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decisionLabel}</td></tr>
+                        <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                      </table>
+                    </div>
+                    
+                    <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                   </div>
-                  
-                  <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                 </div>
-              </div>
-            `,
-          });
-          console.log(`📧 Confirmation request email sent to lender: ${lender.email}`);
+              `,
+            });
+            console.log(`📧 Resolution notification sent to lender: ${lender.email}`);
+          }
+        }
+        
+        // Email to borrower
+        if (loan.borrowerId) {
+          const borrower = await storage.getUser(loan.borrowerId);
+          if (borrower?.email) {
+            const decisionLabel = decision === 'BORROWER_NOT_DEFAULTED' 
+              ? 'Borrower Not Defaulted - Your collateral has been returned'
+              : 'Borrower Defaulted - Fair split distribution';
+            
+            await sendEmail({
+              to: borrower.email,
+              from: 'Reconquest <noreply@reconquestp2p.com>',
+              subject: `📢 Dispute Resolved - Loan #${loanId}`,
+              html: `
+                <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                  <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
+                    <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                  </div>
+                  <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
+                    <h1 style="color: white; margin: 0; text-align: center;">Dispute Resolution Complete</h1>
+                  </div>
+                  <div style="padding: 20px; background: #f9f9f9;">
+                    <p>Dear Borrower,</p>
+                    <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and resolved by the platform.</p>
+                    
+                    <div style="background: #e8f5e9; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                      <p style="margin: 0;"><strong>✅ Transaction Broadcast:</strong></p>
+                      <a href="${result.broadcastUrl}" style="color: #1976d2; word-break: break-all;">${result.txid}</a>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
+                      <h3 style="margin-top: 0; color: #333;">📊 Resolution Details</h3>
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decisionLabel}</td></tr>
+                        <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      </table>
+                    </div>
+                    
+                    <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
+                  </div>
+                </div>
+              `,
+            });
+            console.log(`📧 Resolution notification sent to borrower: ${borrower.email}`);
+          }
         }
       }
       
@@ -2826,8 +2900,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         calculation: psbtResult.calculation,
         lenderPayoutSats: lenderSats,
         borrowerPayoutSats: borrowerSats,
-        status: 'pending_lender_confirmation',
-        message: `Resolution prepared. Awaiting lender confirmation. An email has been sent to the lender.`,
+        txid: result.txid,
+        broadcastUrl: result.broadcastUrl,
+        status: 'resolved',
+        message: `Resolution executed and broadcast successfully. Both parties have been notified.`,
       });
     } catch (error) {
       console.error("Error resolving dispute with fair split:", error);
