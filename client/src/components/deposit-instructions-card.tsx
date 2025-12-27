@@ -347,10 +347,24 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
           <Bitcoin className="h-5 w-5" />
-          Deposit Your Bitcoin Collateral - Phase 2
+          Deposit Your Bitcoin Collateral - Loan #{loan.id}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Loan Details:</p>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-gray-500">Loan Amount:</span>
+            <span className="font-medium">{parseFloat(loan.amount).toLocaleString()} {loan.currency}</span>
+            <span className="text-gray-500">Term:</span>
+            <span className="font-medium">{loan.termMonths} months</span>
+            <span className="text-gray-500">Interest Rate:</span>
+            <span className="font-medium">{loan.interestRate}% p.a.</span>
+            <span className="text-gray-500">Collateral Required:</span>
+            <span className="font-medium">{loan.collateralBtc} BTC</span>
+          </div>
+        </div>
+
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-sm">
