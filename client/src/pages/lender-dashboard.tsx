@@ -456,31 +456,15 @@ export default function LenderDashboard() {
                             <p className="text-sm text-muted-foreground mb-2">
                               Borrower deposited {Number(loan.collateralBtc).toFixed(4)} BTC to escrow address
                             </p>
-                            <div className="flex gap-2 items-center flex-wrap">
-                              <a 
-                                href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                data-testid={`link-mempool-${loan.id}`}
-                              >
-                                🔍 View on Mempool →
-                              </a>
-                              <Button
-                                onClick={() => {
-                                  toast({
-                                    title: "🔐 Keys Secured",
-                                    description: "Your Bitcoin keys are encrypted and stored securely. They're never displayed for your protection.",
-                                  });
-                                }}
-                                variant="outline"
-                                size="sm"
-                                className="ml-auto"
-                                data-testid={`button-keys-secured-${loan.id}`}
-                              >
-                                🔐 Keys Secured
-                              </Button>
-                            </div>
+                            <a 
+                              href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                              data-testid={`link-mempool-${loan.id}`}
+                            >
+                              🔍 View on Mempool →
+                            </a>
                           </div>
 
                           {/* Bank Account Details */}
