@@ -1521,6 +1521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               termMonths: updatedLoan.termMonths,
               dashboardUrl: `${baseUrl}/lender`,
               escrowAddress: loan.escrowAddress || undefined,
+              collateralBtc: updatedLoan.collateralBtc,
             });
             
             if (emailSent) {

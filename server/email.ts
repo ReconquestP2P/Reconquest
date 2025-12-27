@@ -240,9 +240,10 @@ export async function sendLenderFundingNotification(params: {
   termMonths: number;
   dashboardUrl: string;
   escrowAddress?: string;
+  collateralBtc: string;
 }): Promise<boolean> {
   const { 
-    to, lenderName, loanId, loanAmount, currency, interestRate, startDate, maturityDate, termMonths, dashboardUrl, escrowAddress 
+    to, lenderName, loanId, loanAmount, currency, interestRate, startDate, maturityDate, termMonths, dashboardUrl, escrowAddress, collateralBtc 
   } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
@@ -279,6 +280,7 @@ export async function sendLenderFundingNotification(params: {
         <div style="background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 25px 0;">
           <p style="margin: 8px 0; font-size: 15px;"><strong>Loan ID:</strong> ${loanId.toString().padStart(6, '0')}</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Loan Amount:</strong> ${formattedAmount} ${currency}</p>
+          <p style="margin: 8px 0; font-size: 15px;"><strong>Collateral Deposited:</strong> ${parseFloat(collateralBtc).toFixed(8)} BTC</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${formattedInterestRate}% p.a.</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Term:</strong> ${termMonths} months</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Start Date:</strong> ${startDate}</p>
