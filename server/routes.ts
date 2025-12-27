@@ -1233,24 +1233,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await sendEmail({
           to: borrower.email,
-          from: 'noreply@reconquestp2p.com',
-          subject: `🎉 Lender Committed - Loan #${loan.id} - Action Required`,
+          from: 'Reconquest <noreply@reconquestp2p.com>',
+          subject: `🎉 Your Loan #${loan.id} Has Been Funded - Action Required`,
           html: `
-            <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-              <div style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 20px; border-radius: 12px 12px 0 0;">
-                <h1 style="color: white; margin: 0; text-align: center;">Lender Has Committed!</h1>
-              </div>
-              <div style="padding: 30px; background: #f8f9fa;">
-                <p>Dear ${borrower.username},</p>
-                <p>Great news! A lender has committed to fund your loan #${loan.id}.</p>
-                <p><strong>Next Step:</strong> Please go to your dashboard to complete the key ceremony and receive your escrow deposit address.</p>
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${baseUrl}/borrower" style="display: inline-block; background: #e74c3c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                    Go to Dashboard
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
+              <div style="background-color: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                </div>
+                
+                <h2 style="color: #2C3E50; margin-top: 0;">🎉 Your Loan Has Been Funded!</h2>
+                
+                <p style="font-size: 16px; color: #555;">Hi ${borrower.username},</p>
+                
+                <p style="font-size: 16px; color: #555;">Great news! A lender has committed to fund your loan request.</p>
+                
+                <div style="background-color: #E8F8F5; border-left: 4px solid #27AE60; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                  <h3 style="margin-top: 0; color: #27AE60;">📋 Loan Details</h3>
+                  <p style="margin: 5px 0;"><strong>Loan ID:</strong> #${loan.id}</p>
+                  <p style="margin: 5px 0;"><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</p>
+                  <p style="margin: 5px 0;"><strong>Required Collateral:</strong> ${loan.collateralBtc} BTC</p>
+                </div>
+
+                <div style="background-color: #FEF9E7; border-left: 4px solid #F39C12; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                  <h3 style="margin-top: 0; color: #F39C12;">🔐 Next Step: Create Your Security Key</h3>
+                  <p style="font-size: 16px; color: #555;">To secure this loan and receive your Bitcoin deposit address, please go to your dashboard and create your security passphrase.</p>
+                </div>
+
+                <div style="background-color: #EBF5FB; border-left: 4px solid #3498DB; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                  <h3 style="margin-top: 0; color: #3498DB;">📝 What Happens Next?</h3>
+                  <ol style="margin: 10px 0; padding-left: 20px; color: #555;">
+                    <li>Go to your <a href="${baseUrl}/borrower" style="color: #3498DB; text-decoration: none; font-weight: bold;">Borrower Dashboard</a></li>
+                    <li>Create your security passphrase (this generates your escrow key)</li>
+                    <li>You'll receive your Bitcoin escrow deposit address</li>
+                    <li>Send ${loan.collateralBtc} BTC to the escrow address</li>
+                    <li>Your loan will become active and you'll receive the ${loan.amount} ${loan.currency}</li>
+                  </ol>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                  <a href="${baseUrl}/borrower" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                    View My Dashboard →
                   </a>
                 </div>
+
+                <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ECF0F1;">
+                  If you have any questions or need assistance, please contact our support team.
+                </p>
+
+                <p style="font-size: 14px; color: #7F8C8D; margin-top: 10px;">
+                  <strong>— The Reconquest Team 👑</strong>
+                </p>
               </div>
-            </div>
+            </body>
+            </html>
           `
         });
         
