@@ -2662,7 +2662,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const { decision, adminNotes } = req.body;
       
       // Validate decision
-      const validDecisions = ['BORROWER_WINS', 'LENDER_WINS', 'TIMEOUT_DEFAULT'];
+      const validDecisions = ['BORROWER_NOT_DEFAULTED', 'BORROWER_DEFAULTED', 'TIMEOUT_DEFAULT'];
       if (!validDecisions.includes(decision)) {
         return res.status(400).json({ message: "Invalid decision" });
       }
@@ -2693,8 +2693,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Lender address not found" });
       }
       
-      // For BORROWER_WINS, we need borrower address
-      if (decision === 'BORROWER_WINS' && !borrowerAddress) {
+      // For BORROWER_NOT_DEFAULTED, we need borrower address
+      if (decision === 'BORROWER_NOT_DEFAULTED' && !borrowerAddress) {
         return res.status(400).json({ message: "Borrower address not found" });
       }
       
@@ -2708,7 +2708,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       let effectiveLenderAddress = lenderAddress;
       let effectiveBorrowerAddress = borrowerAddress;
       
-      if (decision === 'BORROWER_WINS') {
+      if (decision === 'BORROWER_NOT_DEFAULTED') {
         effectiveLenderAddress = borrowerAddress;
       }
       
@@ -2942,7 +2942,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       
       // Update loan status
-      const finalStatus = loan.pendingResolutionDecision === 'BORROWER_WINS' ? 'completed' : 'defaulted';
+      const finalStatus = loan.pendingResolutionDecision === 'BORROWER_NOT_DEFAULTED' ? 'completed' : 'defaulted';
       
       await storage.updateLoan(loanId, {
         disputeStatus: 'resolved',

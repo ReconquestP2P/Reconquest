@@ -748,15 +748,15 @@ export default function AdminDashboard() {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button 
-                          className="bg-blue-600 hover:bg-blue-700"
-                          data-testid={`button-fair-split-lender-${splitPreview.loanId}`}
+                          className="bg-red-600 hover:bg-red-700"
+                          data-testid={`button-fair-split-defaulted-${splitPreview.loanId}`}
                         >
-                          💰 Lender Wins (Fair Split)
+                          ⚠️ Borrower Defaulted (Fair Split)
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Confirm Fair Split - Lender Wins</AlertDialogTitle>
+                          <AlertDialogTitle>Confirm Fair Split - Borrower Defaulted</AlertDialogTitle>
                           <AlertDialogDescription>
                             <div className="space-y-2">
                               <p>Lender receives: <strong>{(splitPreview.calculation.lenderPayoutSats / 100_000_000).toFixed(8)} BTC</strong> (debt repayment)</p>
@@ -768,8 +768,8 @@ export default function AdminDashboard() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'LENDER_WINS' })}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'BORROWER_DEFAULTED' })}
+                            className="bg-red-600 hover:bg-red-700"
                           >
                             Confirm Fair Split
                           </AlertDialogAction>
@@ -781,14 +781,14 @@ export default function AdminDashboard() {
                       <AlertDialogTrigger asChild>
                         <Button 
                           className="bg-green-600 hover:bg-green-700"
-                          data-testid={`button-fair-split-borrower-${splitPreview.loanId}`}
+                          data-testid={`button-fair-split-not-defaulted-${splitPreview.loanId}`}
                         >
-                          ✅ Borrower Wins (Full Refund)
+                          ✅ Borrower Not Defaulted (Full Refund)
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Confirm Full Refund - Borrower Wins</AlertDialogTitle>
+                          <AlertDialogTitle>Confirm Full Refund - Borrower Not Defaulted</AlertDialogTitle>
                           <AlertDialogDescription>
                             <div className="space-y-2">
                               <p>Borrower receives: <strong>100% of collateral</strong> (minus network fee)</p>
@@ -800,7 +800,7 @@ export default function AdminDashboard() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'BORROWER_WINS' })}
+                            onClick={() => fairSplitMutation.mutate({ loanId: splitPreview.loanId, decision: 'BORROWER_NOT_DEFAULTED' })}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             Confirm Borrower Refund

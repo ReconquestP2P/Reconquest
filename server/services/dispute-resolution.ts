@@ -304,9 +304,9 @@ export async function resolveDispute(
     };
     
     // Set loan status based on decision
-    if (decision === 'BORROWER_WINS') {
+    if (decision === 'BORROWER_NOT_DEFAULTED') {
       loanUpdates.status = 'completed';
-    } else if (decision === 'LENDER_WINS' || decision === 'TIMEOUT_DEFAULT') {
+    } else if (decision === 'BORROWER_DEFAULTED' || decision === 'TIMEOUT_DEFAULT') {
       loanUpdates.status = 'defaulted';
     }
     
