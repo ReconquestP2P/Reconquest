@@ -236,6 +236,9 @@ export default function BorrowerDashboard() {
     );
   }
 
+  // Check if user is admin - admins cannot participate in loan flows
+  const isAdmin = user?.role === 'admin';
+
   return (
     <FirefishWASMProvider>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -243,6 +246,20 @@ export default function BorrowerDashboard() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Borrower Dashboard</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
         </div>
+
+        {/* Admin Warning Banner */}
+        {isAdmin && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3">
+            <Coins className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-800 dark:text-amber-200">Admin Account - View Only Mode</h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                Admin accounts cannot participate in loans as borrowers. You can view loan data for oversight purposes only.
+                To request loans, please use a regular user account.
+              </p>
+            </div>
+          </div>
+        )}
 
         <Tabs defaultValue="request" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
@@ -297,7 +314,7 @@ export default function BorrowerDashboard() {
 
           {/* Loan Calculator */}
           <div className="mt-8">
-            <LoanCalculator />
+            <LoanCalculator disabled={isAdmin} />
           </div>
         </TabsContent>
 

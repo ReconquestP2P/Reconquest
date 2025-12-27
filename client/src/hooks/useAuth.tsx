@@ -5,7 +5,7 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: 'borrower' | 'lender';
+  role: 'borrower' | 'lender' | 'admin';
   firstName?: string;
   lastName?: string;
   profilePicture?: string;

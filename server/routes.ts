@@ -53,6 +53,18 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   }
 };
 
+// Helper to block admin users from participating in loan flows
+// Admin accounts should only have oversight capabilities, not participate as borrowers/lenders
+const requireNonAdmin = (req: any, res: any, next: any) => {
+  if (req.user?.role === 'admin') {
+    return res.status(403).json({ 
+      message: 'Admin accounts cannot participate in loan flows. Please use a regular user account.',
+      code: 'ADMIN_PARTICIPATION_BLOCKED'
+    });
+  }
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize services
   const emailVerificationService = new EmailVerificationService(storage);
@@ -1111,7 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new loan request
-  app.post("/api/loans", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       // Parse request data
       const requestData = insertLoanSchema.parse(req.body);
@@ -1159,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Fund a loan (lender commits to funding - BITCOIN-BLIND lender design)
   // Platform generates and controls the lender key - lender never handles Bitcoin keys
-  app.post("/api/loans/:id/fund", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans/:id/fund", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     
     // Get authenticated user ID from JWT token
@@ -1314,7 +1326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Borrower provides their public key to complete key ceremony and create escrow
-  app.post("/api/loans/:id/provide-borrower-key", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans/:id/provide-borrower-key", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
     
@@ -1444,7 +1456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Borrower confirms they've deposited Bitcoin to escrow address
-  app.post("/api/loans/:id/confirm-deposit", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans/:id/confirm-deposit", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
     
@@ -1514,7 +1526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Borrower confirms they've sent a collateral top-up
-  app.post("/api/loans/:id/confirm-topup", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans/:id/confirm-topup", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
     const { topUpAmountBtc } = req.body;
@@ -1687,7 +1699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Borrower confirms they've sent BTC to escrow - starts automated monitoring
-  app.post("/api/loans/:id/confirm-btc-sent", authenticateToken, async (req: any, res) => {
+  app.post("/api/loans/:id/confirm-btc-sent", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
     const { txid } = req.body; // Optional txid from borrower
@@ -3825,7 +3837,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // File dispute
-  app.post("/api/loans/:id/dispute", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/dispute", authenticateToken, requireNonAdmin, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;
@@ -3894,7 +3906,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
 
   // Resolve dispute (platform admin endpoint) - DETERMINISTIC OUTCOME ENGINE
   // Platform NEVER "chooses a side" - outcomes are determined by hard-coded rules
-  app.post("/api/loans/:id/resolve-dispute", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/resolve-dispute", authenticateToken, requireNonAdmin, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;
@@ -4103,7 +4115,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Confirm repayment sent by borrower (simple confirmation, no Bitcoin transaction)
-  app.post("/api/loans/:id/confirm-repayment", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/confirm-repayment", authenticateToken, requireNonAdmin, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;
@@ -4181,7 +4193,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Lender confirms receipt of repayment and triggers cooperative close
-  app.post("/api/loans/:id/confirm-receipt", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/confirm-receipt", authenticateToken, requireNonAdmin, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;
@@ -4295,7 +4307,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Trigger cooperative close broadcast (when borrower repays loan)
-  app.post("/api/loans/:id/cooperative-close", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/cooperative-close", authenticateToken, requireNonAdmin, async (req, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;

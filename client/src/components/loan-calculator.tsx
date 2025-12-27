@@ -12,7 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatBTC, calculateCollateral } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 
-export default function LoanCalculator() {
+interface LoanCalculatorProps {
+  disabled?: boolean;
+}
+
+export default function LoanCalculator({ disabled = false }: LoanCalculatorProps) {
   const [amount, setAmount] = useState("25000");
   const [currency, setCurrency] = useState("EUR");
   const [term, setTerm] = useState("6");
@@ -199,10 +203,11 @@ export default function LoanCalculator() {
               <AlertDialogTrigger asChild>
                 <Button 
                   size="lg" 
-                  className="bg-primary hover:bg-primary/90 text-black px-8 py-3"
-                  disabled={!loanAmount || loanAmount <= 0}
+                  className={`bg-primary hover:bg-primary/90 text-black px-8 py-3 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!loanAmount || loanAmount <= 0 || disabled}
+                  title={disabled ? 'Admin accounts cannot request loans' : undefined}
                 >
-                  Publish New Loan
+                  {disabled ? 'Admin View Only' : 'Publish New Loan'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
