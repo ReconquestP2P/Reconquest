@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown, AlertCircle, FileSignature } from "lucide-react";
+import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown, AlertCircle, FileSignature, Shield, CheckCircle } from "lucide-react";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -335,6 +335,52 @@ export default function LenderDashboard() {
                 Admin accounts cannot participate in loans as lenders. You can view loan data for oversight purposes only.
                 To invest in loans, please use a regular user account.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Resolutions Alert - Bitcoin-Blind Lender */}
+        {pendingResolutions.length > 0 && (
+          <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-400 dark:border-orange-600 rounded-lg" data-testid="pending-resolutions-alert">
+            <div className="flex items-start gap-3">
+              <FileSignature className="h-6 w-6 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-800 dark:text-orange-200 text-lg">
+                  Action Required: Confirm Resolution
+                </h3>
+                <p className="text-sm text-orange-700 dark:text-orange-300 mt-1 mb-4">
+                  A dispute has been resolved. Please review and confirm the distribution of collateral.
+                </p>
+                <div className="space-y-3">
+                  {pendingResolutions.map((resolution) => (
+                    <div 
+                      key={resolution.loanId}
+                      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-700"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">Loan #{resolution.loanId.toString().padStart(6, '0')}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Decision: <span className="font-medium text-orange-600">{resolution.decision}</span>
+                          </p>
+                          <p className="text-sm text-green-600 font-medium mt-1">
+                            Your Payout: {(resolution.lenderPayoutSats / 100_000_000).toFixed(8)} BTC 
+                            (€{(resolution.lenderPayoutSats / 100_000_000 * resolution.btcPriceEur).toFixed(2)})
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => setSigningResolution(resolution)}
+                          className="bg-orange-500 hover:bg-orange-600"
+                          data-testid={`button-confirm-resolution-${resolution.loanId}`}
+                        >
+                          <FileSignature className="h-4 w-4 mr-2" />
+                          Confirm Resolution
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1304,22 +1350,22 @@ export default function LenderDashboard() {
         </Dialog>
       )}
 
-      {/* Resolution Signing Modal */}
+      {/* Resolution Confirmation Modal - Bitcoin-Blind Lender Model */}
       {signingResolution && (
         <Dialog open={!!signingResolution} onOpenChange={() => setSigningResolution(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <FileSignature className="h-5 w-5 text-orange-500" />
-                Sign Resolution Transaction
+                Confirm Resolution
               </DialogTitle>
             </DialogHeader>
             
             <div className="space-y-6">
-              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                <p className="text-sm text-orange-800 dark:text-orange-200">
-                  This transaction distributes the collateral from Loan #{signingResolution.loanId.toString().padStart(6, '0')}. 
-                  Review the distribution carefully before signing.
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  The dispute for Loan #{signingResolution.loanId.toString().padStart(6, '0')} has been resolved. 
+                  By confirming, you authorize the release of collateral according to the distribution below.
                 </p>
               </div>
               
@@ -1330,7 +1376,7 @@ export default function LenderDashboard() {
                     {(signingResolution.lenderPayoutSats / 100_000_000).toFixed(8)} BTC
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    ({(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)} EUR)
+                    (€{(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
                   </p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
@@ -1339,61 +1385,22 @@ export default function LenderDashboard() {
                     {(signingResolution.borrowerPayoutSats / 100_000_000).toFixed(8)} BTC
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    ({(signingResolution.borrowerPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)} EUR)
+                    (€{(signingResolution.borrowerPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
                   </p>
                 </div>
               </div>
               
-              <div className="space-y-3">
-                <Label>Platform-Signed PSBT (Base64)</Label>
-                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border text-xs font-mono break-all max-h-32 overflow-y-auto">
-                  {signingResolution.psbtBase64}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Secure Platform Signing</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your confirmation authorizes the platform to complete the transaction on your behalf. 
+                      No Bitcoin wallet or keys required.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigator.clipboard.writeText(signingResolution.psbtBase64);
-                      toast({
-                        title: "Copied!",
-                        description: "PSBT copied to clipboard",
-                      });
-                    }}
-                    data-testid="button-copy-psbt"
-                  >
-                    Copy PSBT
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const blob = new Blob([signingResolution.psbtBase64], { type: 'text/plain' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `resolution-loan-${signingResolution.loanId}.psbt`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    data-testid="button-download-psbt"
-                  >
-                    Download PSBT
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <Label>Your Signed PSBT (paste after signing externally)</Label>
-                <textarea
-                  className="w-full h-24 p-3 text-xs font-mono border rounded bg-background"
-                  placeholder="Paste your signed PSBT here after signing with your wallet (e.g., Sparrow)"
-                  id="signedPsbtInput"
-                  data-testid="input-signed-psbt"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Import the PSBT into your Bitcoin wallet (like Sparrow), sign it with your keys, then paste the signed PSBT above.
-                </p>
               </div>
               
               <div className="flex gap-3">
@@ -1409,31 +1416,23 @@ export default function LenderDashboard() {
                   className="flex-1 bg-orange-500 hover:bg-orange-600"
                   disabled={signResolutionMutation.isPending}
                   onClick={() => {
-                    const signedPsbt = (document.getElementById('signedPsbtInput') as HTMLTextAreaElement)?.value;
-                    if (!signedPsbt) {
-                      toast({
-                        title: "Missing Signature",
-                        description: "Please paste your signed PSBT",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
+                    // Bitcoin-blind lender: No PSBT needed, platform signs with controlled lender key
                     signResolutionMutation.mutate({
                       loanId: signingResolution.loanId,
-                      signedPsbtBase64: signedPsbt.trim(),
+                      signedPsbtBase64: "PLATFORM_CONTROLLED_SIGNING",
                     });
                   }}
-                  data-testid="button-submit-signature"
+                  data-testid="button-confirm-resolution"
                 >
                   {signResolutionMutation.isPending ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Broadcasting...
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <FileSignature className="h-4 w-4 mr-2" />
-                      Submit Signature & Broadcast
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Confirm & Release Funds
                     </>
                   )}
                 </Button>
