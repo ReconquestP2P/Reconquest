@@ -169,6 +169,10 @@ export const loans = pgTable("loans", {
   pendingResolutionCreatedAt: timestamp("pending_resolution_created_at"), // When admin created the resolution
   lenderSignatureHex: text("lender_signature_hex"), // Lender's signature once provided
   lenderSignedAt: timestamp("lender_signed_at"), // When lender signed
+  
+  // Collateral Release Tracking
+  collateralReleaseTxid: text("collateral_release_txid"), // TXID when collateral returned to borrower
+  collateralReleasedAt: timestamp("collateral_released_at"), // When collateral was released
 });
 
 export const loanOffers = pgTable("loan_offers", {
