@@ -1475,13 +1475,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update loan to deposit_confirmed state
+      // Calculate start date as +5 days from deposit confirmation
+      const now = new Date();
+      const loanStartDate = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // +5 days
+      const loanDueDate = new Date(loanStartDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+      
+      // Update loan to deposit_confirmed state with calculated dates
       const updatedLoan = await storage.updateLoan(loanId, {
         escrowState: "deposit_confirmed",
-        depositConfirmedAt: new Date(),
+        depositConfirmedAt: now,
+        loanStartedAt: loanStartDate,
+        dueDate: loanDueDate,
       });
       
       console.log(`✅ Loan #${loanId}: Borrower confirmed BTC deposit to ${loan.escrowAddress}`);
+      console.log(`📅 Loan dates set: Start = ${loanStartDate.toISOString()}, Due = ${loanDueDate.toISOString()}`);
       
       // Send email notification to lender that borrower deposited BTC
       if (loan.lenderId && updatedLoan) {
@@ -1492,11 +1500,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { sendLenderFundingNotification } = await import('./email.js');
             const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
             
-            // Calculate start date (today) and maturity date from loan term
-            const startDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            const maturityDate = updatedLoan.dueDate 
-              ? new Date(updatedLoan.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'To be determined';
+            // Use the calculated start date (+5 days from deposit) and maturity date
+            const startDate = loanStartDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const maturityDate = loanDueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             
             const emailSent = await sendLenderFundingNotification({
               to: lender.email,
