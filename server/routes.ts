@@ -3018,10 +3018,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                   </div>
                   
                   <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
-                    <h3 style="margin-top: 0; color: #333;">📊 Final Distribution</h3>
+                    <h3 style="margin-top: 0; color: #333;">📊 Your Payout</h3>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Borrower Receives:</td><td style="padding: 8px 0;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Amount:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
                       <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${btcPrice.toFixed(2)}</td></tr>
                     </table>
                   </div>
@@ -3060,10 +3059,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                   </div>
                   
                   <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745;">
-                    <h3 style="margin-top: 0; color: #333;">📊 Your Return</h3>
+                    <h3 style="margin-top: 0; color: #333;">📊 Your Collateral Return</h3>
                     <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Lender Received:</td><td style="padding: 8px 0;">${lenderBtc} BTC (€${lenderEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">Amount:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
+                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${btcPrice.toFixed(2)}</td></tr>
                     </table>
                   </div>
                   
