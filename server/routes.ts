@@ -2810,14 +2810,14 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const userId = req.user.id;
       
       // Get all loans where this user is the lender with pending signatures
-      const allLoans = await storage.getLoans();
-      const pendingResolutions = allLoans.filter(loan => 
+      const allLoans = await storage.getAllLoans();
+      const pendingResolutions = allLoans.filter((loan: any) => 
         loan.lenderId === userId && 
         loan.disputeStatus === 'pending_lender_signature' &&
         loan.pendingResolutionPsbt
       );
       
-      const results = pendingResolutions.map(loan => ({
+      const results = pendingResolutions.map((loan: any) => ({
         loanId: loan.id,
         decision: loan.pendingResolutionDecision,
         lenderPayoutSats: loan.pendingResolutionLenderSats,
