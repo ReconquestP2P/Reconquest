@@ -422,9 +422,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 </p>
               </div>
             </div>
-            <p className="text-xs text-center text-muted-foreground">
-              This can take 10-30 minutes on testnet. You can safely close this page.
-            </p>
+            <div className="text-center space-y-2">
+              <a 
+                href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                data-testid="link-mempool-monitor"
+              >
+                <Bitcoin className="h-4 w-4" />
+                View transaction status on Mempool →
+              </a>
+              <p className="text-xs text-muted-foreground">
+                This can take 10-30 minutes on testnet. You can safely close this page.
+              </p>
+            </div>
           </div>
         ) : (
           <Button
