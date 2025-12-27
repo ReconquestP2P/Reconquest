@@ -235,7 +235,7 @@ export default function LenderFundingModal({
               <AlertDescription className="text-sm space-y-2">
                 <p className="font-semibold">What Happens Next:</p>
                 <ol className="list-decimal ml-4 space-y-1">
-                  <li>Borrower creates their escrow key and deposits Bitcoin</li>
+                  <li>Borrower deposits Bitcoin as collateral for the loan</li>
                   <li>You'll receive a notification when the loan is ready</li>
                   <li>Transfer fiat to borrower's bank account</li>
                   <li>Confirm the transfer in your dashboard</li>
