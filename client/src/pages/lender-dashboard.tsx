@@ -322,20 +322,12 @@ export default function LenderDashboard() {
           <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
         </div>
 
-        <Tabs defaultValue={pendingResolutions.length > 0 ? "resolutions" : "overview"} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="active">Active Loans</TabsTrigger>
-          <TabsTrigger value="resolutions" className="relative">
-            Resolutions
-            {pendingResolutions.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {pendingResolutions.length}
-              </span>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -1020,130 +1012,6 @@ export default function LenderDashboard() {
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
                     No active investments yet. Complete the loan flow to see active loans here.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="resolutions" className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSignature className="h-5 w-5 text-orange-500" />
-                  Pending Resolution Signatures
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Disputes awaiting your signature to complete the collateral distribution
-                </p>
-              </div>
-              <Button 
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/lender/pending-resolutions"] })}
-                variant="outline" 
-                size="sm" 
-                className="gap-2"
-                data-testid="button-refresh-resolutions"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {resolutionsLoading ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground mt-2">Loading pending resolutions...</p>
-                </div>
-              ) : pendingResolutions.length > 0 ? (
-                <div className="space-y-4">
-                  {pendingResolutions.map((resolution) => {
-                    const lenderBtc = (resolution.lenderPayoutSats / 100_000_000).toFixed(8);
-                    const borrowerBtc = (resolution.borrowerPayoutSats / 100_000_000).toFixed(8);
-                    const lenderEur = (resolution.lenderPayoutSats / 100_000_000 * resolution.btcPriceEur).toFixed(2);
-                    const borrowerEur = (resolution.borrowerPayoutSats / 100_000_000 * resolution.btcPriceEur).toFixed(2);
-                    
-                    return (
-                      <Card key={resolution.loanId} className="border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10">
-                        <CardContent className="p-6">
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                                  <h3 className="text-lg font-semibold">Loan #{resolution.loanId.toString().padStart(6, '0')}</h3>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Dispute resolution ready - your signature is required
-                                </p>
-                              </div>
-                              <Badge variant="outline" className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 border-orange-300">
-                                {resolution.decision?.replace('_', ' ') || 'FAIR SPLIT'}
-                              </Badge>
-                            </div>
-                            
-                            <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border">
-                              <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">Distribution Summary</h4>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-                                  <p className="text-sm text-muted-foreground">Your Payout</p>
-                                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{lenderBtc} BTC</p>
-                                  <p className="text-sm text-muted-foreground">({lenderEur} EUR)</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
-                                  <p className="text-sm text-muted-foreground">Borrower Receives</p>
-                                  <p className="text-xl font-bold">{borrowerBtc} BTC</p>
-                                  <p className="text-sm text-muted-foreground">({borrowerEur} EUR)</p>
-                                </div>
-                              </div>
-                              <div className="mt-3 text-sm text-muted-foreground">
-                                <span className="font-medium">BTC Price Used:</span>{' '}
-                                {resolution.btcPriceEur.toFixed(2)} EUR
-                              </div>
-                            </div>
-                            
-                            {resolution.escrowAddress && (
-                              <div className="text-sm flex items-center gap-2">
-                                <span className="text-muted-foreground">Escrow:</span>
-                                <a
-                                  href={`https://mempool.space/testnet4/address/${resolution.escrowAddress}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:underline font-mono"
-                                  data-testid={`link-escrow-${resolution.loanId}`}
-                                >
-                                  {resolution.escrowAddress.slice(0, 12)}...{resolution.escrowAddress.slice(-8)}
-                                  <ExternalLink className="h-3 w-3 inline ml-1" />
-                                </a>
-                              </div>
-                            )}
-                            
-                            <div className="flex gap-3 pt-2">
-                              <Button 
-                                onClick={() => setSigningResolution(resolution)}
-                                className="flex-1 bg-orange-500 hover:bg-orange-600"
-                                disabled={signResolutionMutation.isPending}
-                                data-testid={`button-sign-resolution-${resolution.loanId}`}
-                              >
-                                <FileSignature className="h-4 w-4 mr-2" />
-                                {signResolutionMutation.isPending ? 'Signing...' : 'Sign Resolution'}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <FileSignature className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                  <p className="text-muted-foreground">
-                    No pending resolution signatures
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Any disputes requiring your signature will appear here
                   </p>
                 </div>
               )}
