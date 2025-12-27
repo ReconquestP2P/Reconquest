@@ -1496,6 +1496,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Loan #${loanId}: Borrower confirmed BTC deposit to ${loan.escrowAddress}`);
       console.log(`📅 Loan dates set: Start = ${loanStartDate.toISOString()}, Due = ${loanDueDate.toISOString()}`);
       
+      // Register loan for blockchain monitoring to detect deposits (including partial deposits)
+      const { blockchainMonitoring } = await import('./services/BlockchainMonitoring.js');
+      await blockchainMonitoring.registerLoanForMonitoring(loanId);
+      console.log(`🔍 Loan #${loanId}: Registered for blockchain monitoring`);
+      
       // Send email notification to lender that borrower deposited BTC
       if (loan.lenderId && updatedLoan) {
         try {
