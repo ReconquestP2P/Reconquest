@@ -1603,7 +1603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update loan with borrower's public key after key generation
-  app.patch("/api/loans/:id/borrower-keys", authenticateToken, async (req: any, res) => {
+  app.patch("/api/loans/:id/borrower-keys", authenticateToken, requireNonAdmin, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     const borrowerId = req.user.id;
     const { borrowerPubkey } = req.body;
@@ -2303,7 +2303,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   // Bitcoin Lending Workflow API Endpoints
 
   // Step 1: Initiate a Bitcoin-backed loan
-  app.post("/api/loans/bitcoin/initiate", async (req, res) => {
+  app.post("/api/loans/bitcoin/initiate", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const { borrowerId, collateralBtc, loanAmount } = req.body;
       
@@ -2340,7 +2340,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Step 2: Process Bitcoin escrow deposit
-  app.post("/api/loans/:id/escrow/verify", async (req, res) => {
+  app.post("/api/loans/:id/escrow/verify", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.id);
       
@@ -2363,7 +2363,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Step 3: Lender confirms fiat transfer
-  app.post("/api/loans/:id/fiat/confirm", async (req, res) => {
+  app.post("/api/loans/:id/fiat/confirm", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const { lenderId } = req.body;
@@ -2384,7 +2384,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Step 4: Borrower confirms receipt of fiat
-  app.post("/api/loans/:id/receipt/confirm", async (req, res) => {
+  app.post("/api/loans/:id/receipt/confirm", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.id);
 
@@ -3683,7 +3683,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Store pre-signed transaction (called automatically when user generates ephemeral keys)
-  app.post("/api/loans/:id/transactions/store", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/transactions/store", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const { partyRole, partyPubkey, txType, psbt, signature, txHash, validAfter } = req.body;
@@ -3732,7 +3732,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
 
   // Mark signing ceremony complete for a party
-  app.post("/api/loans/:id/complete-signing", authenticateToken, async (req, res) => {
+  app.post("/api/loans/:id/complete-signing", authenticateToken, requireNonAdmin, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.id);
       const userId = (req as any).user.id;
