@@ -4,7 +4,7 @@
 
 import { storage } from '../storage';
 import type { Loan } from '@shared/schema';
-import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail } from '../email';
+import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail, sendPartialDepositWarningEmail } from '../email';
 
 interface UTXO {
   txid: string;
@@ -480,6 +480,44 @@ export class BlockchainMonitoringService {
         fundingVout: result.vout,
         fundedAmountSats: depositedSats,
       });
+      
+      // Send partial deposit warning email (only once per detected amount)
+      // Don't spam - only send if we haven't already warned for this exact amount
+      const previousWarningAmount = loan.partialDepositAmountSats;
+      if (!loan.partialDepositWarningAt || previousWarningAmount !== depositedSats) {
+        try {
+          const borrower = await storage.getUser(loan.borrowerId);
+          if (borrower) {
+            const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+            const depositedBtc = (depositedSats / 100000000).toFixed(8);
+            const requiredBtc = (requiredSats / 100000000).toFixed(8);
+            const shortfallBtc = ((requiredSats - depositedSats) / 100000000).toFixed(8);
+            
+            const emailSent = await sendPartialDepositWarningEmail({
+              to: borrower.email,
+              borrowerName: borrower.username,
+              loanId: loan.id,
+              depositedBtc,
+              requiredBtc,
+              shortfallBtc,
+              escrowAddress: loan.escrowAddress!,
+              txid: result.txid,
+              dashboardUrl: baseUrl,
+            });
+            
+            if (emailSent) {
+              console.log(`[BlockchainMonitor] 📧 Sent partial deposit warning email to ${borrower.email} for loan ${loan.id}`);
+              // Track that we've warned about this specific amount
+              await storage.updateLoan(loan.id, {
+                partialDepositWarningAt: new Date(),
+                partialDepositAmountSats: depositedSats,
+              });
+            }
+          }
+        } catch (emailError) {
+          console.error(`[BlockchainMonitor] Error sending partial deposit warning:`, emailError);
+        }
+      }
       return;
     }
 

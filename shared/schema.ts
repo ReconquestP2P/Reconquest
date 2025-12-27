@@ -147,6 +147,10 @@ export const loans = pgTable("loans", {
   txRecoveryHex: text("tx_recovery_hex"), // Platform recovery transaction hex
   txCancellationHex: text("tx_cancellation_hex"), // Lender-initiated cancellation transaction hex
   
+  // Partial Deposit Warning
+  partialDepositWarningAt: timestamp("partial_deposit_warning_at"), // When we sent insufficient deposit warning email
+  partialDepositAmountSats: integer("partial_deposit_amount_sats"), // Amount detected that was insufficient
+  
   // Collateral Top-Up Tracking
   pendingTopUpBtc: decimal("pending_top_up_btc", { precision: 10, scale: 8 }), // Amount borrower claims to have sent
   topUpRequestedAt: timestamp("top_up_requested_at"), // When borrower clicked "I've topped up"
