@@ -46,7 +46,6 @@ export default function LenderFundingModal({
   
   const [step, setStep] = useState<'confirm' | 'processing' | 'funded'>('confirm');
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [understandRisks, setUnderstandRisks] = useState(false);
 
   const fundLoan = useMutation({
     mutationFn: async () => {
@@ -78,10 +77,10 @@ export default function LenderFundingModal({
   });
 
   const handleCommitFunding = async () => {
-    if (!termsAccepted || !understandRisks) {
+    if (!termsAccepted) {
       toast({
         title: "Please Accept Terms",
-        description: "You must accept the terms and acknowledge the risks to proceed.",
+        description: "You must accept the terms to proceed.",
         variant: "destructive",
       });
       return;
@@ -94,7 +93,6 @@ export default function LenderFundingModal({
   const handleClose = () => {
     setStep('confirm');
     setTermsAccepted(false);
-    setUnderstandRisks(false);
     onClose();
   };
 
@@ -151,7 +149,6 @@ export default function LenderFundingModal({
                 <ul className="list-disc ml-4 space-y-1">
                   <li>Borrower deposits BTC worth {loan.collateralBtc} to secure the loan</li>
                   <li>Collateral held in secure escrow until loan is repaid</li>
-                  <li>You only manage fiat transfers - no Bitcoin handling required</li>
                   <li>Automatic liquidation protection if collateral value drops</li>
                 </ul>
               </AlertDescription>
@@ -169,18 +166,6 @@ export default function LenderFundingModal({
                   I confirm I will transfer {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')} to the borrower's bank account once the escrow is ready
                 </Label>
               </div>
-              
-              <div className="flex items-start space-x-2">
-                <Checkbox 
-                  id="understandRisks" 
-                  checked={understandRisks}
-                  onCheckedChange={(checked) => setUnderstandRisks(checked === true)}
-                  data-testid="checkbox-risks"
-                />
-                <Label htmlFor="understandRisks" className="text-sm cursor-pointer leading-snug">
-                  I understand that while Bitcoin collateral secures this loan, cryptocurrency values can fluctuate and there are inherent risks
-                </Label>
-              </div>
             </div>
 
             <div className="flex gap-3">
@@ -194,7 +179,7 @@ export default function LenderFundingModal({
               <Button 
                 onClick={handleCommitFunding}
                 className="flex-1"
-                disabled={!termsAccepted || !understandRisks}
+                disabled={!termsAccepted}
                 data-testid="button-commit-funding"
               >
                 Continue
