@@ -382,7 +382,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
               <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> to the address above</li>
               <li>Wait for blockchain confirmation</li>
               <li>Click "Confirm Deposit" below</li>
-              <li>Complete the <strong>Signing Ceremony</strong> to pre-sign all recovery transactions</li>
             </ol>
           </AlertDescription>
         </Alert>
