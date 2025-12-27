@@ -316,7 +316,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <AlertDescription className="text-sm">
               <p className="font-semibold">Key Ceremony Complete!</p>
               <p className="mt-1">Escrow address created. Now deposit your BTC.</p>
-              {rememberDevice && <p className="mt-1 text-green-700">Your key is saved on this device.</p>}
             </AlertDescription>
           </Alert>
         )}
@@ -337,7 +336,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-sm">
             <p className="font-semibold">Deposit {loan.collateralBtc} BTC to the escrow address below.</p>
-            <p className="mt-1">After deposit confirms, you'll complete the signing ceremony.</p>
           </AlertDescription>
         </Alert>
 
