@@ -714,26 +714,57 @@ export class BlockchainMonitoringService {
         return result;
       }
 
-      // Find the largest UTXO (most likely to be the funding transaction)
-      const fundingUtxo = utxos.reduce((max, utxo) => 
-        utxo.value > max.value ? utxo : max
-      );
+      // Get current block height for confirmation calculation
+      const tipResponse = await fetch(`${this.baseUrl}/blocks/tip/height`);
+      const tipHeight = parseInt(await tipResponse.text());
 
-      // Calculate confirmations
-      let confirmations = 0;
-      if (fundingUtxo.status.confirmed && fundingUtxo.status.block_height) {
-        const tipResponse = await fetch(`${this.baseUrl}/blocks/tip/height`);
-        const tipHeight = await tipResponse.text();
-        confirmations = parseInt(tipHeight) - fundingUtxo.status.block_height + 1;
+      // Aggregate ALL confirmed UTXOs (borrower may send multiple transactions)
+      let totalConfirmedSats = 0;
+      let minConfirmations = Infinity;
+      let firstTxid = '';
+      let firstVout = 0;
+      
+      for (const utxo of utxos) {
+        if (utxo.status.confirmed && utxo.status.block_height) {
+          totalConfirmedSats += utxo.value;
+          const confs = tipHeight - utxo.status.block_height + 1;
+          if (confs < minConfirmations) {
+            minConfirmations = confs;
+          }
+          // Track first UTXO for reference
+          if (!firstTxid) {
+            firstTxid = utxo.txid;
+            firstVout = utxo.vout;
+          }
+        }
+      }
+
+      // If no confirmed UTXOs, check mempool
+      if (totalConfirmedSats === 0) {
+        const mempoolTotal = utxos.filter(u => !u.status.confirmed).reduce((sum, u) => sum + u.value, 0);
+        if (mempoolTotal > 0) {
+          const firstUnconfirmed = utxos.find(u => !u.status.confirmed);
+          const result: FundingCheckResult = {
+            funded: true,
+            txid: firstUnconfirmed?.txid || '',
+            vout: firstUnconfirmed?.vout || 0,
+            amountSats: mempoolTotal,
+            confirmations: 0,
+          };
+          this.setCache(cacheKey, result);
+          return result;
+        }
+        const result = { funded: false };
+        this.setCache(cacheKey, result);
+        return result;
       }
 
       const result: FundingCheckResult = {
         funded: true,
-        txid: fundingUtxo.txid,
-        vout: fundingUtxo.vout,
-        amountSats: fundingUtxo.value,
-        confirmations,
-        blockHeight: fundingUtxo.status.block_height,
+        txid: firstTxid,
+        vout: firstVout,
+        amountSats: totalConfirmedSats,
+        confirmations: minConfirmations === Infinity ? 0 : minConfirmations,
       };
 
       this.setCache(cacheKey, result);
