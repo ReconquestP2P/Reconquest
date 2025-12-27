@@ -124,7 +124,7 @@ export function createBrandedEmailHtml(params: {
         ${buttonHtml}
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          ${footer || '<strong>— The Reconquest Team 👑</strong>'}
+          ${footer || '<strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>'}
         </p>
       </div>
     </body>
@@ -213,7 +213,7 @@ export async function sendBorrowerDepositNotification(params: {
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 10px;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -296,7 +296,7 @@ export async function sendLenderFundingNotification(params: {
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -379,7 +379,7 @@ export async function sendLenderKeyGenerationNotification(params: {
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -448,7 +448,7 @@ export async function sendDetailsChangeConfirmation(params: {
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -515,7 +515,7 @@ export async function sendTopUpDetectedEmail(params: {
         </p>
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -559,7 +559,7 @@ export async function sendTopUpDetectedEmail(params: {
         </p>
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -646,7 +646,7 @@ export async function sendTopUpConfirmedEmail(params: {
         </div>
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>
@@ -695,7 +695,7 @@ export async function sendTopUpConfirmedEmail(params: {
         </div>
         
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-          <strong>— The Reconquest Team 👑</strong>
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
         </p>
       </div>
     </body>

@@ -770,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px;">
-                  <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                  <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                 </div>
               </div>
             </div>
@@ -1291,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 </p>
 
                 <p style="font-size: 14px; color: #7F8C8D; margin-top: 10px;">
-                  <strong>— The Reconquest Team 👑</strong>
+                  <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
                 </p>
               </div>
             </body>
@@ -2831,7 +2831,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                     </a>
                   </div>
                   
-                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                  <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                 </div>
               </div>
             `,
@@ -3035,7 +3035,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                     </table>
                   </div>
                   
-                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                  <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                 </div>
               </div>
             `,
@@ -3076,7 +3076,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                     </table>
                   </div>
                   
-                  <p>Best regards,<br><strong>The Reconquest Team</strong></p>
+                  <p>Best regards,<br><strong>The Reconquest Team</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
                 </div>
               </div>
             `,
@@ -4348,7 +4348,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
             </div>
             
             <div style="text-align: center; margin-top: 30px;">
-              <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+              <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
             </div>
           </div>
         </div>
@@ -4392,7 +4392,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>

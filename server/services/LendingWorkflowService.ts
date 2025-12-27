@@ -417,7 +417,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
@@ -474,7 +474,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
@@ -530,7 +530,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
@@ -736,7 +736,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
@@ -813,7 +813,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
@@ -872,7 +872,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
               </div>
               
               <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong></p>
+                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
               </div>
             </div>
           </div>
