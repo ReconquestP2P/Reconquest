@@ -1461,6 +1461,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify loan is in the correct state (escrow created, awaiting deposit)
       if (loan.escrowState !== "escrow_created") {
+        // Provide helpful messages based on the current state
+        if (loan.escrowState === "deposit_pending") {
+          return res.status(400).json({ 
+            message: "Your deposit confirmation is already registered. The system is monitoring the blockchain for your transaction. Please wait for miner confirmation - this can take 10-30 minutes on testnet." 
+          });
+        }
+        if (loan.escrowState === "deposit_confirmed") {
+          return res.status(400).json({ 
+            message: "Your deposit has already been confirmed. Check your dashboard for the next steps." 
+          });
+        }
         return res.status(400).json({ 
           message: "Loan must have an escrow address before confirming deposit" 
         });
