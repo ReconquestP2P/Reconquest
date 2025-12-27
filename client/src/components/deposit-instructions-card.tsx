@@ -185,13 +185,16 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           {!showPassphraseInput ? (
             <>
               <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
-                <AlertDescription className="text-sm space-y-2">
-                  <p className="font-semibold">Secure 2-of-3 Multisig Escrow:</p>
-                  <ul className="list-disc ml-4 space-y-1">
-                    <li>Your Bitcoin key will be generated from a passphrase you create</li>
-                    <li>You can choose to remember the key on this device</li>
-                    <li>After depositing BTC, you'll complete the signing ceremony</li>
-                  </ul>
+                <AlertDescription className="text-sm space-y-3">
+                  <p className="font-semibold">🔐 What is this passphrase for?</p>
+                  <p>Your passphrase creates a unique "key" that protects your Bitcoin. Think of it like a password that unlocks a safe - without it, nobody (not even us) can move your coins.</p>
+                  
+                  <p className="font-semibold mt-3">📝 Do I need to remember it?</p>
+                  <p><strong>Usually no.</strong> If you check "Remember on this device", your browser saves the key and you won't need to type the passphrase again.</p>
+                  <p>You'll only need the passphrase again if you switch to a different computer or clear your browser data.</p>
+                  
+                  <p className="font-semibold mt-3">💡 Tip</p>
+                  <p>Write it down somewhere safe just in case, but for most people the "Remember on this device" option is enough.</p>
                 </AlertDescription>
               </Alert>
 
@@ -201,15 +204,16 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 data-testid="button-start-key-ceremony"
               >
                 <Key className="h-4 w-4 mr-2" />
-                Start Key Ceremony
+                Create My Security Key
               </Button>
             </>
           ) : (
             <>
-              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-sm">
-                  <p>Your passphrase deterministically derives your key. With "Remember on this device" enabled, you won't need to enter it again on this browser.</p>
+              <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
+                <Shield className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-sm space-y-2">
+                  <p className="font-semibold">✅ Good news: You probably won't need this passphrase again!</p>
+                  <p>With "Remember on this device" checked below, your browser will save your key. You only need the passphrase if you use a different device.</p>
                 </AlertDescription>
               </Alert>
 
