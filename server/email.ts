@@ -344,19 +344,18 @@ export async function sendLenderKeyGenerationNotification(params: {
           ${getEmailHeader()}
         </div>
         
-        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">🔐 Action Required: Generate Your Recovery Plan</h2>
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">✅ Collateral Secured!</h2>
         
-        <p style="font-size: 16px; color: #333; margin-top: 20px;">Dear ${lenderName},</p>
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Good news, ${lenderName}!</p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
-          Great news! The borrower <strong>${borrowerName}</strong> has completed their recovery plan for Loan #${loanId}. 
-          To finalize the security setup, you now need to generate your own recovery plan.
+          The borrower's Bitcoin collateral has been confirmed in escrow. You can now proceed to send the loan funds to the borrower.
         </p>
         
-        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 0; font-size: 14px; color: #856404;">
-            <strong>⚠️ Important:</strong> Both parties must generate their recovery plans before the loan can be fully activated. 
-            This dual-signing process ensures maximum security for the Bitcoin collateral.
+        <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #155724;">
+            <strong>✅ Escrow Funded:</strong> The Bitcoin collateral is now securely locked in a multisig escrow address. 
+            Your investment is protected by the platform's security infrastructure.
           </p>
         </div>
         
@@ -370,14 +369,13 @@ export async function sendLenderKeyGenerationNotification(params: {
 
         <div style="text-align: center; margin: 30px 0;">
           <a href="${dashboardUrl}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
-            🔐 Generate My Recovery Plan
+            💶 Send Funds to Borrower
           </a>
         </div>
 
         <p style="font-size: 14px; color: #666; line-height: 1.7; margin-top: 25px;">
-          When you click the button above, your browser will generate a secure Bitcoin keypair. 
-          The private key is used only to sign transactions and is immediately discarded - you will never see it. 
-          Instead, you'll download a recovery file containing pre-signed transactions for emergencies.
+          Click the button above to view the borrower's bank details and confirm the transfer. 
+          Once you've sent the funds and confirmed the transfer, the borrower will receive a notification to validate receipt.
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -391,7 +389,7 @@ export async function sendLenderKeyGenerationNotification(params: {
   return await sendEmail({
     to,
     from: 'Reconquest <noreply@reconquestp2p.com>',
-    subject: `🔐 Action Required: Generate Your Recovery Plan for Loan #${loanId}`,
+    subject: `✅ Borrower Collateral Confirmed - Loan #${loanId}`,
     html,
   });
 }
