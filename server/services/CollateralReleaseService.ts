@@ -315,6 +315,12 @@ export async function releaseCollateral(
 /**
  * Release collateral to a specific address (for liquidation to lender)
  * Used when LTV threshold is breached and collateral goes to lender
+ * 
+ * Bitcoin-Blind Lender Model: Platform controls 2 of 3 keys:
+ * - Platform's own key
+ * - Lender's key (generated and encrypted by platform)
+ * 
+ * This allows automatic liquidation without borrower participation
  */
 export async function releaseCollateralToAddress(
   loanId: number,
@@ -325,6 +331,7 @@ export async function releaseCollateralToAddress(
   try {
     // Dynamic import to avoid circular dependency
     const { storage } = await import('../storage.js');
+    const { EncryptionService } = await import('./EncryptionService.js');
     
     const loan = await storage.getLoan(loanId);
     if (!loan) {
@@ -340,6 +347,22 @@ export async function releaseCollateralToAddress(
     
     if (!witnessScriptHex) {
       return { success: false, error: 'No witness script found for escrow' };
+    }
+    
+    // Bitcoin-Blind Lender Model: Get the encrypted lender private key
+    // Platform controls this key on behalf of the lender
+    if (!loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'No lender private key found - cannot sign for liquidation' };
+    }
+    
+    // Decrypt the lender's private key (using static method)
+    console.log(`🔓 Decrypting lender private key for Bitcoin-blind liquidation...`);
+    let lenderPrivateKey: string;
+    try {
+      lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+    } catch (decryptError: any) {
+      console.error('Failed to decrypt lender key:', decryptError.message);
+      return { success: false, error: 'Failed to decrypt lender signing key' };
     }
     
     // Fetch ALL UTXOs from escrow
@@ -360,7 +383,6 @@ export async function releaseCollateralToAddress(
     
     // Get platform keys
     const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
-    const platformPubkey = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
@@ -401,14 +423,22 @@ export async function releaseCollateralToAddress(
       value: BigInt(outputValue),
     });
     
-    // Sign ALL inputs with platform key (we control 2 of 3 in testnet setup)
-    console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
+    // Bitcoin-Blind Lender Model: Sign with BOTH platform key AND lender key
+    // Platform controls 2 of 3 keys, enabling automatic liquidation
+    console.log(`🔑 Signing ${utxos.length} input(s) with PLATFORM key...`);
     for (let i = 0; i < utxos.length; i++) {
       signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
     }
     
-    // Platform controls 2 of 3 keys in testnet
-    console.log(`🔑 Platform controls 2 of 3 keys - finalizing...`);
+    console.log(`🔑 Signing ${utxos.length} input(s) with LENDER key (platform-controlled)...`);
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
+    }
+    
+    // Clear the lender private key from memory immediately after use
+    lenderPrivateKey = '';
+    
+    console.log(`🔑 Platform + Lender signatures applied (2 of 3) - finalizing...`);
     
     try {
       psbt.finalizeAllInputs();
@@ -420,6 +450,8 @@ export async function releaseCollateralToAddress(
       
       // Broadcast
       const broadcastTxid = await broadcastToTestnet4(txHex);
+      
+      console.log(`📡 Liquidation broadcast successful: ${broadcastTxid}`);
       
       return {
         success: true,
