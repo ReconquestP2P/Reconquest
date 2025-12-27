@@ -1464,7 +1464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Provide helpful messages based on the current state
         if (loan.escrowState === "deposit_pending") {
           return res.status(400).json({ 
-            message: "Your deposit confirmation is already registered. The system is monitoring the blockchain for your transaction. Please wait for miner confirmation - this can take 10-30 minutes on testnet." 
+            message: "We're monitoring the blockchain for your deposit. Please wait for miner confirmation - this can take 10-30 minutes on testnet." 
           });
         }
         if (loan.escrowState === "deposit_confirmed") {
