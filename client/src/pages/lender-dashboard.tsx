@@ -323,10 +323,9 @@ export default function LenderDashboard() {
         </div>
 
         <Tabs defaultValue={pendingResolutions.length > 0 ? "resolutions" : "overview"} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
-          <TabsTrigger value="recovery">Recovery Plan</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="active">Active Loans</TabsTrigger>
           <TabsTrigger value="resolutions" className="relative">
@@ -551,71 +550,6 @@ export default function LenderDashboard() {
             </CardContent>
           </Card>
 
-        </TabsContent>
-
-        <TabsContent value="recovery" className="space-y-6">
-          <Card className="border-purple-200 dark:border-purple-800">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  🔐 Generate Recovery Plan (Firefish Security)
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="flex items-center gap-2"
-                  data-testid="button-refresh-recovery"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Complete the signing ceremony to activate loans. Your private key will be generated, used to sign transactions, then <strong>immediately discarded</strong> for maximum security.
-              </p>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {lenderLoans.filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt).length > 0 ? (
-                <div className="space-y-4">
-                  {lenderLoans
-                    .filter(loan => loan.depositConfirmedAt && !loan.lenderKeysGeneratedAt)
-                    .map((loan) => (
-                      <div key={loan.id} className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-indigo-50/50 dark:from-purple-950/20 dark:to-indigo-950/20">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold">Loan #{loan.id}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {formatCurrency(parseFloat(loan.amount), loan.currency)} · {loan.termMonths} months
-                            </p>
-                            {loan.borrowerKeysGeneratedAt && (
-                              <div className="inline-flex items-center gap-2 mt-2">
-                                <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                                  ✓ Borrower Signed
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            onClick={() => setSigningLoan(loan)}
-                            className="bg-purple-600 hover:bg-purple-700"
-                            data-testid={`button-generate-recovery-lender-${loan.id}`}
-                          >
-                            🔐 Generate Recovery Plan
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
-                    No loans awaiting recovery plan generation. Once a borrower deposits BTC and generates their recovery plan, you can generate yours here.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="loans" className="space-y-6">
