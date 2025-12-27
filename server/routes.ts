@@ -3234,6 +3234,71 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // Admin: Retry collateral release for a completed loan
+  // Used when initial release failed but loan is marked completed
+  app.post("/api/admin/loans/:loanId/retry-collateral-release", authenticateToken, async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (loan.status !== 'completed') {
+        return res.status(400).json({ 
+          message: `Loan is not in completed status (current: ${loan.status}). This endpoint is only for retrying failed releases on completed loans.` 
+        });
+      }
+      
+      // Get borrower info
+      const borrower = await storage.getUser(loan.borrowerId);
+      if (!borrower) {
+        return res.status(400).json({ message: "Borrower not found" });
+      }
+      
+      if (!borrower.btcAddress) {
+        return res.status(400).json({ message: "Borrower has no BTC return address set" });
+      }
+      
+      console.log(`🔄 Admin retrying collateral release for loan #${loanId} to borrower ${borrower.username}`);
+      
+      const { releaseCollateral } = await import('./services/CollateralReleaseService.js');
+      const result = await releaseCollateral(storage, loanId);
+      
+      if (result.success) {
+        // Update loan with release txid
+        await storage.updateLoan(loanId, {
+          collateralReleaseTxid: result.txid,
+        });
+        
+        res.json({
+          success: true,
+          message: `Collateral released to borrower ${borrower.username}`,
+          borrowerAddress: borrower.btcAddress,
+          txid: result.txid,
+          broadcastUrl: result.broadcastUrl
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: `Failed to release collateral: ${result.error}`,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error("Error retrying collateral release:", error);
+      res.status(500).json({ message: error.message || "Failed to retry collateral release" });
+    }
+  });
+  
   // DEVELOPMENT ONLY: Recover remaining collateral from escrow (for testing)
   app.post("/api/test/recover-escrow/:loanId", async (req, res) => {
     try {
