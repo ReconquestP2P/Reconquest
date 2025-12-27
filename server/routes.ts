@@ -1491,69 +1491,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Calculate start date as +5 days from deposit confirmation
-      const now = new Date();
-      const loanStartDate = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // +5 days
-      const loanDueDate = new Date(loanStartDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
-      
-      // Update loan to deposit_confirmed state with calculated dates
-      const updatedLoan = await storage.updateLoan(loanId, {
-        escrowState: "deposit_confirmed",
-        depositConfirmedAt: now,
-        loanStartedAt: loanStartDate,
-        dueDate: loanDueDate,
-      });
-      
-      console.log(`✅ Loan #${loanId}: Borrower confirmed BTC deposit to ${loan.escrowAddress}`);
-      console.log(`📅 Loan dates set: Start = ${loanStartDate.toISOString()}, Due = ${loanDueDate.toISOString()}`);
-      
-      // Register loan for blockchain monitoring to detect deposits (including partial deposits)
+      // Register loan for blockchain monitoring - actual confirmation happens when blockchain confirms
+      // DO NOT set deposit_confirmed or send lender notification yet - that happens in BlockchainMonitoring.handleDepositConfirmed
       const { blockchainMonitoring } = await import('./services/BlockchainMonitoring.js');
       await blockchainMonitoring.registerLoanForMonitoring(loanId);
-      console.log(`🔍 Loan #${loanId}: Registered for blockchain monitoring`);
       
-      // Send email notification to lender that borrower deposited BTC
-      if (loan.lenderId && updatedLoan) {
-        try {
-          const lender = await storage.getUser(loan.lenderId);
-          
-          if (lender) {
-            const { sendLenderFundingNotification } = await import('./email.js');
-            const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
-            
-            // Use the calculated start date (+5 days from deposit) and maturity date
-            const startDate = loanStartDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            const maturityDate = loanDueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            
-            const emailSent = await sendLenderFundingNotification({
-              to: lender.email,
-              lenderName: lender.username,
-              loanId: updatedLoan.id,
-              loanAmount: updatedLoan.amount,
-              currency: updatedLoan.currency,
-              interestRate: updatedLoan.interestRate,
-              startDate: startDate,
-              maturityDate: maturityDate,
-              termMonths: updatedLoan.termMonths,
-              dashboardUrl: `${baseUrl}/lender`,
-              escrowAddress: loan.escrowAddress || undefined,
-              collateralBtc: updatedLoan.collateralBtc,
-            });
-            
-            if (emailSent) {
-              console.log(`📧 Sent funding notification to lender: ${lender.email}`);
-            } else {
-              console.error(`❌ Failed to send funding notification to lender: ${lender.email}`);
-            }
-          }
-        } catch (emailError) {
-          console.error('Failed to send lender notification email:', emailError);
-          // Don't fail the request if email fails
-        }
-      }
+      console.log(`✅ Loan #${loanId}: Borrower clicked 'I've deposited' - now monitoring ${loan.escrowAddress}`);
+      console.log(`⏳ Waiting for blockchain confirmation before notifying lender...`);
+      
+      // NOTE: Lender notification email is sent by BlockchainMonitoring.handleDepositConfirmed 
+      // only AFTER the deposit is confirmed on the blockchain with required confirmations
+      
+      // Return updated loan state
+      const updatedLoan = await storage.getLoan(loanId);
       
       // SECURITY: Sanitize response to remove lender private key
-      res.json(ResponseSanitizer.sanitizeLoan(updatedLoan));
+      res.json(ResponseSanitizer.sanitizeLoan(updatedLoan!));
     } catch (error) {
       console.error('Error confirming deposit:', error);
       res.status(500).json({ message: "Internal server error" });

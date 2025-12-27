@@ -540,20 +540,66 @@ export class BlockchainMonitoringService {
   }
 
   /**
-   * Handle a confirmed deposit - update loan status and trigger signing ceremony
+   * Handle a confirmed deposit - update loan status and notify lender
    */
   private async handleDepositConfirmed(loan: Loan, result: FundingCheckResult): Promise<void> {
     console.log(`[BlockchainMonitor] Processing confirmed deposit for loan ${loan.id}`);
 
-    // Update loan to ready for signatures
+    // Calculate start date as +5 days from deposit confirmation
+    const now = new Date();
+    const loanStartDate = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // +5 days
+    const loanDueDate = new Date(loanStartDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
+
+    // Update loan to ready for signatures with calculated dates
     await storage.updateLoan(loan.id, {
       escrowMonitoringActive: false,
-      depositConfirmedAt: new Date(),
+      depositConfirmedAt: now,
       escrowState: 'deposit_confirmed',
       status: 'awaiting_signatures',
+      loanStartedAt: loanStartDate,
+      dueDate: loanDueDate,
     });
 
-    console.log(`[BlockchainMonitor] Loan ${loan.id} updated to awaiting_signatures - ready for signing ceremony`);
+    console.log(`[BlockchainMonitor] Loan ${loan.id} updated to awaiting_signatures`);
+    console.log(`[BlockchainMonitor] 📅 Loan dates set: Start = ${loanStartDate.toISOString()}, Due = ${loanDueDate.toISOString()}`);
+
+    // Send email notification to lender that borrower's deposit is confirmed
+    if (loan.lenderId) {
+      try {
+        const lender = await storage.getUser(loan.lenderId);
+        
+        if (lender) {
+          const { sendLenderFundingNotification } = await import('../email.js');
+          const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+          
+          const startDate = loanStartDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          const maturityDate = loanDueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          
+          const emailSent = await sendLenderFundingNotification({
+            to: lender.email,
+            lenderName: lender.username,
+            loanId: loan.id,
+            loanAmount: loan.amount,
+            currency: loan.currency,
+            interestRate: loan.interestRate,
+            startDate: startDate,
+            maturityDate: maturityDate,
+            termMonths: loan.termMonths,
+            dashboardUrl: `${baseUrl}/lender`,
+            escrowAddress: loan.escrowAddress || undefined,
+            collateralBtc: loan.collateralBtc,
+          });
+          
+          if (emailSent) {
+            console.log(`[BlockchainMonitor] 📧 Sent funding notification to lender: ${lender.email}`);
+          } else {
+            console.error(`[BlockchainMonitor] ❌ Failed to send funding notification to lender: ${lender.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('[BlockchainMonitor] Failed to send lender notification email:', emailError);
+      }
+    }
 
     // Call the callback if registered
     if (this.onDepositConfirmed) {
