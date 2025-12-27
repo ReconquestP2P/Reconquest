@@ -2647,7 +2647,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
-  // Resolve dispute with fair split payout - creates pending resolution for lender to sign
+  // Resolve dispute with fair split payout - creates pending resolution for lender to confirm
   app.post("/api/admin/disputes/:loanId/resolve-fair-split", authenticateToken, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
@@ -2725,7 +2725,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         });
       }
       
-      // Store pending resolution for lender to sign
+      // Store pending resolution for lender to confirm
       const loanUpdates: any = {
         disputeStatus: 'pending_lender_signature',
         pendingResolutionPsbt: psbtResult.psbtBase64,
@@ -2780,21 +2780,21 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           await sendEmail({
             to: lender.email,
             from: 'Reconquest <noreply@reconquestp2p.com>',
-            subject: `🔐 Signature Required - Dispute Resolution for Loan #${loanId}`,
+            subject: `🔐 Confirmation Required - Dispute Resolution for Loan #${loanId}`,
             html: `
               <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
                 <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
                   <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
                 </div>
                 <div style="background: linear-gradient(135deg, #D4AF37 0%, #4A90E2 100%); padding: 20px;">
-                  <h1 style="color: white; margin: 0; text-align: center;">Your Signature is Required</h1>
+                  <h1 style="color: white; margin: 0; text-align: center;">Your Confirmation is Required</h1>
                 </div>
                 <div style="padding: 20px; background: #f9f9f9;">
                   <p>Dear Lender,</p>
-                  <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and a resolution transaction has been prepared. Your signature is required to complete the distribution.</p>
+                  <p>The dispute for <strong>Loan #${loanId}</strong> has been reviewed and a resolution has been prepared. Your confirmation is required to release the funds.</p>
                   
                   <div style="background: #fff3cd; border-radius: 8px; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                    <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please log in to your dashboard to review and sign the resolution transaction.</p>
+                    <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please log in to your dashboard to review and confirm the resolution.</p>
                   </div>
                   
                   <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #D4AF37;">
@@ -2802,14 +2802,12 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                     <table style="width: 100%; border-collapse: collapse;">
                       <tr><td style="padding: 8px 0; color: #666;">Decision:</td><td style="padding: 8px 0; font-weight: bold;">${decision.replace('_', ' ')}</td></tr>
                       <tr><td style="padding: 8px 0; color: #666;">Your Payout:</td><td style="padding: 8px 0; font-weight: bold; color: #28a745;">${lenderBtc} BTC (€${lenderEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">Borrower Receives:</td><td style="padding: 8px 0;">${borrowerBtc} BTC (€${borrowerEur})</td></tr>
-                      <tr><td style="padding: 8px 0; color: #666;">BTC Price Used:</td><td style="padding: 8px 0;">€${calc.btcPriceEur.toFixed(2)}</td></tr>
                     </table>
                   </div>
                   
                   <div style="text-align: center; margin: 30px 0;">
                     <a href="${baseUrl}/lender" style="background: #D4AF37; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                      Sign Resolution Transaction
+                      Confirm Resolution
                     </a>
                   </div>
                   
@@ -2818,7 +2816,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               </div>
             `,
           });
-          console.log(`📧 Signature request email sent to lender: ${lender.email}`);
+          console.log(`📧 Confirmation request email sent to lender: ${lender.email}`);
         }
       }
       
@@ -2828,8 +2826,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         calculation: psbtResult.calculation,
         lenderPayoutSats: lenderSats,
         borrowerPayoutSats: borrowerSats,
-        status: 'pending_lender_signature',
-        message: `Resolution prepared. Awaiting lender signature. An email has been sent to the lender.`,
+        status: 'pending_lender_confirmation',
+        message: `Resolution prepared. Awaiting lender confirmation. An email has been sent to the lender.`,
       });
     } catch (error) {
       console.error("Error resolving dispute with fair split:", error);
