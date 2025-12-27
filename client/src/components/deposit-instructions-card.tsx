@@ -411,14 +411,31 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           </AlertDescription>
         </Alert>
 
-        <Button
-          onClick={() => confirmDeposit.mutate()}
-          disabled={confirmDeposit.isPending}
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-          data-testid="button-confirm-deposit"
-        >
-          {confirmDeposit.isPending ? "Confirming..." : "I've Deposited the BTC - Confirm"}
-        </Button>
+        {loan.escrowMonitoringActive ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div className="text-center">
+                <p className="font-semibold text-blue-800 dark:text-blue-300">Monitoring Blockchain...</p>
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  The lender will be notified once your transfer is confirmed
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-center text-muted-foreground">
+              This can take 10-30 minutes on testnet. You can safely close this page.
+            </p>
+          </div>
+        ) : (
+          <Button
+            onClick={() => confirmDeposit.mutate()}
+            disabled={confirmDeposit.isPending}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+            data-testid="button-confirm-deposit"
+          >
+            {confirmDeposit.isPending ? "Confirming..." : "I've Deposited the BTC - Confirm"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
