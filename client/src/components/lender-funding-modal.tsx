@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Shield, CheckCircle, Lock, DollarSign, Clock, Percent } from "lucide-react";
+import { Loader2, Shield, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 
@@ -44,7 +44,7 @@ export default function LenderFundingModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [step, setStep] = useState<'confirm' | 'processing' | 'committed'>('confirm');
+  const [step, setStep] = useState<'confirm' | 'processing' | 'funded'>('confirm');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [understandRisks, setUnderstandRisks] = useState(false);
 
@@ -61,7 +61,7 @@ export default function LenderFundingModal({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
-      setStep('committed');
+      setStep('funded');
       toast({
         title: "Funding Commitment Complete!",
         description: data.message || "Your investment commitment is registered. Waiting for borrower to deposit Bitcoin.",
@@ -98,41 +98,28 @@ export default function LenderFundingModal({
     onClose();
   };
 
-  const calculateEarnings = () => {
-    return parseFloat(loan.amount) * (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         {step === 'confirm' && (
           <>
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                Confirm Investment
-              </DialogTitle>
+              <DialogTitle>Investment Details</DialogTitle>
               <DialogDescription>
-                Review the loan details and confirm your commitment to fund this Bitcoin-backed loan.
+                You are committing to fund {loan.amount} {loan.currency}. A secure escrow address will be created.
               </DialogDescription>
             </DialogHeader>
 
             <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-4 space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <DollarSign className="h-3.5 w-3.5" />
-                    Amount to invest
-                  </p>
+                  <p className="text-sm text-muted-foreground">Amount to invest</p>
                   <p className="text-lg font-semibold" data-testid="text-invest-amount">
                     {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    Loan term
-                  </p>
+                  <p className="text-sm text-muted-foreground">Period</p>
                   <p className="text-lg font-semibold" data-testid="text-period">
                     {loan.termMonths} months
                   </p>
@@ -141,18 +128,17 @@ export default function LenderFundingModal({
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Percent className="h-3.5 w-3.5" />
-                    Interest rate (p.a.)
-                  </p>
+                  <p className="text-sm text-muted-foreground">Interest rate (p.a.)</p>
                   <p className="text-lg font-semibold" data-testid="text-interest-rate">
                     {parseFloat(loan.interestRate).toFixed(1)}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Your earnings</p>
+                  <p className="text-sm text-muted-foreground">You will earn</p>
                   <p className="text-lg font-semibold text-green-600" data-testid="text-earnings">
-                    {loan.currency} {formatCurrency(calculateEarnings()).replace('€', '').replace('$', '')}
+                    {loan.currency} {formatCurrency(
+                      parseFloat(loan.amount) * (parseFloat(loan.interestRate) / 100) * (loan.termMonths / 12)
+                    ).replace('€', '').replace('$', '')}
                   </p>
                 </div>
               </div>
@@ -161,12 +147,12 @@ export default function LenderFundingModal({
             <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <Shield className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-sm space-y-2">
-                <p className="font-semibold">How Your Investment is Protected:</p>
+                <p className="font-semibold">Secure 3-of-3 Multisig Escrow:</p>
                 <ul className="list-disc ml-4 space-y-1">
-                  <li><strong>Bitcoin Collateral:</strong> Borrower deposits BTC worth {loan.collateralBtc} to secure the loan</li>
-                  <li><strong>Platform Escrow:</strong> Collateral held in secure 3-of-3 multisig address</li>
-                  <li><strong>No Bitcoin Handling:</strong> You only manage fiat transfers - the platform handles all Bitcoin operations</li>
-                  <li><strong>Automated Liquidation:</strong> If collateral value drops too low, automatic protection triggers</li>
+                  <li>Borrower deposits BTC worth {loan.collateralBtc} to secure the loan</li>
+                  <li>Collateral held in secure escrow until loan is repaid</li>
+                  <li>You only manage fiat transfers - no Bitcoin handling required</li>
+                  <li>Automatic liquidation protection if collateral value drops</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -211,8 +197,7 @@ export default function LenderFundingModal({
                 disabled={!termsAccepted || !understandRisks}
                 data-testid="button-commit-funding"
               >
-                <Lock className="mr-2 h-4 w-4" />
-                Commit to Fund
+                Continue
               </Button>
             </div>
           </>
@@ -237,15 +222,15 @@ export default function LenderFundingModal({
           </>
         )}
 
-        {step === 'committed' && (
+        {step === 'funded' && (
           <>
             <DialogHeader>
               <DialogTitle className="text-green-600 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5" />
-                Investment Commitment Registered!
+                Funding Commitment Complete!
               </DialogTitle>
               <DialogDescription>
-                Waiting for borrower to deposit Bitcoin collateral
+                Waiting for borrower to provide their key and deposit BTC.
               </DialogDescription>
             </DialogHeader>
 
