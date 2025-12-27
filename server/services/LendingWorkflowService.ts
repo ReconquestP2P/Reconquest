@@ -299,13 +299,22 @@ export class LendingWorkflowService implements ILendingWorkflowService {
 
   /**
    * Step 5: Start the loan countdown timer
+   * Note: loanStartedAt and dueDate are already set in confirm-deposit route (+5 days from deposit)
+   * Only update status here - don't overwrite the dates
    */
   async startLoanCountdown(loanId: number): Promise<void> {
-    const loan = await this.storage.updateLoan(loanId, {
-      status: 'active',
-      loanStartedAt: new Date(),
-      dueDate: new Date(Date.now() + (365 * 24 * 60 * 60 * 1000)) // 1 year from now
-    });
+    const existingLoan = await this.storage.getLoan(loanId);
+    
+    // Only set dates if they weren't already set during deposit confirmation
+    const updateData: any = { status: 'active' };
+    if (!existingLoan?.loanStartedAt) {
+      updateData.loanStartedAt = new Date();
+    }
+    if (!existingLoan?.dueDate) {
+      updateData.dueDate = new Date(Date.now() + (365 * 24 * 60 * 60 * 1000)); // 1 year from now
+    }
+    
+    const loan = await this.storage.updateLoan(loanId, updateData);
 
     if (loan) {
       await this.notifyLoanActivation(loan);

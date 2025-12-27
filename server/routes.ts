@@ -3671,11 +3671,15 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const updatedLoan = await storage.getLoan(loanId);
       if (updatedLoan?.borrowerKeysGeneratedAt && updatedLoan?.lenderKeysGeneratedAt) {
         // Both parties have signed - activate the loan!
-        await storage.updateLoan(loanId, {
+        // Note: Don't overwrite loanStartedAt if already set (from confirm-deposit +5 days)
+        const activationUpdate: any = {
           status: 'active',
           escrowState: 'keys_generated',
-          loanStartedAt: now,
-        });
+        };
+        if (!updatedLoan.loanStartedAt) {
+          activationUpdate.loanStartedAt = now;
+        }
+        await storage.updateLoan(loanId, activationUpdate);
 
         console.log(`🎉 Loan #${loanId} activated! Both parties have completed signing ceremony.`);
         res.json({ 
