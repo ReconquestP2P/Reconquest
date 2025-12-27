@@ -1086,8 +1086,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sanitizedLoan = ResponseSanitizer.sanitizeLoan(loan);
         if (loan.borrowerId) {
           const borrower = await storage.getUser(loan.borrowerId);
-          // Only include bank details if both parties have generated their recovery plans
-          const showBankDetails = loan.borrowerKeysGeneratedAt && loan.lenderKeysGeneratedAt;
+          // Only include bank details if both parties have their keys ready
+          // Bitcoin-blind model: lenderPubkey exists when platform generated lender key at funding
+          const showBankDetails = loan.borrowerKeysGeneratedAt && loan.lenderPubkey;
           return {
             ...sanitizedLoan,
             borrower: {
@@ -1211,11 +1212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update loan with lender info but NO escrow yet
       // Store platform-generated lender key (encrypted in production)
+      // BITCOIN-BLIND: Set lenderKeysGeneratedAt since platform generated the key for lender
       const updatedLoan = await storage.updateLoan(loanId, {
         lenderId,
         lenderPubkey,  // Platform-generated pubkey (lender never sees this)
         lenderPrivateKeyEncrypted,  // Platform stores this for signing (encrypted in production)
         platformPubkey: PLATFORM_PUBKEY,
+        lenderKeysGeneratedAt: new Date(),  // Platform generated lender key NOW
         // NO escrowAddress yet - will be created when borrower provides their key
         escrowState: "awaiting_borrower_key", // New state: waiting for borrower to provide their key
         status: "funded", // Lender has committed
@@ -1394,8 +1397,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔐 Created escrow for Loan #${loanId} with 3 unique keys: ${multisig.address}`);
       
       // Update loan with borrower key and escrow details
+      // Set borrowerKeysGeneratedAt since borrower just provided their key
       const updatedLoan = await storage.updateLoan(loanId, {
         borrowerPubkey,
+        borrowerKeysGeneratedAt: new Date(),  // Borrower key created NOW
         escrowAddress: multisig.address,
         escrowWitnessScript: multisig.witnessScript,
         escrowScriptHash: multisig.scriptHash,

@@ -407,8 +407,7 @@ export default function LenderDashboard() {
               {lenderLoans.filter(loan => 
                 loan.depositConfirmedAt && 
                 loan.borrowerKeysGeneratedAt && 
-                loan.lenderKeysGeneratedAt &&
-                loan.borrower?.iban &&
+                loan.lenderPubkey &&  // Bitcoin-blind: platform generates lender key at funding
                 loan.status !== 'completed' &&
                 !loan.borrowerConfirmedReceipt
               ).length > 0 ? (
@@ -416,8 +415,7 @@ export default function LenderDashboard() {
                   {lenderLoans.filter(loan => 
                     loan.depositConfirmedAt && 
                     loan.borrowerKeysGeneratedAt && 
-                    loan.lenderKeysGeneratedAt &&
-                    loan.borrower?.iban &&
+                    loan.lenderPubkey &&  // Bitcoin-blind: platform generates lender key at funding
                     loan.status !== 'completed' &&
                     !loan.borrowerConfirmedReceipt
                   ).map((loan) => (
@@ -433,10 +431,10 @@ export default function LenderDashboard() {
                               </p>
                               <div className="flex gap-4 mt-2 text-sm">
                                 <span className="text-muted-foreground">
-                                  📅 Start: <span className="font-medium text-foreground">{loan.plannedStartDate ? formatDate(loan.plannedStartDate) : 'Pending'}</span>
+                                  📅 Start: <span className="font-medium text-foreground">{loan.loanStartedAt ? formatDate(loan.loanStartedAt) : 'Pending'}</span>
                                 </span>
                                 <span className="text-muted-foreground">
-                                  🏁 End: <span className="font-medium text-foreground">{loan.plannedEndDate ? formatDate(loan.plannedEndDate) : 'Pending'}</span>
+                                  🏁 End: <span className="font-medium text-foreground">{loan.dueDate ? formatDate(loan.dueDate) : 'Pending'}</span>
                                 </span>
                               </div>
                             </div>
