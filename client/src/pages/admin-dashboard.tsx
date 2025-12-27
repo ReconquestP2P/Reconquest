@@ -25,6 +25,7 @@ interface AdminStats {
 interface LoanWithLtv extends Loan {
   currentLtv?: number;
   ltvStatus?: "healthy" | "warning" | "critical";
+  collateralReleaseTxid?: string | null;
 }
 
 interface LoanWithDispute extends Loan {
@@ -237,6 +238,30 @@ export default function AdminDashboard() {
       toast({
         title: "❌ Resolution Failed",
         description: error.message || "Failed to resolve with fair split",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const retryCollateralReleaseMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      const response = await apiRequest(`/api/admin/loans/${loanId}/retry-collateral-release`, "POST");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      toast({
+        title: data.success ? "✅ Collateral Released" : "⚠️ Release Failed",
+        description: data.success 
+          ? `Sent to ${data.borrowerAddress?.substring(0, 20)}... TXID: ${data.txid?.substring(0, 16)}...`
+          : data.message || "Failed to release collateral",
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Collateral Release Failed",
+        description: error.message || "Failed to release collateral",
         variant: "destructive",
       });
     },
@@ -855,6 +880,7 @@ export default function AdminDashboard() {
                       <TableHead>Current LTV</TableHead>
                       <TableHead>Interest Rate</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -888,6 +914,30 @@ export default function AdminDashboard() {
                         <TableCell>{loan.interestRate}%</TableCell>
                         <TableCell>
                           {new Date(loan.requestedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {loan.status === "completed" && !loan.collateralReleaseTxid && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                              onClick={() => retryCollateralReleaseMutation.mutate(loan.id)}
+                              disabled={retryCollateralReleaseMutation.isPending}
+                              data-testid={`button-retry-release-${loan.id}`}
+                            >
+                              {retryCollateralReleaseMutation.isPending ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <Lock className="h-4 w-4 mr-1" />
+                              )}
+                              Retry Release
+                            </Button>
+                          )}
+                          {loan.status === "completed" && loan.collateralReleaseTxid && (
+                            <Badge className="bg-green-100 text-green-800">
+                              Released
+                            </Badge>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
