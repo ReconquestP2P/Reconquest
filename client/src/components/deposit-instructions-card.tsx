@@ -30,6 +30,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const [rememberDevice, setRememberDevice] = useState(true);
   const [keyCeremonyComplete, setKeyCeremonyComplete] = useState(false);
   const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
+  const [recoveryDownloaded, setRecoveryDownloaded] = useState(false);
 
   const provideBorrowerKey = useMutation({
     mutationFn: async (borrowerPubkey: string) => {
@@ -146,9 +147,11 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
+    setRecoveryDownloaded(true);
+    
     toast({
       title: "Recovery File Downloaded",
-      description: "Keep this file safe - you can use it to sign from another device.",
+      description: "You can now proceed to deposit your Bitcoin.",
     });
   };
 
@@ -301,6 +304,44 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     return null;
   }
 
+  if (recoveryBundle && !recoveryDownloaded) {
+    return (
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+            <Download className="h-5 w-5" />
+            Download Your Recovery File
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-sm">
+              <p className="font-semibold">Key Ceremony Complete!</p>
+              <p className="mt-1">Your escrow address has been created for Loan #{loan.id}.</p>
+            </AlertDescription>
+          </Alert>
+
+          <Alert className="bg-white dark:bg-gray-800 border-blue-300">
+            <AlertDescription className="text-sm space-y-3">
+              <p>The recovery file contains your encrypted private key (as borrower). Together with your passphrase, it recreates your key and would allow you to access your collateral if you ever need to.</p>
+              <p>We recommend saving a backup of this file in a secure place, ideally offline.</p>
+            </AlertDescription>
+          </Alert>
+
+          <Button 
+            onClick={downloadRecoveryBundle}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            data-testid="button-download-recovery"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Recovery File
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10">
       <CardHeader>
@@ -310,28 +351,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {keyCeremonyComplete && (
-          <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-sm">
-              <p className="font-semibold">Key Ceremony Complete!</p>
-              <p className="mt-1">Escrow address created. Now deposit your BTC.</p>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {recoveryBundle && (
-          <Button 
-            onClick={downloadRecoveryBundle}
-            variant="outline"
-            className="w-full"
-            data-testid="button-download-recovery"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download Recovery File (Recommended)
-          </Button>
-        )}
-
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-sm">
