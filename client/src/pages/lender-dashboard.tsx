@@ -1371,29 +1371,18 @@ export default function LenderDashboard() {
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-muted-foreground">Your Payout</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {(signingResolution.lenderPayoutSats / 100_000_000).toFixed(8)} BTC
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    (€{(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
-                    → {signingResolution.lenderAddress}
-                  </p>
-                </div>
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
-                  <p className="text-sm text-muted-foreground">Borrower Receives</p>
-                  <p className="text-2xl font-bold">
-                    {(signingResolution.borrowerPayoutSats / 100_000_000).toFixed(8)} BTC
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    (€{(signingResolution.borrowerPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)})
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2 font-mono break-all">
-                    → {signingResolution.borrowerAddress}
+              <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-sm text-muted-foreground">Your Payout</p>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                  {(signingResolution.lenderPayoutSats / 100_000_000).toFixed(8)} BTC
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  ≈ €{(signingResolution.lenderPayoutSats / 100_000_000 * signingResolution.btcPriceEur).toFixed(2)}
+                </p>
+                <div className="pt-3 border-t border-green-200 dark:border-green-700">
+                  <p className="text-xs text-muted-foreground mb-1">Sending to:</p>
+                  <p className="text-sm font-mono break-all text-green-700 dark:text-green-300">
+                    {signingResolution.lenderAddress}
                   </p>
                 </div>
               </div>
