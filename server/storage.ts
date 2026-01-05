@@ -1,5 +1,5 @@
 import { 
-  users, loans, loanOffers, disputes, disputeAuditLogs,
+  users, loans, loanOffers, disputes, disputeAuditLogs, loanDocuments,
   escrowSessions, signatureExchanges, escrowEvents, preSignedTransactions, psbtTemplates,
   type User, type InsertUser, 
   type Loan, type InsertLoan, 
@@ -10,7 +10,8 @@ import {
   type PreSignedTransaction, type InsertPreSignedTransaction,
   type Dispute, type InsertDispute,
   type DisputeAuditLog, type InsertDisputeAuditLog,
-  type PsbtTemplate, type InsertPsbtTemplate
+  type PsbtTemplate, type InsertPsbtTemplate,
+  type LoanDocument, type InsertLoanDocument
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, or } from "drizzle-orm";
@@ -88,6 +89,11 @@ export interface IStorage {
   // PSBT Template operations (Security: canonical template storage)
   storePsbtTemplate(template: InsertPsbtTemplate): Promise<PsbtTemplate>;
   getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined>;
+
+  // Loan Document operations
+  createLoanDocument(doc: InsertLoanDocument): Promise<LoanDocument>;
+  getLoanDocuments(loanId: number): Promise<LoanDocument[]>;
+  getLoanDocument(id: number): Promise<LoanDocument | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -837,6 +843,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(psbtTemplates.loanId, loanId));
     
     return templates.find(t => t.txType === txType);
+  }
+
+  // Loan Document Operations
+  async createLoanDocument(doc: InsertLoanDocument): Promise<LoanDocument> {
+    const [created] = await db.insert(loanDocuments).values(doc).returning();
+    return created;
+  }
+
+  async getLoanDocuments(loanId: number): Promise<LoanDocument[]> {
+    return await db
+      .select()
+      .from(loanDocuments)
+      .where(eq(loanDocuments.loanId, loanId));
+  }
+
+  async getLoanDocument(id: number): Promise<LoanDocument | undefined> {
+    const [doc] = await db
+      .select()
+      .from(loanDocuments)
+      .where(eq(loanDocuments.id, id));
+    return doc;
   }
 }
 

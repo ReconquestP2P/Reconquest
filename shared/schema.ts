@@ -185,6 +185,27 @@ export const loanOffers = pgTable("loan_offers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const loanDocuments = pgTable("loan_documents", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  uploadedBy: integer("uploaded_by").notNull(),
+  uploaderRole: text("uploader_role").notNull(), // 'borrower' or 'lender'
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(), // 'pdf', 'png', 'jpg'
+  fileSize: integer("file_size").notNull(),
+  objectPath: text("object_path").notNull(), // Path in object storage
+  description: text("description"), // Optional description (e.g., "Bank transfer proof")
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertLoanDocumentSchema = createInsertSchema(loanDocuments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertLoanDocument = z.infer<typeof insertLoanDocumentSchema>;
+export type LoanDocument = typeof loanDocuments.$inferSelect;
+
 export const userAchievements = pgTable("user_achievements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
