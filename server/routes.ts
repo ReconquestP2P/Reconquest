@@ -4667,12 +4667,21 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       const documents = await storage.getLoanDocuments(loanId);
       
-      // Get uploader usernames
+      // For privacy (Bitcoin-blind lender design), only show uploader username to admin
+      // Borrowers and lenders only see the role (borrower/lender), not the actual username
       const documentsWithUploaders = await Promise.all(documents.map(async (doc) => {
-        const uploader = await storage.getUser(doc.uploadedBy);
+        // Only include username for admin users
+        if (isAdmin) {
+          const uploader = await storage.getUser(doc.uploadedBy);
+          return {
+            ...doc,
+            uploaderUsername: uploader?.username || 'Unknown'
+          };
+        }
+        // For non-admins, don't expose the other party's username
         return {
           ...doc,
-          uploaderUsername: uploader?.username || 'Unknown'
+          uploaderUsername: doc.uploaderRole === 'borrower' ? 'Borrower' : 'Lender'
         };
       }));
       

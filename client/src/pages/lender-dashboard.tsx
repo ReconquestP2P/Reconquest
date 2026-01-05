@@ -22,6 +22,7 @@ import { AchievementsDashboard } from "@/components/achievements-dashboard";
 import { LtvBatteryIndicator } from "@/components/ltv-battery-indicator";
 import EscrowSetup from "@/components/escrow-setup";
 import FundingTracker from "@/components/funding-tracker";
+import { LoanDocuments } from "@/components/loan-documents";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -480,6 +481,9 @@ export default function LenderDashboard() {
                               </Button>
                             )}
                           </div>
+
+                          {/* Loan Documents - Upload transfer proofs */}
+                          <LoanDocuments loanId={loan.id} userRole="lender" canUpload={true} />
                         </div>
                       </CardContent>
                     </Card>
@@ -1243,6 +1247,9 @@ export default function LenderDashboard() {
                       </a>
                     </div>
                   )}
+
+                  {/* Loan Documents */}
+                  <LoanDocuments loanId={loan.id} userRole="lender" canUpload={true} />
 
                   <Button 
                     variant="outline" 

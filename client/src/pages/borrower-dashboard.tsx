@@ -18,6 +18,7 @@ import RepaymentModal from "@/components/repayment-modal";
 import DepositInstructionsCard from "@/components/deposit-instructions-card";
 import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
 import { LtvBatteryIndicator } from "@/components/ltv-battery-indicator";
+import { LoanDocuments } from "@/components/loan-documents";
 import { FirefishWASMProvider } from "@/contexts/FirefishWASMContext";
 import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -626,6 +627,9 @@ export default function BorrowerDashboard() {
                                           <ExternalLink className="h-3 w-3" />
                                         </a>
                                       </div>
+                                      
+                                      {/* Loan Documents */}
+                                      <LoanDocuments loanId={loan.id} userRole="borrower" canUpload={true} />
                                     </div>
                                   </TableCell>
                                 </TableRow>
