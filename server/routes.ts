@@ -24,8 +24,10 @@ import {
   insertEscrowSessionSchema, 
   insertSignatureExchangeSchema, 
   insertEscrowEventSchema,
-  updateEscrowSessionClientSchema
+  updateEscrowSessionClientSchema,
+  insertLoanDocumentSchema
 } from "@shared/schema";
+import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -72,6 +74,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve static logo for emails
   app.use('/public', express.static('client/public'));
+
+  // Register object storage routes for file uploads
+  registerObjectStorageRoutes(app);
+  const objectStorageService = new ObjectStorageService();
 
   // Bitcoin lending workflow test page
   app.get("/test-lending", (req, res) => {
@@ -4508,6 +4514,172 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     } catch (error) {
       console.error("Error processing cooperative close:", error);
       res.status(500).json({ message: "Failed to process cooperative close" });
+    }
+  });
+
+  // ===== LOAN DOCUMENT ENDPOINTS =====
+  
+  // Get presigned URL for document upload
+  app.post("/api/loans/:loanId/documents/request-upload", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const userId = req.user.id;
+      const { fileName, fileSize, contentType, description } = req.body;
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+      if (!allowedTypes.includes(contentType)) {
+        return res.status(400).json({ 
+          message: 'Invalid file type. Only PDF, PNG, and JPG files are allowed.' 
+        });
+      }
+      
+      // Validate file size (max 10MB)
+      if (fileSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ 
+          message: 'File too large. Maximum size is 10MB.' 
+        });
+      }
+      
+      // Get loan and verify user is borrower or lender
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: 'Loan not found' });
+      }
+      
+      const isBorrower = loan.borrowerId === userId;
+      const isLender = loan.lenderId === userId;
+      
+      if (!isBorrower && !isLender) {
+        return res.status(403).json({ message: 'You are not authorized to upload documents for this loan' });
+      }
+      
+      // Check loan status - only allow uploads for active or pending transfer loans
+      const allowedStatuses = ['active', 'funding', 'matched', 'borrower_keys_submitted', 'repayment_pending'];
+      if (!allowedStatuses.includes(loan.status)) {
+        return res.status(400).json({ 
+          message: 'Documents can only be uploaded for active or pending loans' 
+        });
+      }
+      
+      // Get presigned upload URL
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      
+      // Determine file type extension
+      const fileTypeMap: Record<string, string> = {
+        'application/pdf': 'pdf',
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg'
+      };
+      
+      res.json({
+        uploadURL,
+        objectPath,
+        metadata: {
+          loanId,
+          fileName,
+          fileSize,
+          contentType,
+          fileType: fileTypeMap[contentType],
+          uploaderRole: isBorrower ? 'borrower' : 'lender',
+          description
+        }
+      });
+    } catch (error) {
+      console.error("Error generating document upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+  
+  // Save document metadata after successful upload
+  app.post("/api/loans/:loanId/documents", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const userId = req.user.id;
+      const { fileName, fileType, fileSize, objectPath, description } = req.body;
+      
+      // Validate required fields
+      if (!fileName || !fileType || !fileSize || !objectPath) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Validate file type
+      const allowedFileTypes = ['pdf', 'png', 'jpg'];
+      if (!allowedFileTypes.includes(fileType)) {
+        return res.status(400).json({ message: 'Invalid file type' });
+      }
+      
+      // Get loan and verify user
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: 'Loan not found' });
+      }
+      
+      const isBorrower = loan.borrowerId === userId;
+      const isLender = loan.lenderId === userId;
+      
+      if (!isBorrower && !isLender) {
+        return res.status(403).json({ message: 'You are not authorized to upload documents for this loan' });
+      }
+      
+      // Create document record
+      const document = await storage.createLoanDocument({
+        loanId,
+        uploadedBy: userId,
+        uploaderRole: isBorrower ? 'borrower' : 'lender',
+        fileName,
+        fileType,
+        fileSize,
+        objectPath,
+        description: description || null
+      });
+      
+      console.log(`📄 Document uploaded for Loan #${loanId} by ${isBorrower ? 'borrower' : 'lender'}: ${fileName}`);
+      
+      res.json({ success: true, document });
+    } catch (error) {
+      console.error("Error saving document metadata:", error);
+      res.status(500).json({ message: "Failed to save document" });
+    }
+  });
+  
+  // Get all documents for a loan
+  app.get("/api/loans/:loanId/documents", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const userId = req.user.id;
+      
+      // Get loan and verify user is borrower, lender, or admin
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: 'Loan not found' });
+      }
+      
+      const isBorrower = loan.borrowerId === userId;
+      const isLender = loan.lenderId === userId;
+      const isAdmin = req.user.role === 'admin';
+      
+      if (!isBorrower && !isLender && !isAdmin) {
+        return res.status(403).json({ message: 'You are not authorized to view documents for this loan' });
+      }
+      
+      const documents = await storage.getLoanDocuments(loanId);
+      
+      // Get uploader usernames
+      const documentsWithUploaders = await Promise.all(documents.map(async (doc) => {
+        const uploader = await storage.getUser(doc.uploadedBy);
+        return {
+          ...doc,
+          uploaderUsername: uploader?.username || 'Unknown'
+        };
+      }));
+      
+      res.json({ documents: documentsWithUploaders });
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
     }
   });
 
