@@ -1,6 +1,6 @@
 # Reconquest Whiteboard Animation Video Script & Storyboard
 
-**Video Duration:** 2-3 minutes  
+**Video Duration:** 3-4 minutes  
 **Style:** Whiteboard animation with hand-drawing effect  
 **Tone:** Professional, trustworthy, educational  
 **Target Audience:** Crypto holders who need loans, investors seeking yield
@@ -22,7 +22,42 @@
 
 ---
 
-## SCENE 2: Introducing Reconquest (0:20 - 0:35)
+## SCENE 2: What Are Bitcoin-Backed Assets? (0:20 - 0:55)
+
+**VISUAL:** Draw a house with a price tag, then draw a bank giving money to a person, with an arrow pointing back to the house labeled "collateral."
+
+**NARRATION:**
+"First, let's understand a powerful concept: asset-backed lending. When you buy a house, the bank gives you a mortgage. The house itself is the collateral – your guarantee that you'll repay."
+
+**VISUAL ELEMENTS:**
+- House with price tag
+- Bank building with money flowing out
+- Arrow connecting house to loan (labeled "Collateral")
+- Checkmark showing security
+
+**VISUAL:** Transform the house into a glowing Bitcoin symbol. Draw the same flow – Bitcoin as collateral, cash flowing to person.
+
+**NARRATION:**
+"Now imagine the same thing, but with Bitcoin. Your Bitcoin becomes the collateral. You get cash today, and when you repay, you get your Bitcoin back. This is a Bitcoin-backed loan."
+
+**VISUAL ELEMENTS:**
+- House morphing into Bitcoin symbol
+- Same collateral flow diagram
+- "Bitcoin-Backed Loan" text appearing
+
+**VISUAL:** Draw comparison: traditional assets (house, gold bars, stocks) on one side, Bitcoin on the other with checkmarks.
+
+**NARRATION:**
+"Bitcoin is the perfect collateral. It's globally recognized, instantly verifiable, available 24/7, and can be securely locked without any paperwork. No lawyers. No lengthy approvals. Just math and code."
+
+**VISUAL ELEMENTS:**
+- Traditional assets: house, gold bar, stock certificate (with slow/complex icons)
+- Bitcoin with checkmarks: "Global," "Instant," "24/7," "Secure"
+- Speed comparison (turtle vs rocket)
+
+---
+
+## SCENE 3: Introducing Reconquest (0:55 - 1:10)
 
 **VISUAL:** Draw the Reconquest logo. Transform the worried person into a smiling person. Draw Bitcoin being placed in a secure vault, while cash flows to the person.
 
@@ -37,7 +72,7 @@
 
 ---
 
-## SCENE 3: How It Works - For Borrowers (0:35 - 1:05)
+## SCENE 4: How It Works - For Borrowers (1:10 - 1:40)
 
 **VISUAL:** Draw a simple 3-step flow diagram for borrowers.
 
@@ -61,7 +96,7 @@
 
 ---
 
-## SCENE 4: How It Works - For Lenders (1:05 - 1:30)
+## SCENE 5: How It Works - For Lenders (1:40 - 2:05)
 
 **VISUAL:** Draw a different character (investor type) with Euro/Dollar symbols
 
@@ -87,7 +122,7 @@
 
 ---
 
-## SCENE 5: The Security - Multi-Signature Escrow (1:30 - 1:55)
+## SCENE 6: The Security - Multi-Signature Escrow (2:05 - 2:30)
 
 **VISUAL:** Draw a vault with 3 locks/keys
 
@@ -110,7 +145,7 @@
 
 ---
 
-## SCENE 6: Protection Features (1:55 - 2:15)
+## SCENE 7: Protection Features (2:30 - 2:50)
 
 **VISUAL:** Draw a monitoring dashboard with price charts
 
@@ -131,7 +166,7 @@
 
 ---
 
-## SCENE 7: Call to Action (2:15 - 2:35)
+## SCENE 8: Call to Action (2:50 - 3:10)
 
 **VISUAL:** Draw both characters (borrower and lender) standing together happily. Draw the Reconquest logo prominently.
 
@@ -156,7 +191,7 @@
 
 ---
 
-## SCENE 8: End Screen (2:35 - 2:45)
+## SCENE 9: End Screen (3:10 - 3:20)
 
 **VISUAL:** Clean end screen with logo, tagline, and contact info
 
@@ -215,15 +250,16 @@
 
 ---
 
-# Alternative Short Version (60 seconds)
+# Alternative Short Version (90 seconds)
 
 If you need a shorter version for social media:
 
 **0:00-0:10:** Problem (need cash, don't want to sell Bitcoin)
-**0:10-0:25:** Solution intro (Reconquest = borrow against Bitcoin)
-**0:25-0:40:** How it works (3 quick steps)
-**0:40-0:50:** Security highlight (3-key escrow)
-**0:50-0:60:** Call to action (Join today)
+**0:10-0:25:** BTC-backed concept (Bitcoin = perfect collateral, like a mortgage but faster)
+**0:25-0:35:** Solution intro (Reconquest = borrow against Bitcoin)
+**0:35-0:55:** How it works (3 quick steps for borrowers, simple for lenders)
+**0:55-1:10:** Security highlight (3-key escrow, 24/7 monitoring)
+**1:10-1:30:** Call to action (Join today)
 
 ---
 
