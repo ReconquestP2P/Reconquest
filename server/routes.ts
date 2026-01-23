@@ -551,6 +551,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Admin OTP verification - completes admin login after email code verification
+  app.post("/api/auth/admin-verify-otp", async (req, res) => {
+    try {
+      const verifySchema = z.object({
+        email: z.string().email(),
+        otpCode: z.string().length(6, "OTP code must be 6 digits"),
+      });
+
+      const { email, otpCode } = verifySchema.parse(req.body);
+      
+      const ADMIN_EMAIL = "admin@reconquestp2p.com";
+      
+      // Only allow verification for admin email
+      if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid admin credentials"
+        });
+      }
+
+      // Find admin user
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid admin credentials"
+        });
+      }
+
+      // Check OTP code
+      if (!user.adminOtpCode || user.adminOtpCode !== otpCode) {
+        console.log(`Invalid OTP attempt for admin: provided ${otpCode}, expected ${user.adminOtpCode}`);
+        return res.status(401).json({
+          success: false,
+          message: "Invalid verification code"
+        });
+      }
+
+      // Check OTP expiry
+      if (!user.adminOtpExpires || new Date() > new Date(user.adminOtpExpires)) {
+        return res.status(401).json({
+          success: false,
+          message: "Verification code has expired. Please login again to receive a new code."
+        });
+      }
+
+      // Clear OTP from database (one-time use)
+      await storage.updateUser(user.id, {
+        adminOtpCode: null,
+        adminOtpExpires: null
+      });
+
+      // Generate JWT token with 7 days expiration
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      // Return user without password and include token
+      const { password: _, adminOtpCode: __, adminOtpExpires: ___, ...userWithoutSensitive } = user;
+      console.log("Admin login verified via OTP for:", user.email);
+      
+      res.json({
+        success: true,
+        message: "Admin login verified successfully",
+        user: userWithoutSensitive,
+        token: token
+      });
+
+    } catch (error) {
+      console.error("Admin OTP verification error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false,
+        message: "Verification failed. Please try again." 
+      });
+    }
+  });
+
   // Get current user endpoint (protected)
   app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
     const { password: _, ...userWithoutPassword } = req.user;
