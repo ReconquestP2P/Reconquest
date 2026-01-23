@@ -437,6 +437,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // ADMIN OTP AUTHENTICATION
+      // Only admin@reconquestp2p.com can access admin features
+      const ADMIN_EMAIL = "admin@reconquestp2p.com";
+      
+      if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role === 'admin') {
+        // Generate 6-digit OTP code
+        const otpCode = crypto.randomInt(100000, 999999).toString();
+        const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        
+        // Store OTP in database
+        await storage.updateUser(user.id, {
+          adminOtpCode: otpCode,
+          adminOtpExpires: otpExpires
+        });
+        
+        // Send OTP to admin email
+        const baseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+        await sendEmail({
+          to: ADMIN_EMAIL,
+          from: "Reconquest <noreply@reconquestp2p.com>",
+          subject: `🔐 Your Admin Login Code - ${otpCode}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4;">
+              <div style="background-color: #fff; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
+                </div>
+                
+                <h2 style="color: #2C3E50; margin-top: 0; text-align: center;">🔐 Admin Login Verification</h2>
+                
+                <p style="font-size: 16px; color: #555; text-align: center;">Your one-time login code is:</p>
+                
+                <div style="background-color: #1a1a2e; border-radius: 10px; padding: 25px; margin: 20px 0; text-align: center;">
+                  <span style="font-size: 36px; font-weight: bold; color: #D4AF37; letter-spacing: 8px; font-family: monospace;">${otpCode}</span>
+                </div>
+                
+                <p style="font-size: 14px; color: #e74c3c; text-align: center; font-weight: bold;">⏰ This code expires in 5 minutes</p>
+                
+                <div style="background-color: #FEF9E7; border-left: 4px solid #F39C12; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                  <p style="margin: 0; font-size: 14px; color: #555;">
+                    <strong>⚠️ Security Notice:</strong> If you did not attempt to log in, someone may be trying to access your admin account. Please secure your credentials immediately.
+                  </p>
+                </div>
+                
+                <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; text-align: center;">
+                  <strong>— The Reconquest Team 👑</strong>
+                </p>
+              </div>
+            </body>
+            </html>
+          `
+        });
+        
+        console.log(`Admin OTP sent to ${ADMIN_EMAIL}`);
+        
+        return res.json({
+          success: true,
+          requiresOtp: true,
+          message: "A verification code has been sent to your email. Please enter it to complete login.",
+          email: user.email
+        });
+      }
+
       // Generate JWT token with 7 days expiration
       const token = jwt.sign(
         { userId: user.id, email: user.email },
