@@ -110,6 +110,8 @@ export default function AdminDashboard() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const { data: adminStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
@@ -316,6 +318,17 @@ export default function AdminDashboard() {
         return;
       }
       
+      // Check if OTP verification is required (admin login)
+      if (data.requiresOtp) {
+        setShowOtpInput(true);
+        toast({
+          title: "Verification Code Sent",
+          description: "Check your email for the 6-digit login code.",
+        });
+        setIsLoggingIn(false);
+        return;
+      }
+      
       // Check if user has admin role
       if (data.user?.role !== "admin") {
         setAuthError("Access denied. Admin privileges required.");
@@ -333,6 +346,47 @@ export default function AdminDashboard() {
       setIsLoggingIn(false);
     }
   };
+
+  const handleOtpVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setAuthError("");
+    
+    try {
+      const response = await fetch("/api/auth/admin-verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: adminEmail, otpCode }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setAuthError(data.message || "Verification failed. Please try again.");
+        setIsLoggingIn(false);
+        return;
+      }
+      
+      // Store the JWT token for API requests
+      localStorage.setItem("auth_token", data.token);
+      // Set authenticated so UI shows dashboard
+      setIsAuthenticated(true);
+      toast({
+        title: "Welcome, Admin!",
+        description: "You have successfully logged in.",
+      });
+    } catch (error: any) {
+      setAuthError(error.message || "Verification failed. Please try again.");
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowOtpInput(false);
+    setOtpCode("");
+    setAuthError("");
+  };
   
   const handleLogout = () => {
     localStorage.removeItem("auth_token");
@@ -340,6 +394,59 @@ export default function AdminDashboard() {
     setAdminEmail("");
     setAdminPassword("");
   };
+
+  // Show OTP verification form
+  if (!isAuthenticated && showOtpInput) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto mt-20">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Admin Verification
+              </CardTitle>
+              <CardDescription>
+                Enter the 6-digit verification code sent to {adminEmail}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleOtpVerify} className="space-y-4">
+                <div>
+                  <Input
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full text-center text-2xl tracking-widest"
+                    maxLength={6}
+                    required
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  The code expires in 5 minutes
+                </p>
+                {authError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+                )}
+                <Button type="submit" className="w-full" disabled={isLoggingIn || otpCode.length !== 6}>
+                  {isLoggingIn ? "Verifying..." : "Verify & Login"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={handleBackToLogin}
+                >
+                  Back to Login
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Show login form if not authenticated
   if (!isAuthenticated) {
