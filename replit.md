@@ -33,6 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **User & Loan Management**: CRUD operations for users, loans, and loan offers.
 - **Financial Tools**: Loan calculator, interactive interest rate sliders.
 - **Authentication**: Secure login/signup with JWT tokens, 7-day persistent sessions, password strength, email verification, and password reset.
+- **Admin Authentication**: Secure admin login requires email-based OTP verification. Only admin@reconquestp2p.com can access admin features - a 6-digit code is sent to the admin email on each login attempt.
 - **Admin Dashboard**: User/loan management, email notification status, and user registration tracking.
 - **Email System**: Comprehensive email notifications for users and admin.
 - **UI/UX**: Responsive design, dedicated borrower/lender dashboards, "How it works" section, FAQs, About page, and consistent branding.
