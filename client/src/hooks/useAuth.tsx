@@ -12,12 +12,19 @@ interface User {
   createdAt: string;
 }
 
+interface LoginResult {
+  success: boolean;
+  requiresOtp?: boolean;
+  email?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   token: string | null;
-  login: (usernameOrEmail: string, password: string) => Promise<boolean>;
+  login: (usernameOrEmail: string, password: string) => Promise<LoginResult>;
+  verifyAdminOtp: (email: string, otpCode: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -64,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuthStatus();
   }, []);
 
-  const login = async (usernameOrEmail: string, password: string): Promise<boolean> => {
+  const login = async (usernameOrEmail: string, password: string): Promise<LoginResult> => {
     try {
       // Determine if input is email or username
       const isEmail = usernameOrEmail.includes('@');
@@ -86,13 +93,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await response.json();
         console.log('Login response:', userData);
         
+        // Check if admin OTP is required
+        if (userData.requiresOtp) {
+          return { 
+            success: true, 
+            requiresOtp: true, 
+            email: userData.email 
+          };
+        }
+        
         // Store token and set user
         if (userData.token) {
           localStorage.setItem('auth_token', userData.token);
           setToken(userData.token);
         }
         setUser(userData.user); // The API returns { success, message, user, token }
-        return true;
+        return { success: true };
       }
       
       // Handle specific error responses
@@ -109,6 +125,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Login failed:', error);
       throw error; // Re-throw to be handled by the calling component
+    }
+  };
+
+  const verifyAdminOtp = async (email: string, otpCode: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/admin-verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otpCode }),
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('Admin OTP verification response:', userData);
+        
+        // Store token and set user
+        if (userData.token) {
+          localStorage.setItem('auth_token', userData.token);
+          setToken(userData.token);
+        }
+        setUser(userData.user);
+        return true;
+      }
+      
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Verification failed');
+    } catch (error) {
+      console.error('Admin OTP verification failed:', error);
+      throw error;
     }
   };
 
@@ -138,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     token,
     login,
+    verifyAdminOtp,
     logout,
   };
 
