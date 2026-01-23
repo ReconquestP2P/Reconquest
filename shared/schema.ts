@@ -69,6 +69,10 @@ export const users = pgTable("users", {
   detailsChangeToken: text("details_change_token"),
   detailsChangeExpires: timestamp("details_change_expires"),
   
+  // Admin OTP Authentication (email-based one-time codes)
+  adminOtpCode: text("admin_otp_code"), // 6-digit code
+  adminOtpExpires: timestamp("admin_otp_expires"), // Code expiry time (5 minutes)
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
