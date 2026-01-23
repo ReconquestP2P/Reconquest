@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -376,6 +377,11 @@ export default function AdminDashboard() {
                     className="w-full"
                     required
                   />
+                </div>
+                <div className="text-right">
+                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                    Forgot your password?
+                  </Link>
                 </div>
                 {authError && (
                   <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
