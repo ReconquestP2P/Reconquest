@@ -1,0 +1,77 @@
+PHASE 6 - STEP 4: Fix All Critical Issues from Audit
+
+Fix the 6 critical issues found in the audit:
+
+PRIORITY 1: Fix Email Templates (P0-1)
+Files: server/email.ts (lines 250, 478, 603, 740-741) and server/routes.ts (line 2036)
+
+Task:
+- Find ALL hardcoded 'https://mempool.space/testnet4' URLs in email templates
+- Replace with dynamic calls to getExplorerUrl() from bitcoin-network-selector
+- Ensure email HTML uses correct network-specific URLs
+- Test that emails will show correct links on both testnet and mainnet
+
+PRIORITY 2: Update server/testnet-broadcast-real.ts (P0-6)
+File: server/testnet-broadcast-real.ts (lines 41, 50, 258)
+
+Options:
+A. If this file is ONLY used for testing: Rename it to indicate test-only (e.g., testnet-broadcast-real.test.ts)
+B. If it's used in production: Replace hardcoded URLs with network selector
+C. If it's obsolete: Delete it
+
+What's this file used for? Analyze and fix accordingly.
+
+PRIORITY 3: Archive Active Testnet Loans (P0-5)
+Database: 2 active testnet loans exist
+
+Task:
+- Find the 2 active testnet loans (status != 'completed' or 'cancelled')
+- Update their status to 'archived_testnet'
+- Add a note: "Archived before mainnet migration - January 2026"
+- Confirm no active testnet loans remain
+
+PRIORITY 4: Environment Variable Checklist (P0-2, P0-3, P0-4)
+DO NOT change these yet - just create a checklist document:
+
+Create file: MAINNET_LAUNCH_CHECKLIST.md
+
+Content:
+```markdown
+# Mainnet Launch Checklist
+
+## Pre-Launch Environment Variables
+
+### ⚠️ CHANGE THESE IN REPLIT SECRETS BEFORE MAINNET LAUNCH:
+
+1. BITCOIN_NETWORK
+   - Current: testnet
+   - Change to: mainnet
+   - When: Immediately before launch
+
+2. PLATFORM_SIGNING_KEY
+   - Current: 18a4153911af2d3351fefe3fa37246cd... (TESTNET KEY)
+   - Change to: [GET FROM BITWARDEN]
+   - Location: Replit Secrets panel
+   - When: Immediately before launch
+
+3. BITCOIN_RPC_URL
+   - Current: http://127.0.0.1:18332 (testnet port)
+   - Change to: http://127.0.0.1:8332 (mainnet port)
+   - When: After mainnet Bitcoin Core node is synced
+
+### ✅ Already Configured Correctly:
+- MAX_LOAN_AMOUNT_USD=10000
+- MAX_BTC_COLLATERAL=0.2
+- MAX_LOANS_PER_DAY=10
+- MAX_TOTAL_ACTIVE_BTC=2.0
+
+## Launch Steps:
+1. [ ] Sync mainnet Bitcoin Core node (or configure mainnet RPC)
+2. [ ] Update BITCOIN_NETWORK to 'mainnet' in Replit Secrets
+3. [ ] Update PLATFORM_SIGNING_KEY with mainnet key from Bitwarden
+4. [ ] Update BITCOIN_RPC_URL to mainnet port (8332)
+5. [ ] Restart Replit application
+6. [ ] Verify /api/network/info returns network: "mainnet"
+7. [ ] Test Python script generates bc1... addresses
+8. [ ] Create test loan with small amount (0.001 BTC)
+9. [ ] Monitor first 3 mainnet transactions manually
