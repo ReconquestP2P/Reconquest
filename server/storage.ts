@@ -575,10 +575,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAvailableLoans(): Promise<Loan[]> {
+    const { and } = await import('drizzle-orm');
+    // Get current network type from environment
+    const currentNetwork = process.env.BITCOIN_NETWORK === 'mainnet' ? 'mainnet' : 'testnet4';
     return await db
       .select()
       .from(loans)
-      .where(eq(loans.status, "posted"));
+      .where(and(
+        eq(loans.status, "posted"),
+        eq(loans.networkType, currentNetwork)
+      ));
   }
 
   async getLoansWithActiveMonitoring(): Promise<Loan[]> {

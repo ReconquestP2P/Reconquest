@@ -1313,6 +1313,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requiredCollateralValue = loanAmount * 2;
       const requiredBtc = (requiredCollateralValue / btcPrice).toFixed(8);
       
+      // Get current network type
+      const currentNetwork = process.env.BITCOIN_NETWORK === 'mainnet' ? 'mainnet' : 'testnet4';
+      
       const loanData = {
         ...requestData,
         borrowerId,
@@ -1321,6 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ltvRatio: "50.00",
         status: "posted",
         dueDate: new Date(Date.now() + requestData.termMonths * 30 * 24 * 60 * 60 * 1000),
+        networkType: currentNetwork,
       };
       
       const loan = await storage.createLoan(loanData);

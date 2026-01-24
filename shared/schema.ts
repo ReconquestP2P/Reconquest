@@ -177,6 +177,9 @@ export const loans = pgTable("loans", {
   // Collateral Release Tracking
   collateralReleaseTxid: text("collateral_release_txid"), // TXID when collateral returned to borrower
   collateralReleasedAt: timestamp("collateral_released_at"), // When collateral was released
+  
+  // Network Type (testnet4, mainnet)
+  networkType: text("network_type").default("testnet4"),
 });
 
 export const loanOffers = pgTable("loan_offers", {
