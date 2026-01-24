@@ -30,6 +30,7 @@ import {
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 import networkInfoRoutes from "./routes/network-info.js";
 import { mainnetLoanCreationLimits, mainnetLoanFundingLimits, getMainnetSafetyStatus } from "./middleware/mainnet-safety-limits";
+import { validateNetworkAddresses, validateAddressEndpoint, getValidationStats, detectAddressNetwork } from "./middleware/network-address-validator";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -83,6 +84,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register network info routes (for Bitcoin network configuration)
   app.use('/api/network', networkInfoRoutes);
+
+  // Address validation test endpoint
+  app.get("/api/network/validate-address/:address", validateAddressEndpoint);
+  
+  // Address validation stats (admin)
+  app.get("/api/admin/address-validation/stats", getValidationStats);
 
   // Bitcoin lending workflow test page
   app.get("/test-lending", (req, res) => {
@@ -654,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user profile - sensitive fields require email confirmation
-  app.patch("/api/auth/profile", authenticateToken, async (req: any, res) => {
+  app.patch("/api/auth/profile", authenticateToken, validateNetworkAddresses, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const user = req.user;
