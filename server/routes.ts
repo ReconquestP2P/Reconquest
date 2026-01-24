@@ -28,6 +28,7 @@ import {
   insertLoanDocumentSchema
 } from "@shared/schema";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
+import networkInfoRoutes from "./routes/network-info.js";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -78,6 +79,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register object storage routes for file uploads
   registerObjectStorageRoutes(app);
   const objectStorageService = new ObjectStorageService();
+
+  // Register network info routes (for Bitcoin network configuration)
+  app.use('/api/network', networkInfoRoutes);
 
   // Bitcoin lending workflow test page
   app.get("/test-lending", (req, res) => {
