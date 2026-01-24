@@ -29,6 +29,7 @@ import {
 } from "@shared/schema";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 import networkInfoRoutes from "./routes/network-info.js";
+import { mainnetLoanCreationLimits, mainnetLoanFundingLimits, getMainnetSafetyStatus } from "./middleware/mainnet-safety-limits";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -1290,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new loan request
-  app.post("/api/loans", authenticateToken, requireNonAdmin, async (req: any, res) => {
+  app.post("/api/loans", authenticateToken, requireNonAdmin, mainnetLoanCreationLimits, async (req: any, res) => {
     try {
       // Parse request data
       const requestData = insertLoanSchema.parse(req.body);
@@ -1338,7 +1339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Fund a loan (lender commits to funding - BITCOIN-BLIND lender design)
   // Platform generates and controls the lender key - lender never handles Bitcoin keys
-  app.post("/api/loans/:id/fund", authenticateToken, requireNonAdmin, async (req: any, res) => {
+  app.post("/api/loans/:id/fund", authenticateToken, requireNonAdmin, mainnetLoanFundingLimits, async (req: any, res) => {
     const loanId = parseInt(req.params.id);
     
     // Get authenticated user ID from JWT token
@@ -3324,6 +3325,23 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     } catch (error) {
       console.error("Error completing lender signature:", error);
       res.status(500).json({ message: "Failed to complete resolution" });
+    }
+  });
+
+  // ===== MAINNET SAFETY LIMITS ADMIN ENDPOINTS =====
+  
+  // Get current mainnet safety limits status
+  app.get("/api/admin/safety/status", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const status = getMainnetSafetyStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting safety status:", error);
+      res.status(500).json({ message: "Failed to get safety status" });
     }
   });
 
