@@ -17,10 +17,10 @@ interface LoanCalculatorProps {
 }
 
 export default function LoanCalculator({ disabled = false }: LoanCalculatorProps) {
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState("1000");
   const [currency, setCurrency] = useState("EUR");
-  const [term, setTerm] = useState("6");
-  const [interestRate, setInterestRate] = useState(6);
+  const [term, setTerm] = useState("3");
+  const [interestRate, setInterestRate] = useState(5);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
