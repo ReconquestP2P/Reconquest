@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Bitcoin Testnet 3-of-3 Multisig Escrow Address Generator
+Bitcoin 3-of-3 Multisig Escrow Address Generator
 
-This module provides functionality to create a 3-of-3 multisig Bitcoin testnet 
+This module provides functionality to create a 3-of-3 multisig Bitcoin 
 escrow address using the bitcoinlib library. The escrow involves three parties:
 - Borrower (controls their own key - signs client-side)
 - Platform (Reconquest platform key)
@@ -15,6 +15,10 @@ IMPORTANT: Lenders are Bitcoin-blind!
 - Platform signs with BOTH platform key AND investor key after fiat verification
 
 All 3 signatures are required to release funds from the escrow.
+
+NETWORK SUPPORT:
+- testnet: Generates tb1... addresses (default, safe for testing)
+- mainnet: Generates bc1... addresses (requires --confirm-mainnet flag)
 """
 
 from bitcoinlib.keys import Key
@@ -24,6 +28,33 @@ from bitcoinlib.transactions import Output
 from typing import Tuple, Dict, Any
 import hashlib
 import base58
+import argparse
+import sys
+
+
+# ANSI color codes for terminal output
+class Colors:
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    GREEN = '\033[92m'
+    BLUE = '\033[94m'
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
+
+# Network configuration
+NETWORK_CONFIG = {
+    'testnet': {
+        'bech32_prefix': 'tb',
+        'display_name': 'Bitcoin Testnet',
+        'color': Colors.YELLOW,
+    },
+    'mainnet': {
+        'bech32_prefix': 'bc',
+        'display_name': 'Bitcoin Mainnet',
+        'color': Colors.RED,
+    }
+}
 
 
 def bech32_polymod(values):
@@ -92,33 +123,59 @@ def encode_bech32_address(hrp, witver, witprog):
     return ret
 
 
-def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str) -> dict:
+def print_network_warning(network: str, silent: bool = False):
+    """Print a colored warning about which network is being used."""
+    if silent:
+        return
+        
+    config = NETWORK_CONFIG.get(network, NETWORK_CONFIG['testnet'])
+    color = config['color']
+    display_name = config['display_name']
+    
+    print(f"\n{color}{Colors.BOLD}{'='*60}{Colors.RESET}")
+    print(f"{color}{Colors.BOLD}  NETWORK: {display_name.upper()}{Colors.RESET}")
+    print(f"{color}{Colors.BOLD}{'='*60}{Colors.RESET}")
+    
+    if network == 'mainnet':
+        print(f"{Colors.RED}{Colors.BOLD}")
+        print("  ⚠️  WARNING: MAINNET MODE - REAL BITCOIN!")
+        print("  ⚠️  Double-check all addresses before sending funds!")
+        print(f"{Colors.RESET}")
+    else:
+        print(f"{Colors.YELLOW}")
+        print("  ℹ️  Testnet mode - safe for testing")
+        print(f"{Colors.RESET}")
+
+
+def create_multisig_address(pubkey1: str, pubkey2: str, pubkey3: str, network: str = 'testnet') -> dict:
     """
-    Create a Bitcoin 3-of-3 multisig P2WSH address for testnet (Native SegWit).
+    Create a Bitcoin 3-of-3 multisig P2WSH address (Native SegWit).
     
     Args:
         pubkey1 (str): First compressed public key in hex format (66 chars)
         pubkey2 (str): Second compressed public key in hex format (66 chars)  
         pubkey3 (str): Third compressed public key in hex format (66 chars)
+        network (str): 'testnet' or 'mainnet' (default: 'testnet')
         
     Returns:
-        dict: Contains address (P2WSH starting with "tb1"), witness_script (hex), 
+        dict: Contains address (P2WSH), witness_script (hex), 
               script_pubkey, public_keys, and other metadata
         
     Raises:
         ValueError: If any public key is invalid or not compressed
         Exception: If address generation fails
     """
-    return create_multisig_escrow(pubkey1, pubkey2, pubkey3)
+    return create_multisig_escrow(pubkey1, pubkey2, pubkey3, network=network)
 
 
 def create_multisig_escrow(
     borrower_pubkey_hex: str,
     investor_pubkey_hex: str,
-    platform_pubkey_hex: str
+    platform_pubkey_hex: str,
+    network: str = 'testnet'
 ) -> Dict[str, Any]:
     """
-    Create a 3-of-3 multisig Bitcoin testnet P2WSH escrow address (Native SegWit).
+    Create a 3-of-3 multisig Bitcoin P2WSH escrow address (Native SegWit).
     
     IMPORTANT: This implements a Bitcoin-blind lender design:
     - The "investor_pubkey" is generated and controlled by the PLATFORM
@@ -130,21 +187,28 @@ def create_multisig_escrow(
         borrower_pubkey_hex (str): Borrower's compressed public key in hex format
         investor_pubkey_hex (str): Platform-operated investor key (for lender's position)
         platform_pubkey_hex (str): Platform's compressed public key in hex format
+        network (str): 'testnet' or 'mainnet' (default: 'testnet')
         
     Returns:
         Dict containing:
-        - address (str): The P2WSH multisig address for Bitcoin testnet (starts with "tb1")
+        - address (str): The P2WSH multisig address (tb1... for testnet, bc1... for mainnet)
         - witness_script (str): The witness script in hex format
         - script_pubkey (str): The ScriptPubKey for P2WSH
         - script_hash (str): The SHA-256 script hash (32 bytes)
         - public_keys (list): List of public keys used (sorted)
         - signatures_required (int): Number of signatures required (3)
         - total_keys (int): Total number of keys (3)
+        - network (str): The network used ('testnet' or 'mainnet')
         
     Raises:
         ValueError: If any public key is invalid or not compressed
+        ValueError: If network is not 'testnet' or 'mainnet'
         Exception: If address generation fails
     """
+    
+    # Validate network parameter
+    if network not in NETWORK_CONFIG:
+        raise ValueError(f"Invalid network '{network}'. Must be 'testnet' or 'mainnet'")
     
     try:
         if not all([borrower_pubkey_hex, investor_pubkey_hex, platform_pubkey_hex]):
@@ -192,7 +256,9 @@ def create_multisig_escrow(
         
         script_hash = hashlib.sha256(witness_script_bytes).digest()
         
-        address = encode_bech32_address('tb', 0, script_hash)
+        # Use network-specific bech32 prefix
+        bech32_prefix = NETWORK_CONFIG[network]['bech32_prefix']
+        address = encode_bech32_address(bech32_prefix, 0, script_hash)
         
         script_pubkey_bytes = bytearray()
         script_pubkey_bytes.append(0x00)
@@ -214,7 +280,7 @@ def create_multisig_escrow(
             },
             'signatures_required': 3,
             'total_keys': 3,
-            'network': 'testnet',
+            'network': network,
             'address_type': 'P2WSH',
             'lender_bitcoin_blind': True
         }
@@ -227,45 +293,139 @@ def create_multisig_escrow(
         raise Exception(f"Failed to create 3-of-3 escrow address: {str(e)}")
 
 
-def verify_multisig_address(address: str, witness_script_hex: str) -> bool:
+def verify_multisig_address(address: str, witness_script_hex: str, network: str = 'testnet') -> bool:
     """
     Verify that a given P2WSH address matches the provided witness script.
     
     Args:
-        address (str): The P2WSH address to verify (starts with "tb1")
+        address (str): The P2WSH address to verify
         witness_script_hex (str): The witness script in hex format
+        network (str): 'testnet' or 'mainnet' (default: 'testnet')
         
     Returns:
         bool: True if the address matches the witness script, False otherwise
     """
     try:
+        if network not in NETWORK_CONFIG:
+            return False
+            
         witness_script_bytes = bytes.fromhex(witness_script_hex)
         script_hash = hashlib.sha256(witness_script_bytes).digest()
-        calculated_address = encode_bech32_address('tb', 0, script_hash)
+        bech32_prefix = NETWORK_CONFIG[network]['bech32_prefix']
+        calculated_address = encode_bech32_address(bech32_prefix, 0, script_hash)
         return address == calculated_address
         
     except Exception:
         return False
 
 
-if __name__ == "__main__":
-    print("Bitcoin Testnet 3-of-3 Multisig Address Generator")
-    print("=" * 60)
-    print("DESIGN: Bitcoin-blind lenders")
-    print("  - Borrower: Client-side key (user controls)")
-    print("  - Platform: Platform signing key")
-    print("  - Investor: Platform-operated key (for lender's position)")
-    print("=" * 60)
+def main():
+    """Main entry point with CLI argument parsing."""
+    parser = argparse.ArgumentParser(
+        description='Bitcoin 3-of-3 Multisig Escrow Address Generator',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python bitcoin_escrow.py --network testnet
+  python bitcoin_escrow.py --network mainnet --confirm-mainnet
+  
+Network Prefixes:
+  testnet: Generates tb1... addresses (safe for testing)
+  mainnet: Generates bc1... addresses (REAL BITCOIN!)
+        """
+    )
     
-    pubkey_borrower = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    pubkey_investor = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-    pubkey_platform = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
+    parser.add_argument(
+        '--network',
+        type=str,
+        choices=['testnet', 'mainnet'],
+        default='testnet',
+        help='Bitcoin network to use (default: testnet)'
+    )
+    
+    parser.add_argument(
+        '--confirm-mainnet',
+        action='store_true',
+        help='Required confirmation flag for mainnet address generation'
+    )
+    
+    parser.add_argument(
+        '--silent',
+        action='store_true',
+        help='Suppress network warning banners (for programmatic use)'
+    )
+    
+    parser.add_argument(
+        '--borrower-pubkey',
+        type=str,
+        help='Borrower public key (hex, 66 chars)'
+    )
+    
+    parser.add_argument(
+        '--investor-pubkey',
+        type=str,
+        help='Investor/Lender public key (hex, 66 chars)'
+    )
+    
+    parser.add_argument(
+        '--platform-pubkey',
+        type=str,
+        help='Platform public key (hex, 66 chars)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Safety check for mainnet
+    if args.network == 'mainnet' and not args.confirm_mainnet:
+        print(f"{Colors.RED}{Colors.BOLD}")
+        print("ERROR: Mainnet address generation requires --confirm-mainnet flag!")
+        print("")
+        print("This is a safety measure to prevent accidental mainnet address generation.")
+        print("If you really want to generate a mainnet address, run:")
+        print("")
+        print("  python bitcoin_escrow.py --network mainnet --confirm-mainnet")
+        print(f"{Colors.RESET}")
+        sys.exit(1)
+    
+    # Print network warning
+    print_network_warning(args.network, args.silent)
+    
+    if not args.silent:
+        print("Bitcoin 3-of-3 Multisig Address Generator")
+        print("=" * 60)
+        print("DESIGN: Bitcoin-blind lenders")
+        print("  - Borrower: Client-side key (user controls)")
+        print("  - Platform: Platform signing key")
+        print("  - Investor: Platform-operated key (for lender's position)")
+        print("=" * 60)
+    
+    # Use provided keys or default test keys
+    if args.borrower_pubkey and args.investor_pubkey and args.platform_pubkey:
+        pubkey_borrower = args.borrower_pubkey
+        pubkey_investor = args.investor_pubkey
+        pubkey_platform = args.platform_pubkey
+    else:
+        # Default test keys for demonstration
+        pubkey_borrower = "02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        pubkey_investor = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+        pubkey_platform = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e"
+        
+        if not args.silent:
+            print("\nUsing default test keys for demonstration...")
     
     try:
-        result = create_multisig_escrow(pubkey_borrower, pubkey_investor, pubkey_platform)
+        result = create_multisig_escrow(
+            pubkey_borrower, 
+            pubkey_investor, 
+            pubkey_platform,
+            network=args.network
+        )
         
-        print(f"\n✓ Generated Bitcoin Testnet 3-of-3 Multisig Address:")
-        print(f"Address:        {result['address']}")
+        config = NETWORK_CONFIG[args.network]
+        color = config['color']
+        
+        print(f"\n{color}✓ Generated Bitcoin {config['display_name']} 3-of-3 Multisig Address:{Colors.RESET}")
+        print(f"{color}Address:        {result['address']}{Colors.RESET}")
         print(f"Witness Script: {result['witness_script']}")
         print(f"ScriptPubKey:   {result['script_pubkey']}")
         print(f"Script Hash:    {result['script_hash']}")
@@ -274,7 +434,7 @@ if __name__ == "__main__":
         print(f"Address Type:   {result['address_type']}")
         print(f"Lender Blind:   {result['lender_bitcoin_blind']}")
         
-        is_valid = verify_multisig_address(result['address'], result['witness_script'])
+        is_valid = verify_multisig_address(result['address'], result['witness_script'], network=args.network)
         print(f"Verification:   {'✓ Valid' if is_valid else '✗ Invalid'}")
         
         print(f"\nPublic Keys (sorted for deterministic script):")
@@ -289,3 +449,8 @@ if __name__ == "__main__":
             
     except Exception as e:
         print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

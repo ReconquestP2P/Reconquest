@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFileSync, unlinkSync } from 'fs';
+import { getCurrentNetwork } from './bitcoin-network-selector.js';
 
 const execAsync = promisify(exec);
 
@@ -145,7 +146,11 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
       // Validate all 3 keys are unique
       this.validateKeysAreUnique(borrowerPubkey, lenderPubkey, actualPlatformPubkey);
       
+      // Get network from environment (defaults to 'testnet' for safety)
+      const network = getCurrentNetwork();
+      
       console.log('Creating 3-of-3 multisig escrow address (Bitcoin-blind lender)...');
+      console.log(`Network: ${network.toUpperCase()}`);
       console.log(`Borrower: ${borrowerPubkey}`);
       console.log(`Lender: ${lenderPubkey} (platform-operated - lender is Bitcoin-blind)`);
       console.log(`Platform: ${actualPlatformPubkey}`);
@@ -160,9 +165,10 @@ from bitcoin_escrow import create_multisig_escrow
 borrower_key = "${borrowerPubkey}"
 lender_key = "${lenderPubkey}"
 platform_key = "${actualPlatformPubkey}"
+network = "${network}"
 
 try:
-    result = create_multisig_escrow(borrower_key, lender_key, platform_key)
+    result = create_multisig_escrow(borrower_key, lender_key, platform_key, network=network)
     print(json.dumps(result))
 except Exception as e:
     print(f"ERROR: {str(e)}")
