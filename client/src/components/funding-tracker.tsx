@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Bitcoin, CheckCircle, Clock, ExternalLink, RefreshCw } from 'lucide-react';
 import { useFirefishWASMContext } from '@/contexts/FirefishWASMContext';
 import { formatBTC } from '@/lib/utils';
+import { useNetworkExplorer } from '@/hooks/useNetworkExplorer';
 
 interface FundingTrackerProps {
   escrowAddress: string;
@@ -30,11 +31,28 @@ export default function FundingTracker({
 
   const [isPolling, setIsPolling] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [addressExplorerUrl, setAddressExplorerUrl] = useState<string>('');
+  const [txExplorerUrl, setTxExplorerUrl] = useState<string>('');
+  
+  const { getAddressUrl, getTxUrl } = useNetworkExplorer();
 
   const fundingStatus = session?.fundingStatus;
   const isFunded = fundingStatus?.funded ?? false;
   const confirmations = fundingStatus?.confirmations ?? 0;
   const requiredConfirmations = 3; // Bitcoin standard for secure transactions
+
+  // Fetch explorer URLs from network API
+  useEffect(() => {
+    if (escrowAddress) {
+      getAddressUrl(escrowAddress).then(setAddressExplorerUrl);
+    }
+  }, [escrowAddress, getAddressUrl]);
+
+  useEffect(() => {
+    if (fundingStatus?.txid) {
+      getTxUrl(fundingStatus.txid).then(setTxExplorerUrl);
+    }
+  }, [fundingStatus?.txid, getTxUrl]);
 
   // Auto-start polling if enabled
   useEffect(() => {
@@ -151,7 +169,7 @@ export default function FundingTracker({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Transaction ID</span>
                 <a
-                  href={`https://blockstream.info/testnet/tx/${fundingStatus.txid}`}
+                  href={txExplorerUrl || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-primary hover:underline flex items-center gap-1"
@@ -264,7 +282,7 @@ export default function FundingTracker({
         {/* Blockchain Explorer Link */}
         <div className="pt-2 border-t">
           <a
-            href={`https://blockstream.info/testnet/address/${escrowAddress}`}
+            href={addressExplorerUrl || '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline flex items-center justify-center gap-1"

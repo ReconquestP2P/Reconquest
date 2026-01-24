@@ -24,6 +24,7 @@ import { formatCurrency, formatBTC, formatPercentage, formatDate } from "@/lib/u
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { AddressLink, TxLink } from "@/components/explorer-link";
 import type { Loan } from "@shared/schema";
 
 export default function BorrowerDashboard() {
@@ -516,16 +517,12 @@ export default function BorrowerDashboard() {
                                   <div className="flex items-center gap-2">
                                     {formatBTC(loan.collateralBtc)}
                                     {loan.escrowAddress && (
-                                      <a
-                                        href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <AddressLink 
+                                        address={loan.escrowAddress}
                                         className="text-blue-500 hover:text-blue-700"
-                                        title="View escrow on mempool.space"
-                                        data-testid={`link-escrow-${loan.id}`}
-                                      >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                      </a>
+                                        displayText=""
+                                        testId={`link-escrow-${loan.id}`}
+                                      />
                                     )}
                                   </div>
                                 </TableCell>
@@ -594,16 +591,11 @@ export default function BorrowerDashboard() {
                                                 </td>
                                                 <td className="p-2">
                                                   {deposit.txid ? (
-                                                    <a
-                                                      href={`https://mempool.space/testnet4/tx/${deposit.txid}`}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
+                                                    <TxLink 
+                                                      txid={deposit.txid}
                                                       className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
-                                                      data-testid={`link-tx-${loan.id}-${idx}`}
-                                                    >
-                                                      {deposit.txid.slice(0, 8)}...{deposit.txid.slice(-8)}
-                                                      <ExternalLink className="h-3 w-3" />
-                                                    </a>
+                                                      testId={`link-tx-${loan.id}-${idx}`}
+                                                    />
                                                   ) : (
                                                     <span className="text-gray-400 text-xs">-</span>
                                                   )}
@@ -617,15 +609,12 @@ export default function BorrowerDashboard() {
                                       {/* Quick link to full escrow address */}
                                       <div className="flex items-center gap-2 text-xs text-gray-500">
                                         <span>Escrow Address:</span>
-                                        <a
-                                          href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono"
-                                        >
-                                          {loan.escrowAddress?.slice(0, 12)}...{loan.escrowAddress?.slice(-8)}
-                                          <ExternalLink className="h-3 w-3" />
-                                        </a>
+                                        {loan.escrowAddress && (
+                                          <AddressLink 
+                                            address={loan.escrowAddress}
+                                            className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono"
+                                          />
+                                        )}
                                       </div>
                                       
                                       {/* Loan Documents */}

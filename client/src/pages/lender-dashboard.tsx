@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { TrendingUp, Euro, PiggyBank, Percent, RefreshCw, Trophy, ArrowUpDown, ArrowUp, ArrowDown, Bitcoin, ExternalLink, ChevronUp, ChevronDown, AlertCircle, FileSignature, Shield, CheckCircle } from "lucide-react";
+import { AddressLink, TxLink } from "@/components/explorer-link";
 import StatsCard from "@/components/stats-card";
 import LoanCard from "@/components/loan-card";
 import LenderFundingModal from "@/components/lender-funding-modal";
@@ -421,15 +422,12 @@ export default function LenderDashboard() {
                             <p className="text-sm text-muted-foreground mb-2">
                               Borrower deposited {Number(loan.collateralBtc).toFixed(4)} BTC to escrow address
                             </p>
-                            <a 
-                              href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <AddressLink 
+                              address={loan.escrowAddress || ''}
                               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                              data-testid={`link-mempool-${loan.id}`}
-                            >
-                              🔍 View on Mempool →
-                            </a>
+                              displayText="🔍 View on Mempool →"
+                              testId={`link-mempool-${loan.id}`}
+                            />
                           </div>
 
                           {/* Bank Account Details */}
@@ -827,15 +825,11 @@ export default function LenderDashboard() {
                                 {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')}
                               </TableCell>
                               <TableCell>
-                                <a 
-                                  href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <AddressLink 
+                                  address={loan.escrowAddress || ''}
                                   className="text-orange-500 hover:text-orange-600 flex items-center gap-1"
-                                >
-                                  {parseFloat(loan.collateralBtc || 0).toFixed(8)} BTC
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
+                                  displayText={`${parseFloat(loan.collateralBtc || 0).toFixed(8)} BTC`}
+                                />
                               </TableCell>
                               <TableCell>{parseFloat(loan.interestRate).toFixed(1)}%</TableCell>
                               <TableCell>
@@ -943,15 +937,10 @@ export default function LenderDashboard() {
                                               </td>
                                               <td className="p-2">
                                                 {deposit.txid ? (
-                                                  <a
-                                                    href={`https://mempool.space/testnet4/tx/${deposit.txid}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                  <TxLink 
+                                                    txid={deposit.txid}
                                                     className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
-                                                  >
-                                                    {deposit.txid.slice(0, 8)}...{deposit.txid.slice(-6)}
-                                                    <ExternalLink className="h-3 w-3" />
-                                                  </a>
+                                                  />
                                                 ) : (
                                                   <span className="text-gray-400 text-xs">-</span>
                                                 )}
@@ -966,15 +955,10 @@ export default function LenderDashboard() {
                                     {loan.escrowAddress && (
                                       <div className="text-sm text-muted-foreground">
                                         Escrow Address:{' '}
-                                        <a
-                                          href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
+                                        <AddressLink 
+                                          address={loan.escrowAddress}
                                           className="text-blue-500 hover:underline font-mono"
-                                        >
-                                          {loan.escrowAddress.slice(0, 12)}...{loan.escrowAddress.slice(-8)}
-                                          <ExternalLink className="h-3 w-3 inline ml-1" />
-                                        </a>
+                                        />
                                       </div>
                                     )}
                                   </div>
@@ -1210,15 +1194,11 @@ export default function LenderDashboard() {
                                   </td>
                                   <td className="p-2">
                                     {deposit.txid ? (
-                                      <a
-                                        href={`https://mempool.space/testnet4/tx/${deposit.txid}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <TxLink 
+                                        txid={deposit.txid}
                                         className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
-                                      >
-                                        {deposit.txid.slice(0, 6)}...
-                                        <ExternalLink className="h-3 w-3" />
-                                      </a>
+                                        displayText={`${deposit.txid.slice(0, 6)}...`}
+                                      />
                                     ) : (
                                       <span className="text-gray-400 text-xs">-</span>
                                     )}
@@ -1235,16 +1215,12 @@ export default function LenderDashboard() {
                   {/* Escrow Link */}
                   {loan.escrowAddress && (
                     <div className="text-center">
-                      <a 
-                        href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <AddressLink 
+                        address={loan.escrowAddress}
                         className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-1"
-                        data-testid="link-escrow-mempool"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        View Escrow on Mempool
-                      </a>
+                        displayText="View Escrow on Mempool"
+                        testId="link-escrow-mempool"
+                      />
                     </div>
                   )}
 

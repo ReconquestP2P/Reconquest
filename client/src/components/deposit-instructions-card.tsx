@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { deriveKeyFromPin } from "@/lib/deterministic-key";
 import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
+import { useNetworkExplorer } from "@/hooks/useNetworkExplorer";
 import type { Loan } from "@shared/schema";
 
 interface DepositInstructionsCardProps {
@@ -31,6 +32,15 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const [keyCeremonyComplete, setKeyCeremonyComplete] = useState(false);
   const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
   const [recoveryDownloaded, setRecoveryDownloaded] = useState(false);
+  const [escrowExplorerUrl, setEscrowExplorerUrl] = useState<string>('');
+  
+  const { getAddressUrl } = useNetworkExplorer();
+  
+  useEffect(() => {
+    if (loan.escrowAddress) {
+      getAddressUrl(loan.escrowAddress).then(setEscrowExplorerUrl);
+    }
+  }, [loan.escrowAddress, getAddressUrl]);
 
   const provideBorrowerKey = useMutation({
     mutationFn: async (borrowerPubkey: string) => {
@@ -424,7 +434,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             </div>
             <div className="text-center space-y-2">
               <a 
-                href={`https://mempool.space/testnet4/address/${loan.escrowAddress}`}
+                href={escrowExplorerUrl || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -434,7 +444,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 View transaction status on Mempool →
               </a>
               <p className="text-xs text-muted-foreground">
-                This can take 10-30 minutes on testnet. You can safely close this page.
+                Confirmation times vary by network. You can safely close this page.
               </p>
             </div>
           </div>

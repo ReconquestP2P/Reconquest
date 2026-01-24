@@ -15,6 +15,7 @@ import { DECISION_LABELS } from "@shared/schema";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useNetworkExplorer } from "@/hooks/useNetworkExplorer";
 
 interface AdminStats {
   totalLoans: number;
@@ -91,6 +92,28 @@ const getStatusColor = (status: string) => {
       return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
   }
 };
+
+function ExplorerAddressLink({ address }: { address: string }) {
+  const [explorerUrl, setExplorerUrl] = useState<string>('');
+  const { getAddressUrl } = useNetworkExplorer();
+
+  useEffect(() => {
+    if (address) {
+      getAddressUrl(address).then(setExplorerUrl);
+    }
+  }, [address, getAddressUrl]);
+
+  return (
+    <a 
+      href={explorerUrl || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+    >
+      🔍 View on Blockchain
+    </a>
+  );
+}
 
 const getLtvColor = (ltvStatus: string) => {
   switch (ltvStatus) {
@@ -692,14 +715,9 @@ export default function AdminDashboard() {
                             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
                               {loan.escrowAddress?.substring(0, 12)}...{loan.escrowAddress?.substring(loan.escrowAddress.length - 6)}
                             </code>
-                            <a 
-                              href={`https://blockstream.info/testnet/address/${loan.escrowAddress}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              🔍 View on Blockchain
-                            </a>
+                            {loan.escrowAddress && (
+                              <ExplorerAddressLink address={loan.escrowAddress} />
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
