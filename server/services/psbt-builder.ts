@@ -1,24 +1,27 @@
 /**
- * Real PSBT Builder for Testnet4
+ * Real PSBT Builder
  * Creates proper P2WSH multisig PSBTs that can be broadcast
+ * Supports both testnet4 and mainnet via network selector
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
+import { getApiBaseUrl, getUtxoUrl, getNetworkParams } from './bitcoin-network-selector.js';
 
 bitcoin.initEccLib(ecc);
 
-const TESTNET4: bitcoin.Network = {
-  messagePrefix: '\x18Bitcoin Signed Message:\n',
-  bech32: 'tb',
-  bip32: {
-    public: 0x043587cf,
-    private: 0x04358394,
-  },
-  pubKeyHash: 0x6f,
-  scriptHash: 0xc4,
-  wif: 0xef,
-};
+// Get network params dynamically from network selector
+function getNetwork(): bitcoin.Network {
+  const params = getNetworkParams();
+  return {
+    messagePrefix: params.messagePrefix,
+    bech32: params.bech32,
+    bip32: params.bip32,
+    pubKeyHash: params.pubKeyHash,
+    scriptHash: params.scriptHash,
+    wif: params.wif,
+  };
+}
 
 export interface UTXOData {
   txid: string;
@@ -53,7 +56,7 @@ const MULTISIG_VSIZE = 180;
 async function estimateFee(): Promise<{ feeRate: number; fee: number; vsize: number }> {
   const vsize = MULTISIG_VSIZE;
   try {
-    const response = await fetch('https://mempool.space/testnet4/api/v1/fees/recommended');
+    const response = await fetch(`${getApiBaseUrl()}/v1/fees/recommended`);
     if (response.ok) {
       const fees = await response.json();
       const feeRate = fees.halfHourFee || 2;
@@ -82,10 +85,11 @@ export async function createSpendPSBT(
   console.log(`   Output: ${outputAddress}`);
   
   const witnessScript = Buffer.from(witnessScriptHex, 'hex');
+  const network = getNetwork();
   
   const p2wsh = bitcoin.payments.p2wsh({
-    redeem: { output: witnessScript, network: TESTNET4 },
-    network: TESTNET4,
+    redeem: { output: witnessScript, network },
+    network,
   });
   
   if (!p2wsh.output) {
@@ -99,7 +103,7 @@ export async function createSpendPSBT(
     throw new Error(`Output value (${actualOutputValue}) must be positive`);
   }
   
-  const psbt = new bitcoin.Psbt({ network: TESTNET4 });
+  const psbt = new bitcoin.Psbt({ network });
   
   psbt.addInput({
     hash: utxo.txid,
@@ -163,7 +167,8 @@ export function signPSBT(
   psbtBase64: string,
   privateKeyHex: string
 ): { signedPsbtBase64: string; signature: string; publicKey: string } {
-  const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network: TESTNET4 });
+  const network = getNetwork();
+  const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
   const privateKey = Buffer.from(privateKeyHex, 'hex');
   const publicKey = Buffer.from(ecc.pointFromScalar(privateKey)!);
   
@@ -200,10 +205,11 @@ export function combinePSBTs(signedPsbtBase64List: string[]): {
     throw new Error('Need at least 2 signatures for 2-of-3 multisig');
   }
   
-  const basePsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64List[0], { network: TESTNET4 });
+  const network = getNetwork();
+  const basePsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64List[0], { network });
   
   for (let i = 1; i < signedPsbtBase64List.length; i++) {
-    const otherPsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64List[i], { network: TESTNET4 });
+    const otherPsbt = bitcoin.Psbt.fromBase64(signedPsbtBase64List[i], { network });
     basePsbt.combine(otherPsbt);
   }
   
@@ -226,7 +232,7 @@ export async function fetchEscrowUTXO(address: string): Promise<UTXOData | null>
   console.log(`📡 Fetching UTXOs for escrow address: ${address}`);
   
   try {
-    const response = await fetch(`https://mempool.space/testnet4/api/address/${address}/utxo`);
+    const response = await fetch(getUtxoUrl(address));
     
     if (!response.ok) {
       console.error(`Failed to fetch UTXOs: ${response.status}`);
@@ -258,11 +264,11 @@ export async function fetchEscrowUTXO(address: string): Promise<UTXOData | null>
 }
 
 /**
- * Validate testnet4 address
+ * Validate Bitcoin address for current network
  */
 export function isValidAddress(address: string): boolean {
   try {
-    bitcoin.address.toOutputScript(address, TESTNET4);
+    bitcoin.address.toOutputScript(address, getNetwork());
     return true;
   } catch {
     return false;

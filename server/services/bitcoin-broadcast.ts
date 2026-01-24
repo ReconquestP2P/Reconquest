@@ -15,6 +15,7 @@ import { createHash, createHmac } from 'crypto';
 import type { PreSignedTransaction } from '@shared/schema';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
+import { getBroadcastUrl, getCurrentNetwork } from './bitcoin-network-selector.js';
 
 // Configure secp256k1 v3 with Node.js crypto hash functions (if not already done)
 if (!secp256k1.hashes.sha256) {
@@ -686,12 +687,13 @@ async function verifySignature(
  */
 async function broadcastViaMempoolSpace(txHex: string): Promise<string> {
   const axios = (await import('axios')).default;
+  const network = getCurrentNetwork();
   
-  console.log('📡 Broadcasting via Mempool.space testnet4 API...');
+  console.log(`📡 Broadcasting via Mempool.space ${network} API...`);
   console.log(`   Transaction hex (${txHex.length} chars): ${txHex.slice(0, 50)}...`);
   
   const response = await axios.post(
-    'https://mempool.space/testnet4/api/tx',
+    getBroadcastUrl(),
     txHex,
     {
       headers: { 'Content-Type': 'text/plain' },
@@ -701,7 +703,7 @@ async function broadcastViaMempoolSpace(txHex: string): Promise<string> {
   
   // Mempool.space returns the txid as plain text
   const txid = response.data;
-  console.log(`✅ Transaction broadcast via Mempool.space testnet4: ${txid}`);
+  console.log(`✅ Transaction broadcast via Mempool.space ${network}: ${txid}`);
   return txid;
 }
 

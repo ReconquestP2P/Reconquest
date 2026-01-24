@@ -10,11 +10,23 @@ import * as ecc from 'tiny-secp256k1';
 import { getBtcPrice } from './price-service.js';
 import { broadcastTransaction } from './bitcoin-broadcast.js';
 import { BitcoinEscrowService } from './BitcoinEscrowService.js';
+import { getUtxoUrl, getExplorerUrl, getNetworkParams } from './bitcoin-network-selector.js';
 import type { Loan } from '@shared/schema';
 
 bitcoin.initEccLib(ecc);
 
-const TESTNET4_NETWORK = bitcoin.networks.testnet;
+// Get network params dynamically from network selector
+function getNetwork(): bitcoin.Network {
+  const params = getNetworkParams();
+  return {
+    messagePrefix: params.messagePrefix,
+    bech32: params.bech32,
+    bip32: params.bip32,
+    pubKeyHash: params.pubKeyHash,
+    scriptHash: params.scriptHash,
+    wif: params.wif,
+  };
+}
 const DUST_THRESHOLD = 546; // Minimum output in satoshis
 const DEFAULT_FEE_RATE = 5; // sats/vbyte fallback
 
@@ -54,7 +66,7 @@ async function fetchUTXOs(address: string): Promise<UTXOInfo[]> {
   
   try {
     const response = await axios.get(
-      `https://mempool.space/testnet4/api/address/${address}/utxo`,
+      getUtxoUrl(address),
       { timeout: 15000 }
     );
     
@@ -266,7 +278,8 @@ export async function executeSplitPayout(
     const witnessScript = buildWitnessScript(pubkeys);
     
     // Create PSBT
-    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const psbt = new bitcoin.Psbt({ network });
     
     // Add all UTXOs as inputs
     let totalInputSats = 0;
@@ -277,7 +290,7 @@ export async function executeSplitPayout(
         witnessUtxo: {
           script: bitcoin.payments.p2wsh({
             redeem: { output: witnessScript },
-            network: TESTNET4_NETWORK,
+            network,
           }).output!,
           value: BigInt(utxo.value),
         },
@@ -394,7 +407,7 @@ export async function executeSplitPayout(
         borrowerPayoutSats: actualBorrowerSats,
         totalCollateralSats: totalInputSats,
       },
-      broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastResult.txid}`,
+      broadcastUrl: getExplorerUrl('tx', broadcastResult.txid!),
     };
     
   } catch (error: any) {
@@ -459,7 +472,8 @@ export async function createPlatformSignedPsbt(
       return { success: false, error: 'Missing borrower public key and no witness script' };
     }
     
-    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const psbt = new bitcoin.Psbt({ network });
     
     let totalInputSats = 0;
     for (const utxo of utxos) {
@@ -469,7 +483,7 @@ export async function createPlatformSignedPsbt(
         witnessUtxo: {
           script: bitcoin.payments.p2wsh({
             redeem: { output: witnessScript },
-            network: TESTNET4_NETWORK,
+            network,
           }).output!,
           value: BigInt(utxo.value),
         },
@@ -554,8 +568,9 @@ export async function completePsbtWithLenderSignature(
   
   try {
     // Parse both PSBTs
-    const platformPsbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network: TESTNET4_NETWORK });
-    const lenderPsbt = bitcoin.Psbt.fromBase64(lenderSignedPsbtBase64, { network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const platformPsbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network });
+    const lenderPsbt = bitcoin.Psbt.fromBase64(lenderSignedPsbtBase64, { network });
     
     // Combine signatures from lender PSBT into platform PSBT
     platformPsbt.combine(lenderPsbt);
@@ -582,7 +597,7 @@ export async function completePsbtWithLenderSignature(
     return {
       success: true,
       txid: broadcastResult.txid,
-      broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastResult.txid}`,
+      broadcastUrl: getExplorerUrl('tx', broadcastResult.txid!),
     };
   } catch (error: any) {
     console.error('Error completing PSBT:', error);
@@ -612,7 +627,8 @@ export async function completePsbtWithPlatformLenderKey(
     console.log(`🔓 Decrypted lender key for signing (pubkey: ${lenderPubkey.slice(0, 16)}...)`);
     
     // Parse the platform-signed PSBT
-    const psbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const psbt = bitcoin.Psbt.fromBase64(platformSignedPsbtBase64, { network });
     
     // Get witness script buffer
     const witnessScriptBuf = Buffer.from(witnessScript, 'hex');
@@ -655,7 +671,7 @@ export async function completePsbtWithPlatformLenderKey(
     return {
       success: true,
       txid: broadcastResult.txid,
-      broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastResult.txid}`,
+      broadcastUrl: getExplorerUrl('tx', broadcastResult.txid!),
     };
   } catch (error: any) {
     console.error('Error completing PSBT with platform lender key:', error);

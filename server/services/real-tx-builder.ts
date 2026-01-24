@@ -1,25 +1,28 @@
 /**
- * Real Bitcoin Transaction Builder for Testnet4
+ * Real Bitcoin Transaction Builder
  * Uses bitcoinjs-lib to create actual broadcastable transactions
+ * Supports both testnet4 and mainnet via network selector
  */
 
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { createHash } from 'crypto';
+import { getUtxoUrl, getNetworkParams } from './bitcoin-network-selector.js';
 
 bitcoin.initEccLib(ecc);
 
-const TESTNET4 = {
-  messagePrefix: '\x18Bitcoin Signed Message:\n',
-  bech32: 'tb',
-  bip32: {
-    public: 0x043587cf,
-    private: 0x04358394,
-  },
-  pubKeyHash: 0x6f,
-  scriptHash: 0xc4,
-  wif: 0xef,
-};
+// Get network params dynamically from network selector
+function getNetwork(): bitcoin.Network {
+  const params = getNetworkParams();
+  return {
+    messagePrefix: params.messagePrefix,
+    bech32: params.bech32,
+    bip32: params.bip32,
+    pubKeyHash: params.pubKeyHash,
+    scriptHash: params.scriptHash,
+    wif: params.wif,
+  };
+}
 
 export interface UTXOInfo {
   txid: string;
@@ -56,16 +59,17 @@ export async function createMultisigSpendTransaction(
   const privateKey = Buffer.from(privateKeyHex, 'hex');
   const publicKey = Buffer.from(publicKeyHex, 'hex');
   const witnessScript = Buffer.from(utxo.witnessScript, 'hex');
+  const network = getNetwork();
   
-  const psbt = new bitcoin.Psbt({ network: TESTNET4 });
+  const psbt = new bitcoin.Psbt({ network });
   
   psbt.addInput({
     hash: utxo.txid,
     index: utxo.vout,
     witnessUtxo: {
       script: bitcoin.payments.p2wsh({ 
-        redeem: { output: witnessScript, network: TESTNET4 },
-        network: TESTNET4 
+        redeem: { output: witnessScript, network },
+        network 
       }).output!,
       value: BigInt(utxo.value),
     },
@@ -119,10 +123,11 @@ export function combineMultisigSignatures(
     throw new Error('Need at least 2 signatures for 2-of-3 multisig');
   }
   
-  const basePsbt = bitcoin.Psbt.fromBase64(psbtBase64List[0], { network: TESTNET4 });
+  const network = getNetwork();
+  const basePsbt = bitcoin.Psbt.fromBase64(psbtBase64List[0], { network });
   
   for (let i = 1; i < psbtBase64List.length; i++) {
-    const otherPsbt = bitcoin.Psbt.fromBase64(psbtBase64List[i], { network: TESTNET4 });
+    const otherPsbt = bitcoin.Psbt.fromBase64(psbtBase64List[i], { network });
     basePsbt.combine(otherPsbt);
   }
   
@@ -141,13 +146,13 @@ export function combineMultisigSignatures(
 }
 
 /**
- * Fetch UTXO info from mempool.space testnet4
+ * Fetch UTXO info from mempool.space API
  */
 export async function fetchUTXO(address: string): Promise<UTXOInfo | null> {
   console.log(`📡 Fetching UTXOs for ${address}...`);
   
   try {
-    const response = await fetch(`https://mempool.space/testnet4/api/address/${address}/utxo`);
+    const response = await fetch(getUtxoUrl(address));
     
     if (!response.ok) {
       console.error(`Failed to fetch UTXOs: ${response.status}`);
@@ -188,13 +193,16 @@ export function calculateFee(numInputs: number, numOutputs: number, feeRate: num
 }
 
 /**
- * Validate a testnet4 address
+ * Validate a Bitcoin address for the current network
  */
-export function isValidTestnet4Address(address: string): boolean {
+export function isValidBitcoinAddress(address: string): boolean {
   try {
-    bitcoin.address.toOutputScript(address, TESTNET4);
+    bitcoin.address.toOutputScript(address, getNetwork());
     return true;
   } catch {
     return false;
   }
 }
+
+// Legacy alias for backward compatibility
+export const isValidTestnet4Address = isValidBitcoinAddress;
