@@ -4,3 +4,6 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Sensitive key generation scripts - NEVER commit output
+server/scripts/generate-mainnet-key.ts
