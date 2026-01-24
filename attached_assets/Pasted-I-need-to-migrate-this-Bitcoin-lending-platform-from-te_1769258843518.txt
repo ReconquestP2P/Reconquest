@@ -1,0 +1,27 @@
+I need to migrate this Bitcoin lending platform from testnet to mainnet. Answer ALL of these questions with specific file paths, code snippets, and exact values:
+
+1. NETWORK CONFIGURATION:
+Where in the codebase is the Bitcoin network currently configured (testnet vs mainnet)? Show me the exact file path, line numbers, environment variable name, current value, and all places where this network setting is referenced.
+
+2. ADDRESS GENERATION:
+Show me the Bitcoin address generation code. Which file contains it? What library is being used (bitcoinjs-lib, electrum, other)? What network parameter is passed? Are we using P2PKH, P2SH, P2WPKH, or P2WSH addresses? Paste the actual function code.
+
+3. MEMPOOL.SPACE API INTEGRATION:
+Find all places where mempool.space API is called. For each: file path, function name, exact URL being used (mempool.space/testnet/api or mempool.space/api?), what data is being fetched, and paste the API call code.
+
+4. PRIVATE KEY MANAGEMENT:
+How are Bitcoin private keys being managed? Where is the master private key stored (environment variable name)? How are individual escrow keys derived (BIP32 derivation path)? Which file contains key derivation logic? Is the private key ever stored in the database? Paste the key management code.
+
+5. ENVIRONMENT VARIABLES:
+List ALL Bitcoin-related environment variables: variable names, current values (testnet/mainnet indication), where each is used in the code, and which ones need to change for mainnet migration.
+
+6. TRANSACTION BROADCASTING:
+How are Bitcoin transactions broadcast? Which file contains broadcasting code? What service/API is used? Show the actual transaction broadcast function. Is there any testnet-specific logic?
+
+7. DATABASE ESCROW DATA:
+Show the escrow_sessions table schema: all columns, data types, any Bitcoin addresses stored (structure only), are there testnet addresses in the database, and do we need to wipe/migrate this table for mainnet?
+
+8. EXTERNAL DEPENDENCIES:
+List all Bitcoin-related packages from package.json with versions. Do any have network-specific configurations? Are there testnet-only dependencies that should be removed?
+
+Provide complete, specific answers with actual code snippets for each question. This is critical for real money migration.
