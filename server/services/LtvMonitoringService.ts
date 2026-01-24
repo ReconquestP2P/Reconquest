@@ -13,6 +13,7 @@ import { storage } from '../storage';
 import { getBtcPrice } from './price-service';
 import { broadcastTransaction } from './bitcoin-broadcast';
 import { sendEmail, createBrandedEmailHtml } from '../email';
+import { getExplorerUrl } from './bitcoin-network-selector.js';
 import type { Loan } from '@shared/schema';
 
 const POLLING_INTERVAL_MS = 60000; // Check every 1 minute
@@ -36,6 +37,13 @@ const criticalWarningsSent = new Set<number>(); // 85% threshold
 export class LtvMonitoringService {
   private pollingInterval: NodeJS.Timeout | null = null;
   private isPolling = false;
+
+  /**
+   * Get block explorer URL for a transaction (testnet or mainnet based on config)
+   */
+  private getExplorerTxUrl(txid: string): string {
+    return getExplorerUrl('tx', txid);
+  }
 
   /**
    * Start background LTV monitoring for all active loans
@@ -299,7 +307,7 @@ export class LtvMonitoringService {
             <p>Your collateral has been transferred to the lender to cover the outstanding loan.</p>
             
             <p>Transaction ID: <code>${txid}</code></p>
-            <p><a href="https://mempool.space/testnet4/tx/${txid}">View on Blockchain</a></p>
+            <p><a href="${this.getExplorerTxUrl(txid)}">View on Blockchain</a></p>
           `
         });
 
@@ -330,7 +338,7 @@ export class LtvMonitoringService {
             </div>
 
             <p>Transaction ID: <code>${txid}</code></p>
-            <p><a href="https://mempool.space/testnet4/tx/${txid}">View on Blockchain</a></p>
+            <p><a href="${this.getExplorerTxUrl(txid)}">View on Blockchain</a></p>
           `
         });
 

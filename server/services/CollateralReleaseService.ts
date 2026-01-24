@@ -10,11 +10,23 @@ import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { BitcoinEscrowService } from './BitcoinEscrowService.js';
 import { broadcastTransaction } from './bitcoin-broadcast.js';
+import { getUtxoUrl, getExplorerUrl, getNetworkParams } from './bitcoin-network-selector.js';
 import type { IStorage } from '../storage.js';
 
 bitcoin.initEccLib(ecc);
 
-const TESTNET4_NETWORK = bitcoin.networks.testnet;
+// Get network params dynamically from network selector
+function getNetwork(): bitcoin.Network {
+  const params = getNetworkParams();
+  return {
+    messagePrefix: params.messagePrefix,
+    bech32: params.bech32,
+    bip32: params.bip32,
+    pubKeyHash: params.pubKeyHash,
+    scriptHash: params.scriptHash,
+    wif: params.wif,
+  };
+}
 
 export interface ReleaseResult {
   success: boolean;
@@ -37,7 +49,7 @@ async function fetchUTXOs(address: string): Promise<UTXOInfo[]> {
   
   try {
     const response = await axios.get(
-      `https://mempool.space/testnet4/api/address/${address}/utxo`,
+      getUtxoUrl(address),
       { timeout: 15000 }
     );
     
@@ -196,7 +208,8 @@ export async function releaseCollateral(
     console.log(`   Destination: ${borrowerReturnAddress}`);
     
     // Create PSBT
-    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const psbt = new bitcoin.Psbt({ network });
     
     // Add ALL inputs
     for (const utxo of utxos) {
@@ -205,8 +218,8 @@ export async function releaseCollateral(
         index: utxo.vout,
         witnessUtxo: {
           script: bitcoin.payments.p2wsh({
-            redeem: { output: witnessScript, network: TESTNET4_NETWORK },
-            network: TESTNET4_NETWORK,
+            redeem: { output: witnessScript, network },
+            network,
           }).output!,
           value: BigInt(utxo.value),
         },
@@ -248,7 +261,7 @@ export async function releaseCollateral(
       return {
         success: true,
         txid: broadcastTxid,
-        broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastTxid}`,
+        broadcastUrl: getExplorerUrl('tx', broadcastTxid),
       };
     } catch (finalizeError: any) {
       console.error('Failed to finalize transaction:', finalizeError.message);
@@ -355,7 +368,8 @@ export async function releaseCollateralToAddress(
     console.log(`   Destination (lender): ${destinationAddress}`);
     
     // Create PSBT
-    const psbt = new bitcoin.Psbt({ network: TESTNET4_NETWORK });
+    const network = getNetwork();
+    const psbt = new bitcoin.Psbt({ network });
     
     // Add ALL inputs
     for (const utxo of utxos) {
@@ -364,8 +378,8 @@ export async function releaseCollateralToAddress(
         index: utxo.vout,
         witnessUtxo: {
           script: bitcoin.payments.p2wsh({
-            redeem: { output: witnessScript, network: TESTNET4_NETWORK },
-            network: TESTNET4_NETWORK,
+            redeem: { output: witnessScript, network },
+            network,
           }).output!,
           value: BigInt(utxo.value),
         },
@@ -412,7 +426,7 @@ export async function releaseCollateralToAddress(
       return {
         success: true,
         txid: broadcastTxid,
-        broadcastUrl: `https://mempool.space/testnet4/tx/${broadcastTxid}`,
+        broadcastUrl: getExplorerUrl('tx', broadcastTxid),
       };
     } catch (finalizeError: any) {
       console.error('Failed to finalize liquidation:', finalizeError.message);

@@ -277,10 +277,11 @@ except Exception as e:
   }
 
   /**
-   * Returns the testnet block explorer URL for a transaction
+   * Returns the block explorer URL for a transaction
    */
   getTransactionUrl(txHash: string): string {
-    return `https://mempool.space/testnet4/tx/${txHash}`;
+    const { getExplorerUrl } = require('./bitcoin-network-selector.js');
+    return getExplorerUrl('tx', txHash);
   }
 
   /**

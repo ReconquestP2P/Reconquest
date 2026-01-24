@@ -4,6 +4,7 @@ import { ILtvValidationService, LtvValidationResult } from './LtvValidationServi
 import { IStorage } from '../storage';
 import { Loan } from '@shared/schema';
 import { sendEmail, createBrandedEmailHtml, getBaseUrl } from '../email';
+import { getExplorerUrl } from './bitcoin-network-selector.js';
 
 export interface ILendingWorkflowService {
   initiateLoan(borrowerId: number, collateralBtc: number, loanAmount: number): Promise<LoanInitiationResult>;
@@ -56,6 +57,20 @@ export class LendingWorkflowService implements ILendingWorkflowService {
     private readonly ltvValidator: ILtvValidationService,
     private readonly getCurrentBtcPrice: () => Promise<number>
   ) {}
+
+  /**
+   * Get block explorer URL for an address (testnet or mainnet based on config)
+   */
+  private getExplorerAddressUrl(address: string): string {
+    return getExplorerUrl('address', address);
+  }
+
+  /**
+   * Get block explorer URL for a transaction (testnet or mainnet based on config)
+   */
+  private getExplorerTxUrl(txid: string): string {
+    return getExplorerUrl('tx', txid);
+  }
 
   /**
    * Step 1: Initiate a new loan request with LTV validation
@@ -722,7 +737,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   ✅ BTC Deposit Confirmation
                 </a>
-                <a href="https://mempool.space/testnet4/address/${escrowAddress}" 
+                <a href="${this.getExplorerAddressUrl(escrowAddress)}" 
                    target="_blank"
                    style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   🔍 Track Deposit on Blockchain
@@ -799,7 +814,7 @@ export class LendingWorkflowService implements ILendingWorkflowService {
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   📊 View Dashboard
                 </a>
-                <a href="https://mempool.space/testnet4/address/${escrowAddress}" 
+                <a href="${this.getExplorerAddressUrl(escrowAddress)}" 
                    target="_blank"
                    style="display: inline-block; background: #6c757d; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 8px;">
                   🔍 Monitor Escrow Funding

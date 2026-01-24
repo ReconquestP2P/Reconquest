@@ -1,10 +1,12 @@
-// Blockchain Monitoring Service for Bitcoin Testnet
+// Blockchain Monitoring Service for Bitcoin
 // Uses mempool.space API to check transaction confirmations and UTXO status
 // Includes automated background polling for pending deposits
+// Supports both testnet and mainnet via network selector
 
 import { storage } from '../storage';
 import type { Loan } from '@shared/schema';
 import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail, sendPartialDepositWarningEmail } from '../email';
+import { getApiBaseUrl } from './bitcoin-network-selector.js';
 
 interface UTXO {
   txid: string;
@@ -46,8 +48,10 @@ const REQUIRED_CONFIRMATIONS = 1;
 const POLLING_INTERVAL_MS = 30000; // 30 seconds
 
 export class BlockchainMonitoringService {
-  // Use mempool.space testnet4 API
-  private baseUrl = 'https://mempool.space/testnet4/api';
+  // Use mempool.space API (testnet or mainnet based on BITCOIN_NETWORK env)
+  private get baseUrl(): string {
+    return getApiBaseUrl();
+  }
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   private cacheTTL = 5000; // 5 seconds cache
   private pollingInterval: NodeJS.Timeout | null = null;
