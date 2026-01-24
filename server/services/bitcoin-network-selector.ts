@@ -4,12 +4,12 @@
  * Dynamically selects testnet or mainnet configuration based on
  * the BITCOIN_NETWORK environment variable.
  * 
- * This enables seamless switching between networks without code changes.
- * Simply change the environment variable to switch networks.
+ * SAFETY: Defaults to testnet if BITCOIN_NETWORK is not set.
  * 
  * Usage:
  *   BITCOIN_NETWORK=testnet  -> Uses testnet4 configuration
  *   BITCOIN_NETWORK=mainnet  -> Uses mainnet configuration
+ *   (not set)                -> Defaults to testnet with warning
  */
 
 import { TESTNET4_CONFIG, type Testnet4Config } from './testnet4-config.js';
@@ -19,19 +19,28 @@ export type NetworkType = 'testnet' | 'mainnet';
 export type NetworkConfig = Testnet4Config | MainnetConfig;
 
 const ALLOWED_NETWORKS: NetworkType[] = ['testnet', 'mainnet'];
+const DEFAULT_NETWORK: NetworkType = 'testnet';
+
+let cachedNetwork: NetworkType | null = null;
+let cachedConfig: NetworkConfig | null = null;
+let configLogged = false;
 
 /**
  * Validates and returns the current network from environment variable
- * @throws Error if BITCOIN_NETWORK is not set or invalid
+ * Defaults to testnet if not set (safety first)
+ * @throws Error if BITCOIN_NETWORK is set but invalid
  */
-function validateNetwork(): NetworkType {
+function resolveNetwork(): NetworkType {
+  if (cachedNetwork !== null) {
+    return cachedNetwork;
+  }
+  
   const network = process.env.BITCOIN_NETWORK;
   
   if (!network) {
-    throw new Error(
-      'BITCOIN_NETWORK environment variable is not set. ' +
-      `Must be one of: ${ALLOWED_NETWORKS.join(', ')}`
-    );
+    console.warn('⚠️  BITCOIN_NETWORK not set - defaulting to TESTNET for safety');
+    cachedNetwork = DEFAULT_NETWORK;
+    return cachedNetwork;
   }
   
   const normalizedNetwork = network.toLowerCase().trim();
@@ -43,33 +52,69 @@ function validateNetwork(): NetworkType {
     );
   }
   
-  return normalizedNetwork as NetworkType;
+  cachedNetwork = normalizedNetwork as NetworkType;
+  return cachedNetwork;
 }
 
 /**
  * Returns the current Bitcoin network type
  * @returns 'testnet' | 'mainnet'
- * @throws Error if BITCOIN_NETWORK is not set or invalid
  */
 export function getCurrentNetwork(): NetworkType {
-  return validateNetwork();
+  return resolveNetwork();
 }
 
 /**
  * Returns the appropriate network configuration based on BITCOIN_NETWORK env var
+ * Results are cached for performance
  * @returns Testnet4Config or MainnetConfig
- * @throws Error if BITCOIN_NETWORK is not set or invalid
  */
 export function getCurrentNetworkConfig(): NetworkConfig {
-  const network = validateNetwork();
-  
-  if (network === 'mainnet') {
-    console.log('🔴 MAINNET MODE - Real Bitcoin transactions enabled');
-    return MAINNET_CONFIG;
+  if (cachedConfig !== null) {
+    return cachedConfig;
   }
   
-  console.log('🟡 TESTNET MODE - Using testnet4 for testing');
-  return TESTNET4_CONFIG;
+  const network = resolveNetwork();
+  
+  if (network === 'mainnet') {
+    cachedConfig = MAINNET_CONFIG;
+  } else {
+    cachedConfig = TESTNET4_CONFIG;
+  }
+  
+  if (!configLogged) {
+    logNetworkStatus();
+    configLogged = true;
+  }
+  
+  return cachedConfig;
+}
+
+/**
+ * Logs the current network status to console
+ */
+function logNetworkStatus(): void {
+  const network = resolveNetwork();
+  
+  if (network === 'mainnet') {
+    console.log('');
+    console.log('🔴 ════════════════════════════════════════════════════════');
+    console.log('🔴   BITCOIN NETWORK: MAINNET');
+    console.log('🔴   ⚠️  REAL BITCOIN TRANSACTIONS ENABLED');
+    console.log('🔴   API: https://mempool.space/api');
+    console.log('🔴   Address Prefix: bc1');
+    console.log('🔴 ════════════════════════════════════════════════════════');
+    console.log('');
+  } else {
+    console.log('');
+    console.log('🟡 ════════════════════════════════════════════════════════');
+    console.log('🟡   BITCOIN NETWORK: TESTNET4');
+    console.log('🟡   Safe testing mode - no real funds at risk');
+    console.log('🟡   API: https://mempool.space/testnet4/api');
+    console.log('🟡   Address Prefix: tb1');
+    console.log('🟡 ════════════════════════════════════════════════════════');
+    console.log('');
+  }
 }
 
 /**
@@ -77,7 +122,6 @@ export function getCurrentNetworkConfig(): NetworkConfig {
  * @param type - 'address' or 'tx'
  * @param value - The address or transaction ID
  * @returns Full explorer URL for the current network
- * @throws Error if BITCOIN_NETWORK is not set or invalid
  */
 export function getExplorerUrl(type: 'address' | 'tx', value: string): string {
   const config = getCurrentNetworkConfig();
@@ -127,47 +171,31 @@ export function getNetworkParams(): NetworkConfig['networkParams'] {
  * @returns true if BITCOIN_NETWORK is 'mainnet'
  */
 export function isMainnet(): boolean {
-  try {
-    return getCurrentNetwork() === 'mainnet';
-  } catch {
-    return false;
-  }
+  return getCurrentNetwork() === 'mainnet';
 }
 
 /**
  * Checks if currently running on testnet
- * @returns true if BITCOIN_NETWORK is 'testnet'
+ * @returns true if BITCOIN_NETWORK is 'testnet' or not set
  */
 export function isTestnet(): boolean {
-  try {
-    return getCurrentNetwork() === 'testnet';
-  } catch {
-    return false;
-  }
+  return getCurrentNetwork() === 'testnet';
 }
 
 /**
- * Log the current network configuration on startup
+ * Clears the cached configuration
+ * Useful for testing or when environment changes
+ */
+export function clearNetworkCache(): void {
+  cachedNetwork = null;
+  cachedConfig = null;
+  configLogged = false;
+}
+
+/**
+ * Initialize and log the network configuration on startup
  * Call this once during server initialization
  */
-export function logNetworkConfiguration(): void {
-  try {
-    const network = getCurrentNetwork();
-    const config = getCurrentNetworkConfig();
-    
-    console.log('════════════════════════════════════════════════════════');
-    console.log(`  BITCOIN NETWORK: ${network.toUpperCase()}`);
-    console.log(`  API Base URL: ${config.api.baseUrl}`);
-    console.log(`  Address Prefix: ${config.networkParams.bech32}`);
-    console.log(`  Default Fee Rate: ${config.defaultFeeRate} sat/vB`);
-    console.log('════════════════════════════════════════════════════════');
-    
-    if (network === 'mainnet') {
-      console.log('⚠️  WARNING: MAINNET MODE - Real funds at risk!');
-      console.log('⚠️  Double-check all transactions before broadcasting.');
-    }
-  } catch (error) {
-    console.error('❌ Bitcoin network configuration error:', error);
-    throw error;
-  }
+export function initializeNetworkConfig(): NetworkConfig {
+  return getCurrentNetworkConfig();
 }
