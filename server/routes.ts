@@ -31,6 +31,7 @@ import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_inte
 import networkInfoRoutes from "./routes/network-info.js";
 import { mainnetLoanCreationLimits, mainnetLoanFundingLimits, getMainnetSafetyStatus } from "./middleware/mainnet-safety-limits";
 import { validateNetworkAddresses, validateAddressEndpoint, getValidationStats, detectAddressNetwork } from "./middleware/network-address-validator";
+import { getExplorerUrl } from "./services/bitcoin-network-selector.js";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -2033,7 +2034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </p>
               
               <p style="color: #666; line-height: 1.6; margin: 0 0 15px 0;">
-                The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="https://mempool.space/testnet4/address/${loan.escrowAddress}" target="_blank" style="color: #e74c3c; text-decoration: underline;">designated address</a>.
+                The borrower has successfully completed the escrow process by securely depositing their Bitcoin into a <a href="${getExplorerUrl('address', loan.escrowAddress || '')}" target="_blank" style="color: #e74c3c; text-decoration: underline;">designated address</a>.
               </p>
               
               <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">

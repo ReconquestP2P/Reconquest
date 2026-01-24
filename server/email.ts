@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { getExplorerUrl } from './services/bitcoin-network-selector.js';
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY environment variable must be set");
@@ -247,7 +248,7 @@ export async function sendLenderFundingNotification(params: {
   } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-  const mempoolUrl = escrowAddress ? `https://mempool.space/testnet4/address/${escrowAddress}` : '';
+  const mempoolUrl = escrowAddress ? getExplorerUrl('address', escrowAddress) : '';
   
   const formattedAmount = parseFloat(loanAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formattedInterestRate = parseFloat(interestRate).toFixed(2);
@@ -475,7 +476,7 @@ export async function sendTopUpDetectedEmail(params: {
   escrowAddress: string;
 }): Promise<void> {
   const { borrowerEmail, borrowerName, lenderEmail, lenderName, loanId, txid, amountBtc, escrowAddress } = params;
-  const mempoolLink = `https://mempool.space/testnet4/tx/${txid}`;
+  const mempoolLink = getExplorerUrl('tx', txid);
   const logoUrl = getLogoUrl();
   
   // Email to borrower
@@ -600,7 +601,7 @@ export async function sendTopUpConfirmedEmail(params: {
   newLtv: string;
 }): Promise<void> {
   const { borrowerEmail, borrowerName, lenderEmail, lenderName, loanId, txid, amountBtc, newTotalCollateralBtc, newLtv } = params;
-  const mempoolLink = txid ? `https://mempool.space/testnet4/tx/${txid}` : null;
+  const mempoolLink = txid ? getExplorerUrl('tx', txid) : null;
   const logoUrl = getLogoUrl();
   const dashboardUrl = getBaseUrl();
   
@@ -737,8 +738,8 @@ export async function sendPartialDepositWarningEmail(params: {
   const { to, borrowerName, loanId, depositedBtc, requiredBtc, shortfallBtc, escrowAddress, txid, dashboardUrl } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-  const mempoolAddressUrl = `https://mempool.space/testnet4/address/${escrowAddress}`;
-  const mempoolTxUrl = txid ? `https://mempool.space/testnet4/tx/${txid}` : '';
+  const mempoolAddressUrl = getExplorerUrl('address', escrowAddress);
+  const mempoolTxUrl = txid ? getExplorerUrl('tx', txid) : '';
 
   const html = `
     <!DOCTYPE html>
