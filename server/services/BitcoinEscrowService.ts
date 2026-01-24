@@ -54,8 +54,9 @@ export interface IBitcoinEscrowService {
  * - Lender rights are enforced via fiat transfer confirmations
  */
 export class BitcoinEscrowService implements IBitcoinEscrowService {
-  // Platform's public key for multisig escrow (TESTNET ONLY)
-  public static readonly PLATFORM_PUBLIC_KEY = "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
+  // Platform's public key for multisig escrow (MAINNET-READY)
+  // Generated via: npx tsx server/scripts/generate-mainnet-key.ts
+  public static readonly PLATFORM_PUBLIC_KEY = "03b017b2eabe5408228080931b2aab9f5d683c80d82768a05a361d6b0c41fbb782";
   
   // In-memory storage for lender keys (in production, use HSM or secure enclave)
   private lenderKeys: Map<number, LenderKeyPair> = new Map();
