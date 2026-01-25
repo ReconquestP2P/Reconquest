@@ -517,17 +517,16 @@ export default function BorrowerDashboard() {
                                 </TableCell>
                                 <TableCell>{formatCurrency(loan.amount, loan.currency)}</TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {formatBTC(loan.collateralBtc)}
-                                    {loan.escrowAddress && (
-                                      <AddressLink 
-                                        address={loan.escrowAddress}
-                                        className="text-blue-500 hover:text-blue-700"
-                                        displayText=""
-                                        testId={`link-escrow-${loan.id}`}
-                                      />
-                                    )}
-                                  </div>
+                                  {loan.escrowAddress ? (
+                                    <AddressLink 
+                                      address={loan.escrowAddress}
+                                      className="text-blue-500 hover:text-blue-700"
+                                      displayText={`${parseFloat(loan.collateralBtc || 0).toFixed(8)} BTC`}
+                                      testId={`link-escrow-${loan.id}`}
+                                    />
+                                  ) : (
+                                    formatBTC(loan.collateralBtc)
+                                  )}
                                 </TableCell>
                                 <TableCell>{formatPercentage(loan.interestRate)}</TableCell>
                                 <TableCell><LtvBatteryIndicator ltv={calculateCurrentLtv(loan)} size="sm" /></TableCell>
