@@ -4962,7 +4962,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               <h2 style="color: #333; margin-top: 0;">Good news, ${lender.username}!</h2>
               
               <p style="color: #666; line-height: 1.6;">
-                The borrower's Bitcoin collateral has been confirmed in escrow. You can now proceed to generate your recovery plan.
+                The borrower's Bitcoin collateral has been confirmed in escrow. The collateral is now securely locked and you can proceed to transfer the loan amount to the borrower.
               </p>
               
               <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -4972,10 +4972,14 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                 <p style="color: #155724; margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
               </div>
               
+              <p style="color: #666; line-height: 1.6;">
+                <strong>Next Step:</strong> Transfer <strong>${loan.amount} ${loan.currency}</strong> to the borrower using the payment details in your dashboard. Once you've made the transfer, confirm it in your lender dashboard to activate the loan.
+              </p>
+              
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${baseUrl}/lender" 
                    style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                  Generate Recovery Plan
+                  Go to Lender Dashboard
                 </a>
               </div>
               
