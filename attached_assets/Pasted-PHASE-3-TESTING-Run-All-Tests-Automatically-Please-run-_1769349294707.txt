@@ -1,0 +1,59 @@
+PHASE 3 TESTING - Run All Tests Automatically
+
+Please run these 5 tests on the updated bitcoin_escrow.py script and report results:
+
+TEST 1: Run Script and Output JSON
+Command to run:
+python3 server/bitcoin_escrow.py --network testnet4 --generate-psbts --json --borrower-address tb1qtest123borrower --lender-address tb1qtest456lender --input-value 100000
+
+Expected: Valid JSON output with all fields
+Report: Show me the full JSON output (or any errors)
+
+TEST 2: Verify Witness Script Timelock
+From the output above, check:
+- recovery_blocks field = 4320
+- timelocked_witness_script field exists
+- Script hex contains OP_CHECKSEQUENCEVERIFY logic
+
+Expected: 4320 blocks (~30 days)
+Report: Show me the recovery_blocks value and first 50 chars of witness script hex
+
+TEST 3: Validate PSBT Format
+Take the psbt_repayment value from Test 1.
+Decode it using Python:
+import base64
+psbt_bytes = base64.b64decode("cHNidP8...")  # Use actual value
+print(f"PSBT starts with magic bytes: {psbt_bytes[:5].hex()}")
+print(f"PSBT length: {len(psbt_bytes)} bytes")
+
+Expected: Should start with "70736274ff" (PSBT magic bytes)
+Report: Show me the magic bytes and length
+
+TEST 4: Verify Escrow Address Format
+From Test 1 output, check escrow_address field:
+- Starts with "tb1q" (testnet4 bech32)
+- Length is 42-62 characters
+
+Expected: tb1q... format
+Report: Show me the escrow_address value
+
+TEST 5: Check Function Exists in Code
+Open server/bitcoin_escrow.py and verify:
+- create_timelocked_witness_script() function exists
+- It has parameters: borrower_pubkey_hex, investor_pubkey_hex, platform_pubkey_hex, recovery_blocks
+- It returns a dictionary
+
+Expected: Function defined and callable
+Report: Show me the function signature (first 2-3 lines)
+
+SUMMARY FORMAT:
+After running all tests, give me:
+✅ TEST 1: [PASS/FAIL] - [brief result]
+✅ TEST 2: [PASS/FAIL] - [brief result]
+✅ TEST 3: [PASS/FAIL] - [brief result]
+✅ TEST 4: [PASS/FAIL] - [brief result]
+✅ TEST 5: [PASS/FAIL] - [brief result]
+
+OVERALL: [X/5 tests passed]
+
+Include any error messages if tests fail.
