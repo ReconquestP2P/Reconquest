@@ -1,0 +1,76 @@
+CRITICAL: Pre-Signed Transaction System Investigation
+
+I just realized something important: BEFORE the mainnet migration work we did today, I HAD pre-signed transactions working. The system was creating PSBTs during loan setup for:
+- REPAYMENT transaction
+- DEFAULT_LIQUIDATION transaction  
+- BORROWER_RECOVERY transaction
+
+But you just told me these DON'T exist. This means either:
+1. The migration process broke/removed this functionality
+2. You're looking at the wrong code
+3. The code exists but isn't being used
+
+URGENT INVESTIGATION REQUIRED:
+
+PART 1: Search for Pre-Signed Transaction Code
+
+Search the ENTIRE codebase for:
+- "cooperative" or "cooperativeClose"
+- "repayment" (in PSBT context, not just loan status)
+- "recovery" or "borrowerRecovery"
+- "defaultLiquidation" or "liquidation"
+- "presigned" or "pre-signed" or "preSigned"
+- PSBT storage or serialization
+- Any code that creates PSBTs during loan SETUP (not during release)
+
+PART 2: Check Database Schema
+
+Look for these columns in the loans table:
+- tx_cooperative_close_hex
+- tx_default_hex
+- tx_liquidation_hex
+- tx_cancellation_hex
+- tx_recovery_hex
+- tx_under_review_hex
+- tx_repayment_hex
+
+Do these columns EXIST in the database? If yes, are they being USED?
+
+PART 3: Check for Transaction Template Services
+
+Search for files like:
+- TransactionTemplateService
+- PsbtBuilder or PSBTBuilder
+- TransactionBuilder
+- Any service that creates transaction templates
+
+Show me:
+- File paths
+- What these services do
+- Are they being called during loan creation?
+
+PART 4: Check Git History
+
+Look at recent commits (last 2 days):
+- Were any files related to pre-signed transactions deleted?
+- Were any services renamed or refactored?
+- Did we accidentally remove functionality during the mainnet migration?
+
+PART 5: Find Where Loans Are Created
+
+Show me the COMPLETE loan creation flow:
+- POST /api/loans endpoint code
+- What services are called?
+- Are PSBTs created during this process?
+- Where are they stored?
+
+PART 6: Compare Working vs Current State
+
+If you find the pre-signed transaction code:
+- Is it still being executed?
+- Did something in our migration disable it?
+- Can we re-enable it?
+
+CRITICAL: If we broke working functionality during migration, we need to RESTORE it immediately. The user HAD a working non-custodial system with borrower recovery paths, and now it might be broken.
+
+Search thoroughly and report EVERYTHING you find related to pre-signed transactions.
