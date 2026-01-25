@@ -15,11 +15,11 @@
 import { TESTNET4_CONFIG, type Testnet4Config } from './testnet4-config.js';
 import { MAINNET_CONFIG, type MainnetConfig } from './mainnet-config.js';
 
-export type NetworkType = 'testnet' | 'mainnet';
+export type NetworkType = 'testnet' | 'testnet4' | 'mainnet';
 export type NetworkConfig = Testnet4Config | MainnetConfig;
 
-const ALLOWED_NETWORKS: NetworkType[] = ['testnet', 'mainnet'];
-const DEFAULT_NETWORK: NetworkType = 'testnet';
+const ALLOWED_NETWORKS: NetworkType[] = ['testnet', 'testnet4', 'mainnet'];
+const DEFAULT_NETWORK: NetworkType = 'testnet4';
 
 let cachedNetwork: NetworkType | null = null;
 let cachedConfig: NetworkConfig | null = null;
@@ -79,6 +79,7 @@ export function getCurrentNetworkConfig(): NetworkConfig {
   if (network === 'mainnet') {
     cachedConfig = MAINNET_CONFIG;
   } else {
+    // Both 'testnet' and 'testnet4' use TESTNET4_CONFIG
     cachedConfig = TESTNET4_CONFIG;
   }
   
@@ -176,10 +177,11 @@ export function isMainnet(): boolean {
 
 /**
  * Checks if currently running on testnet
- * @returns true if BITCOIN_NETWORK is 'testnet' or not set
+ * @returns true if BITCOIN_NETWORK is 'testnet', 'testnet4', or not set
  */
 export function isTestnet(): boolean {
-  return getCurrentNetwork() === 'testnet';
+  const network = getCurrentNetwork();
+  return network === 'testnet' || network === 'testnet4';
 }
 
 /**
