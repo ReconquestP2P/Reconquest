@@ -1,0 +1,73 @@
+CRITICAL: Collateral Release Verification
+
+I just tested a loan completion on testnet and the collateral did NOT return to the borrower automatically. I got a signing error "Can not sign for this inp...".
+
+You explained this as a testnet limitation, but I need to VERIFY this will work on mainnet before launching with real Bitcoin. This is the most critical function of the platform.
+
+VERIFICATION REQUIREMENTS:
+
+PART 1: Explain the Collateral Release Flow
+Step-by-step, explain what SHOULD happen when a loan is marked as completed:
+1. Database update (loan status = completed)
+2. Which transaction is broadcast? (repayment transaction from where?)
+3. Who signs it? (borrower + platform + lender keys?)
+4. How is it broadcast? (which service/API?)
+5. What's the exact error that occurred in my test?
+
+PART 2: Verify Pre-Signed Transactions
+In your design (based on my TECHNICAL_EXECUTIVE_SUMMARY.md), you mention:
+- REPAYMENT transaction (pre-signed during setup)
+- DEFAULT_LIQUIDATION transaction
+- BORROWER_RECOVERY transaction
+
+Questions:
+1. Are these transactions created during escrow setup?
+2. Where are they stored? (database column?)
+3. Are they FULLY signed or PARTIALLY signed?
+4. Show me: Which database columns store these pre-signed transactions?
+
+PART 3: Test on Testnet with REAL Testnet BTC
+To prove this works, let's do a REAL testnet test:
+
+1. Generate a testnet escrow address (tb1...)
+2. I will fund it with REAL testnet BTC from a faucet
+3. We complete a loan workflow
+4. Verify the collateral release transaction broadcasts successfully
+
+Can you:
+- Generate a test escrow address for me right now
+- Show me the escrow funding address to send testnet BTC to
+- Provide step-by-step instructions to test with real testnet BTC
+
+PART 4: Verify Signing Logic
+Show me the code that:
+1. Retrieves the pre-signed repayment transaction
+2. Adds any missing signatures
+3. Broadcasts the transaction
+
+Specifically, show me:
+- File: Where is the collateral release logic?
+- Function: What function handles this?
+- Error handling: What happens if signing fails?
+
+PART 5: Admin Retry Mechanism
+You mentioned /api/admin/loans/:loanId/retry-collateral-release
+
+1. Show me this endpoint exists (file + code)
+2. Explain how it works differently from automatic release
+3. Can this be used as a workaround if automatic fails?
+
+PART 6: Worst Case Scenario Analysis
+If automatic collateral release FAILS on mainnet:
+
+1. What are ALL the ways collateral can still be recovered?
+2. Does the borrower have a recovery path WITHOUT the platform?
+3. Can the platform manually construct and broadcast the transaction?
+4. What's the time-locked recovery mechanism you mentioned?
+
+PART 7: Mainnet Confidence Assessment
+On a scale of 1-10, how confident are you that automatic collateral release will work on mainnet with real BTC?
+
+Be honest. If there are known issues or uncertainties, tell me now before I launch with real money.
+
+Provide detailed answers to ALL 7 parts above.
