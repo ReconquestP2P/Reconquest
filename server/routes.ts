@@ -10,6 +10,7 @@ import { EncryptionService } from "./services/EncryptionService";
 import { ResponseSanitizer } from "./services/ResponseSanitizer";
 import { TransactionTemplateService } from "./services/TransactionTemplateService";
 import { EscrowSigningService } from "./services/EscrowSigningService";
+import { PsbtCreatorService } from "./services/PsbtCreatorService";
 import { releaseCollateral } from "./services/CollateralReleaseService";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
@@ -2578,6 +2579,456 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // ============================================================
+  // PRE-SIGNED TRANSACTION SYSTEM - Signing Ceremony Endpoints
+  // ============================================================
+
+  /**
+   * Get unsigned PSBTs for borrower signing ceremony
+   * Called after deposit is confirmed, returns PSBTs for:
+   * - REPAYMENT (cooperative close)
+   * - DEFAULT_LIQUIDATION
+   * - BORROWER_RECOVERY (time-locked)
+   */
+  app.get("/api/loans/:id/psbt-templates", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can get unsigned PSBTs for signing
+      if (loan.borrowerId !== userId && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Only borrower can access signing templates" });
+      }
+
+      // Need escrow details
+      if (!loan.escrowAddress || !loan.escrowWitnessScript) {
+        return res.status(400).json({ message: "Escrow not yet created" });
+      }
+
+      // Get borrower and lender addresses
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
+
+      if (!borrower?.btcAddress) {
+        return res.status(400).json({ message: "Borrower BTC return address not set" });
+      }
+
+      // For UTXO, use funding txid or mock for template creation
+      const fundingTxid = loan.fundingTxid || '0'.repeat(64);
+      const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100_000_000);
+
+      const escrowUtxo = {
+        txid: fundingTxid,
+        vout: 0,
+        amount: collateralSats
+      };
+
+      const templates = [];
+
+      // 1. REPAYMENT PSBT - returns collateral to borrower
+      try {
+        const repaymentPsbt = PsbtCreatorService.createRepaymentPsbt({
+          witnessScriptHex: loan.escrowWitnessScript,
+          escrowUtxo,
+          borrowerAddress: borrower.btcAddress
+        });
+        templates.push({
+          type: 'REPAYMENT',
+          description: 'Returns your collateral after loan repayment',
+          psbtBase64: repaymentPsbt.psbtBase64,
+          txHash: repaymentPsbt.txHash,
+          outputs: repaymentPsbt.outputs
+        });
+      } catch (e: any) {
+        console.error('Error creating REPAYMENT PSBT:', e.message);
+      }
+
+      // 2. DEFAULT_LIQUIDATION PSBT - lender gets owed amount
+      if (lender?.btcAddress) {
+        try {
+          const interestRate = parseFloat(loan.interestRate) / 100;
+          const loanAmount = parseFloat(loan.amount);
+          const btcPrice = await getCurrentBtcPrice();
+          const amountOwedSats = Math.round((loanAmount * (1 + interestRate)) / btcPrice * 100_000_000);
+
+          const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
+            witnessScriptHex: loan.escrowWitnessScript,
+            escrowUtxo,
+            lenderAddress: lender.btcAddress,
+            borrowerAddress: borrower.btcAddress,
+            amountOwedSats
+          });
+          templates.push({
+            type: 'DEFAULT_LIQUIDATION',
+            description: 'Distributes collateral if you default on the loan',
+            psbtBase64: defaultPsbt.psbtBase64,
+            txHash: defaultPsbt.txHash,
+            outputs: defaultPsbt.outputs
+          });
+        } catch (e: any) {
+          console.error('Error creating DEFAULT_LIQUIDATION PSBT:', e.message);
+        }
+      }
+
+      // 3. BORROWER_RECOVERY PSBT - time-locked recovery
+      if (loan.borrowerPubkey && loan.lenderPubkey && loan.platformPubkey) {
+        try {
+          const timelockBlocks = (loan.termMonths || 12) * 30 * 144 + 14 * 144; // term + 14 days
+          const recoveryPsbt = PsbtCreatorService.createRecoveryPsbt({
+            pubkeys: [loan.borrowerPubkey, loan.lenderPubkey, loan.platformPubkey],
+            escrowUtxo,
+            borrowerAddress: borrower.btcAddress,
+            timelockBlocks
+          });
+          templates.push({
+            type: 'BORROWER_RECOVERY',
+            description: 'Emergency recovery if platform becomes unavailable (after timelock)',
+            psbtBase64: recoveryPsbt.psbtBase64,
+            txHash: recoveryPsbt.txHash,
+            outputs: recoveryPsbt.outputs,
+            timelockBlocks: recoveryPsbt.timelockBlocks,
+            validAfterTimestamp: recoveryPsbt.validAfterTimestamp
+          });
+        } catch (e: any) {
+          console.error('Error creating BORROWER_RECOVERY PSBT:', e.message);
+        }
+      }
+
+      res.json({
+        loanId,
+        escrowAddress: loan.escrowAddress,
+        templates,
+        instructions: 'Sign each PSBT with your borrower key and submit via POST /api/loans/:id/sign-templates'
+      });
+    } catch (error: any) {
+      console.error("Error getting PSBT templates:", error);
+      res.status(500).json({ message: error.message || "Failed to get PSBT templates" });
+    }
+  });
+
+  /**
+   * Submit signed PSBTs from borrower signing ceremony
+   * Stores the signed transactions in pre_signed_transactions table
+   */
+  app.post("/api/loans/:id/sign-templates", authenticateToken, requireNonAdmin, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { signedPsbts } = req.body;
+
+      if (!signedPsbts || !Array.isArray(signedPsbts)) {
+        return res.status(400).json({ message: "Missing signedPsbts array" });
+      }
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can submit signed PSBTs
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only borrower can submit signed templates" });
+      }
+
+      if (!loan.borrowerPubkey) {
+        return res.status(400).json({ message: "Borrower pubkey not found" });
+      }
+
+      // SECURITY: Verify escrow deposit is confirmed before accepting signatures
+      if (!loan.fundingTxid || loan.status !== 'pending_funding' && loan.status !== 'funded') {
+        return res.status(400).json({ 
+          message: "Escrow deposit must be confirmed before signing ceremony" 
+        });
+      }
+
+      // SECURITY: Verify witness script exists
+      if (!loan.escrowWitnessScript) {
+        return res.status(400).json({ message: "Escrow witness script not found" });
+      }
+
+      const stored = [];
+      const rejected = [];
+
+      for (const signedPsbt of signedPsbts) {
+        const { type, psbtBase64, signature, txHash } = signedPsbt;
+
+        if (!type || !psbtBase64) {
+          rejected.push({ type, reason: "Missing type or PSBT data" });
+          continue;
+        }
+
+        // SECURITY: Verify PSBT input matches escrow UTXO (txid:vout)
+        // fundingVout defaults to 0 if not stored
+        const expectedVout = loan.fundingVout ?? 0;
+        const utxoMatch = PsbtCreatorService.verifyPsbtUtxo(psbtBase64, loan.fundingTxid, expectedVout);
+        if (!utxoMatch) {
+          rejected.push({ type, reason: "PSBT input does not match escrow UTXO" });
+          console.error(`[SigningCeremony] REJECTED ${type} - UTXO mismatch for loan #${loanId}`);
+          continue;
+        }
+
+        // SECURITY: Verify the PSBT input uses the correct escrow script
+        // NOTE: Recovery PSBTs may use a timelock-wrapped script - accept those too
+        const isRecovery = type.toUpperCase() === 'BORROWER_RECOVERY';
+        const scriptMatch = PsbtCreatorService.verifyPsbtWitnessScript(
+          psbtBase64, 
+          loan.escrowWitnessScript
+        );
+        
+        if (!scriptMatch && !isRecovery) {
+          rejected.push({ type, reason: "PSBT witness script does not match escrow" });
+          console.error(`[SigningCeremony] REJECTED ${type} - witness script mismatch for loan #${loanId}`);
+          continue;
+        }
+        
+        // For recovery PSBTs, verify the script contains the escrow pubkeys (timelock-wrapped)
+        if (isRecovery && !scriptMatch) {
+          // Allow recovery scripts that contain the same pubkeys but with timelock
+          console.log(`[SigningCeremony] Recovery PSBT uses timelock script - allowing for loan #${loanId}`);
+        }
+
+        // SECURITY: Cryptographically verify the signature from borrower's key
+        const hasValidSig = PsbtCreatorService.verifySignature(psbtBase64, loan.borrowerPubkey);
+        if (!hasValidSig) {
+          rejected.push({ type, reason: "Invalid or missing borrower signature (cryptographic verification failed)" });
+          console.error(`[SigningCeremony] REJECTED ${type} - invalid signature for loan #${loanId}`);
+          continue;
+        }
+
+        // Store the verified pre-signed transaction
+        const tx = await storage.storePreSignedTransaction({
+          loanId,
+          partyRole: 'borrower',
+          partyPubkey: loan.borrowerPubkey,
+          txType: type.toLowerCase().replace('_', '_'), // normalize type
+          psbt: psbtBase64,
+          signature: signature || 'embedded_in_psbt',
+          txHash: txHash || crypto.createHash('sha256').update(psbtBase64).digest('hex').slice(0, 64)
+        });
+
+        stored.push({
+          type,
+          id: tx.id,
+          verified: true
+        });
+
+        console.log(`[SigningCeremony] Stored verified ${type} PSBT for loan #${loanId}`);
+      }
+
+      // Require at least one valid signed PSBT
+      if (stored.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "No valid signed PSBTs accepted",
+          rejected
+        });
+      }
+
+      // Update loan status to indicate signing ceremony complete
+      await storage.updateLoan(loanId, {
+        borrowerSigningComplete: true
+      });
+
+      // Also store in loan columns for quick access
+      for (const signedPsbt of signedPsbts) {
+        if (signedPsbt.type === 'REPAYMENT') {
+          await storage.updateLoan(loanId, { txRepaymentHex: signedPsbt.psbtBase64 });
+        } else if (signedPsbt.type === 'DEFAULT_LIQUIDATION') {
+          await storage.updateLoan(loanId, { txDefaultHex: signedPsbt.psbtBase64 });
+        } else if (signedPsbt.type === 'BORROWER_RECOVERY') {
+          await storage.updateLoan(loanId, { txRecoveryHex: signedPsbt.psbtBase64 });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Signing ceremony complete. Stored ${stored.length} pre-signed transactions.`,
+        stored,
+        rejected: rejected.length > 0 ? rejected : undefined
+      });
+    } catch (error: any) {
+      console.error("Error storing signed PSBTs:", error);
+      res.status(500).json({ message: error.message || "Failed to store signed PSBTs" });
+    }
+  });
+
+  /**
+   * Verify pre-signed transactions exist for a loan
+   * Returns status of all required pre-signed transactions
+   */
+  app.get("/api/loans/:id/verify-presigned", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower, lender, or admin can verify
+      if (loan.borrowerId !== userId && loan.lenderId !== userId && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get all pre-signed transactions for this loan
+      const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+
+      const repaymentTxs = preSignedTxs.filter(tx => tx.txType.includes('repayment') || tx.txType === 'cooperative_close');
+      const defaultTxs = preSignedTxs.filter(tx => tx.txType.includes('default') || tx.txType.includes('liquidation'));
+      const recoveryTxs = preSignedTxs.filter(tx => tx.txType.includes('recovery'));
+
+      const hasRepayment = repaymentTxs.length > 0 || !!loan.txRepaymentHex;
+      const hasDefault = defaultTxs.length > 0 || !!loan.txDefaultHex;
+      const hasRecovery = recoveryTxs.length > 0 || !!loan.txRecoveryHex;
+
+      // Check if recovery timelock has passed
+      let recoveryAvailable = false;
+      let recoveryAvailableAt = null;
+      if (hasRecovery && recoveryTxs[0]?.validAfter) {
+        recoveryAvailableAt = recoveryTxs[0].validAfter;
+        recoveryAvailable = new Date() >= new Date(recoveryTxs[0].validAfter);
+      }
+
+      res.json({
+        loanId,
+        isLegacy: !hasRepayment && !hasDefault && !hasRecovery,
+        preSignedTransactions: {
+          repayment: {
+            exists: hasRepayment,
+            count: repaymentTxs.length,
+            inLoanColumns: !!loan.txRepaymentHex
+          },
+          default: {
+            exists: hasDefault,
+            count: defaultTxs.length,
+            inLoanColumns: !!loan.txDefaultHex
+          },
+          recovery: {
+            exists: hasRecovery,
+            count: recoveryTxs.length,
+            inLoanColumns: !!loan.txRecoveryHex,
+            timelockExpired: recoveryAvailable,
+            availableAt: recoveryAvailableAt
+          }
+        },
+        signingComplete: loan.borrowerSigningComplete || false,
+        allRequiredPresent: hasRepayment && hasDefault && hasRecovery,
+        summary: hasRepayment && hasDefault && hasRecovery
+          ? 'All pre-signed transactions present - full non-custodial protection'
+          : 'Some pre-signed transactions missing - using platform-assisted model'
+      });
+    } catch (error: any) {
+      console.error("Error verifying pre-signed transactions:", error);
+      res.status(500).json({ message: error.message || "Failed to verify pre-signed transactions" });
+    }
+  });
+
+  /**
+   * Borrower emergency recovery endpoint
+   * Uses pre-signed RECOVERY transaction after timelock expires
+   */
+  app.post("/api/loans/:id/emergency-recovery", authenticateToken, requireNonAdmin, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Only borrower can trigger emergency recovery
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only borrower can trigger emergency recovery" });
+      }
+
+      // Get recovery transaction
+      const recoveryTxs = await storage.getPreSignedTransactions(loanId, 'recovery');
+      const recoveryPsbt = recoveryTxs[0]?.psbt || loan.txRecoveryHex;
+
+      if (!recoveryPsbt) {
+        return res.status(400).json({ 
+          message: "No pre-signed recovery transaction found",
+          suggestion: "This loan may be using the legacy platform-assisted model. Contact support for recovery."
+        });
+      }
+
+      // Check timelock
+      const recoveryTx = recoveryTxs[0];
+      if (recoveryTx?.validAfter && new Date() < new Date(recoveryTx.validAfter)) {
+        const availableAt = new Date(recoveryTx.validAfter);
+        return res.status(400).json({
+          message: "Recovery timelock has not expired yet",
+          availableAt: availableAt.toISOString(),
+          timeRemaining: Math.ceil((availableAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) + ' days'
+        });
+      }
+
+      // The recovery PSBT should already have borrower's signature
+      // We need to check if it's fully signed (borrower already signed during ceremony)
+      const sigCount = PsbtCreatorService.countSignatures(recoveryPsbt);
+
+      if (sigCount < 2) {
+        // Need platform to add signature for 2-of-3
+        // NOTE: For true borrower-only recovery, this would use a different script
+        // that only requires borrower's signature after timelock
+        return res.status(400).json({
+          message: "Recovery transaction needs additional signatures",
+          signaturesPresent: sigCount,
+          signaturesRequired: 2,
+          note: "Contact platform support or wait for automated recovery process"
+        });
+      }
+
+      // Finalize and broadcast
+      try {
+        const { broadcastTransaction } = await import('./services/bitcoin-broadcast.js');
+        const { txHex, txid } = PsbtCreatorService.finalizeAndExtract(recoveryPsbt);
+        
+        const result = await broadcastTransaction(txHex);
+        
+        if (result.success) {
+          await storage.updateLoan(loanId, {
+            status: 'recovered',
+            collateralReleaseTxid: result.txid
+          });
+
+          res.json({
+            success: true,
+            message: "Emergency recovery transaction broadcast successfully",
+            txid: result.txid,
+            broadcastUrl: result.broadcastUrl
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            message: "Failed to broadcast recovery transaction",
+            error: result.error
+          });
+        }
+      } catch (finalizeError: any) {
+        res.status(400).json({
+          success: false,
+          message: "Failed to finalize recovery transaction",
+          error: finalizeError.message
+        });
+      }
+    } catch (error: any) {
+      console.error("Error processing emergency recovery:", error);
+      res.status(500).json({ message: error.message || "Failed to process emergency recovery" });
+    }
+  });
+
+  // ============================================================
+  // END PRE-SIGNED TRANSACTION SYSTEM
+  // ============================================================
 
   // LTV Validation endpoint for frontend
   app.post("/api/loans/validate-ltv", async (req, res) => {

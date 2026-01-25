@@ -11,6 +11,7 @@ import * as ecc from 'tiny-secp256k1';
 import { BitcoinEscrowService } from './BitcoinEscrowService.js';
 import { broadcastTransaction } from './bitcoin-broadcast.js';
 import { getUtxoUrl, getExplorerUrl, getNetworkParams } from './bitcoin-network-selector.js';
+import { PsbtCreatorService } from './PsbtCreatorService.js';
 import type { IStorage } from '../storage.js';
 
 bitcoin.initEccLib(ecc);
@@ -116,6 +117,130 @@ function signPsbtInput(
 }
 
 /**
+ * Add platform and lender signatures to a pre-signed PSBT and broadcast
+ * Used when borrower has already signed during signing ceremony
+ * 
+ * SECURITY: Validates PSBT before co-signing to ensure it matches escrow
+ */
+async function addPlatformSignaturesAndBroadcast(
+  storage: any,
+  loan: any,
+  psbtBase64: string,
+  EncryptionService: any
+): Promise<ReleaseResult> {
+  try {
+    const network = getNetwork();
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
+    
+    // SECURITY: Verify PSBT input has borrower's signature
+    const input = psbt.data.inputs[0];
+    if (!input.partialSig || input.partialSig.length === 0) {
+      return { success: false, error: 'SECURITY: Pre-signed PSBT has no borrower signature' };
+    }
+    
+    // SECURITY: Require witnessScript to be present - prevents bypass
+    if (!input.witnessScript) {
+      return { success: false, error: 'SECURITY: PSBT missing witnessScript - cannot verify escrow' };
+    }
+    
+    // SECURITY: Verify witness script matches loan's escrow script
+    if (loan.escrowWitnessScript) {
+      const psbtWitnessHex = input.witnessScript.toString('hex').toLowerCase();
+      const expectedWitnessHex = loan.escrowWitnessScript.toLowerCase();
+      if (psbtWitnessHex !== expectedWitnessHex) {
+        return { success: false, error: 'SECURITY: PSBT witness script does not match escrow' };
+      }
+    } else {
+      return { success: false, error: 'SECURITY: Loan has no escrow witness script' };
+    }
+    
+    // SECURITY: Cryptographically verify borrower's signature (not just presence)
+    if (!loan.borrowerPubkey) {
+      return { success: false, error: 'SECURITY: No borrower pubkey to verify signature' };
+    }
+    
+    const isValidSig = PsbtCreatorService.verifySignature(psbtBase64, loan.borrowerPubkey, 0);
+    if (!isValidSig) {
+      return { success: false, error: 'SECURITY: Borrower signature cryptographic verification failed' };
+    }
+    
+    // SECURITY: Verify PSBT input matches escrow UTXO (txid/vout)
+    if (loan.fundingTxid) {
+      const expectedVout = loan.fundingVout ?? 0;
+      const utxoMatch = PsbtCreatorService.verifyPsbtUtxo(psbtBase64, loan.fundingTxid, expectedVout);
+      if (!utxoMatch) {
+        return { success: false, error: 'SECURITY: PSBT input does not match escrow UTXO' };
+      }
+    }
+    
+    console.log('✅ PSBT security validation passed (cryptographic verification)');
+    
+    // Get platform private key
+    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
+    
+    // Get and decrypt lender private key
+    if (!loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'No encrypted lender key found' };
+    }
+    
+    const lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+    
+    // Sign all inputs with platform key
+    const inputCount = psbt.inputCount;
+    for (let i = 0; i < inputCount; i++) {
+      try {
+        const platformKeyBuffer = Buffer.from(platformPrivateKey, 'hex');
+        const platformKeyPair = {
+          publicKey: Buffer.from(ecc.pointFromScalar(platformKeyBuffer, true)!),
+          privateKey: platformKeyBuffer,
+          sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, platformKeyBuffer)),
+        };
+        psbt.signInput(i, platformKeyPair);
+      } catch (e) {
+        // May already be signed or wrong key - continue
+      }
+    }
+    
+    // Sign all inputs with lender key (platform-controlled)
+    for (let i = 0; i < inputCount; i++) {
+      try {
+        const lenderKeyBuffer = Buffer.from(lenderPrivateKey, 'hex');
+        const lenderKeyPair = {
+          publicKey: Buffer.from(ecc.pointFromScalar(lenderKeyBuffer, true)!),
+          privateKey: lenderKeyBuffer,
+          sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, lenderKeyBuffer)),
+        };
+        psbt.signInput(i, lenderKeyPair);
+      } catch (e) {
+        // May already be signed or wrong key - continue
+      }
+    }
+    
+    // Finalize and extract transaction
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`✅ Pre-signed transaction finalized: ${txid}`);
+    
+    // Broadcast
+    const broadcastTxid = await broadcastToTestnet4(txHex);
+    
+    return {
+      success: true,
+      txid: broadcastTxid,
+      broadcastUrl: getExplorerUrl('tx', broadcastTxid),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `Pre-signed transaction error: ${error.message}`
+    };
+  }
+}
+
+/**
  * Create and broadcast a cooperative close transaction
  * This releases the borrower's collateral after successful loan repayment
  * 
@@ -150,6 +275,57 @@ export async function releaseCollateral(
     if (!borrower || !borrower.btcAddress) {
       return { success: false, error: 'No borrower return address found' };
     }
+    
+    // ================================================================
+    // STEP 1: Try to use pre-signed REPAYMENT transaction if available
+    // ================================================================
+    const hasPreSignedTx = loan.txRepaymentHex || loan.borrowerSigningComplete;
+    
+    if (hasPreSignedTx && loan.txRepaymentHex) {
+      console.log(`📋 Found pre-signed REPAYMENT transaction for loan #${loanId}`);
+      console.log(`   Using pre-signed transaction model (Firefish non-custodial)`);
+      
+      try {
+        // Get pre-signed transactions from storage
+        const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+        const repaymentTxs = preSignedTxs.filter(tx => 
+          tx.txType === 'repayment' || tx.txType === 'cooperative_close' || tx.txType === 'REPAYMENT'
+        );
+        
+        let psbtBase64 = loan.txRepaymentHex;
+        if (repaymentTxs.length > 0) {
+          psbtBase64 = repaymentTxs[0].psbt;
+          console.log(`   Using PSBT from pre_signed_transactions table`);
+        }
+        
+        // The pre-signed PSBT should have borrower's signature
+        // We need to add platform + lender signatures
+        const result = await addPlatformSignaturesAndBroadcast(
+          storage,
+          loan,
+          psbtBase64,
+          EncryptionService
+        );
+        
+        if (result.success) {
+          console.log(`✅ Pre-signed transaction broadcast successful: ${result.txid}`);
+          return result;
+        }
+        
+        // If pre-signed approach failed, fall through to dynamic creation
+        console.log(`⚠️ Pre-signed approach failed: ${result.error}`);
+        console.log(`   Falling back to dynamic transaction creation...`);
+      } catch (preSignedError: any) {
+        console.log(`⚠️ Pre-signed transaction error: ${preSignedError.message}`);
+        console.log(`   Falling back to dynamic transaction creation...`);
+      }
+    } else {
+      console.log(`📋 No pre-signed transaction found - using dynamic creation (legacy model)`);
+    }
+    
+    // ================================================================
+    // STEP 2: Fallback - Create transaction dynamically (legacy model)
+    // ================================================================
     
     // Get escrow details
     const escrowAddress = loan.escrowAddress;

@@ -1,0 +1,68 @@
+CONNECT PRE-SIGNED TRANSACTION SYSTEM TO LOAN FLOW
+
+The pre-signed transaction infrastructure exists but was never connected. I want to COMPLETE the implementation so it works like the Firefish non-custodial model.
+
+REQUIREMENTS:
+
+PART 1: Wire Up Signing Ceremony to Loan Creation
+
+Modify POST /api/loans endpoint to:
+1. After escrow address is created
+2. Call TransactionTemplateService.createTransactionTemplates()
+3. Return PSBTs to frontend for borrower to sign
+4. Store signed PSBTs in pre_signed_transactions table AND loan columns
+
+PART 2: Add Borrower Signing Step
+
+Create new endpoint: POST /api/loans/:id/sign-templates
+
+Flow:
+1. Borrower fetches unsigned PSBTs
+2. Signs them client-side using their ephemeral key
+3. Sends signatures back to server
+4. Server verifies and stores in database
+5. Loan only becomes "active" after signing ceremony completes
+
+PART 3: Modify Collateral Release to Use Pre-Signed
+
+Update CollateralReleaseService.ts:
+1. FIRST try to use stored pre-signed REPAYMENT transaction
+2. Add platform's signature (2nd of 3)
+3. Broadcast the pre-signed transaction
+4. FALLBACK to dynamic creation if pre-signed not found
+
+PART 4: Implement Borrower Recovery
+
+Create endpoint: POST /api/loans/:id/emergency-recovery
+
+Requirements:
+- Works after time-lock period (30 days)
+- Uses pre-signed RECOVERY transaction
+- Borrower can trigger WITHOUT platform approval
+- Add OP_CHECKSEQUENCEVERIFY to witness script for timelock
+
+PART 5: Update Loan Status Flow
+
+New statuses:
+- "pending_signatures" → After escrow created, before signing
+- "active" → After borrower signs all templates
+- Existing statuses remain the same
+
+PART 6: Testing Plan
+
+Create test endpoint: GET /api/loans/:id/verify-presigned
+
+Returns:
+- Are pre-signed transactions stored? (yes/no)
+- Can borrower recover after timelock? (yes/no)
+- Are all required signatures present? (yes/no)
+
+PART 7: Migration for Existing Loans
+
+For loans 198-204 that don't have pre-signed transactions:
+- Mark them as "legacy" loans
+- Keep using dynamic system for these
+- All NEW loans use pre-signed system
+
+Estimate: How long will this take to implement fully?
+Can you complete this implementation and make the pre-signed transaction system actually work?

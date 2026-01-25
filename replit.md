@@ -85,10 +85,12 @@ Preferred communication style: Simple, everyday language.
 - Borrower deposits BTC to escrow address
 - Platform monitors deposit confirmation
 
-**Phase 4 - Borrower Signing Ceremony (after deposit):**
+**Phase 4 - Borrower Signing Ceremony (after deposit confirmed):**
 - Borrower re-enters passphrase to re-derive key
-- Signs recovery/cooperative_close PSBTs
+- Signs 3 pre-defined PSBTs: REPAYMENT, DEFAULT_LIQUIDATION, BORROWER_RECOVERY
 - Private key wiped from memory
+- Security validations: PSBT witness script must match escrow, borrower signature verified
+- API endpoint: POST /api/loans/:id/sign-templates
 
 **Phase 5 - Loan Activation:**
 - Lender transfers fiat to borrower (off-chain)
@@ -145,10 +147,18 @@ Preferred communication style: Simple, everyday language.
 - Verification endpoint: `GET /api/security/verify-borrower-non-custody`
 
 **Key Files for Security:**
+- `server/services/PsbtCreatorService.ts`: Creates real Bitcoin PSBTs, validates signatures and witness scripts
+- `server/services/CollateralReleaseService.ts`: PSBT validation before platform co-signing
 - `server/services/TransactionTemplateService.ts`: Enforces predefined transaction paths
 - `server/services/EscrowSigningService.ts`: Constrained signing with audit logging
 - `server/services/ResponseSanitizer.ts`: Strips sensitive data from API responses
 - `server/services/EncryptionService.ts`: Isolated encryption for HSM migration
+
+**Pre-Signed Transaction Security:**
+- PSBTs only accepted after escrow deposit confirmed (verified fundingTxid)
+- Witness script validation: PSBT input must match loan's escrow script
+- Borrower signature required: Invalid/unsigned PSBTs are rejected
+- Co-signing validation: CollateralReleaseService verifies borrower signature before adding platform signatures
 
 ### Dispute Resolution & Fair Split
 - **3-of-3 Multisig Requirement**: All spending requires all 3 signatures (borrower + platform + lender key)

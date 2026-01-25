@@ -151,6 +151,9 @@ export const loans = pgTable("loans", {
   txRecoveryHex: text("tx_recovery_hex"), // Platform recovery transaction hex
   txCancellationHex: text("tx_cancellation_hex"), // Lender-initiated cancellation transaction hex
   
+  // Signing Ceremony Status
+  borrowerSigningComplete: boolean("borrower_signing_complete").default(false), // Borrower completed signing ceremony
+  
   // Partial Deposit Warning
   partialDepositWarningAt: timestamp("partial_deposit_warning_at"), // When we sent insufficient deposit warning email
   partialDepositAmountSats: integer("partial_deposit_amount_sats"), // Amount detected that was insufficient
