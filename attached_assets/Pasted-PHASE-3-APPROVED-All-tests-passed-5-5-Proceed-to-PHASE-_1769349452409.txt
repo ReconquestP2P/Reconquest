@@ -1,0 +1,99 @@
+PHASE 3 APPROVED ✅ - All tests passed (5/5)
+
+Proceed to PHASE 4: Transaction Template Service
+
+Tasks:
+
+1. Create/Update TransactionTemplateService.ts:
+   File location: server/services/transaction-template-service.ts
+   
+   This service will:
+   - Call the Python bitcoin_escrow.py script from Node.js
+   - Parse the JSON output with PSBTs
+   - Store PSBTs in the database
+   - Retrieve PSBTs when needed for signing/broadcasting
+
+2. Main Function: generatePreSignedTransactions()
+   
+   Parameters:
+   - loanId: number
+   - borrowerPubkey: string (hex)
+   - lenderPubkey: string (hex)
+   - platformPubkey: string (hex)
+   - borrowerAddress: string (tb1q... return address)
+   - lenderAddress: string (tb1q... payout address)
+   - collateralAmount: number (in satoshis)
+   
+   Steps:
+   a) Execute Python script using child_process.exec()
+   b) Pass parameters: --network testnet4 --generate-psbts --json --borrower-address {addr} --lender-address {addr} --input-value {sats}
+   c) Parse JSON response
+   d) Store each PSBT in database using storePreSignedTransaction()
+   
+   Return:
+   {
+     escrowAddress: string,
+     psbts: {
+       repayment: string,
+       default: string,
+       liquidation: string,
+       recovery: string
+     },
+     witnessScript: string,
+     recoveryBlocks: number
+   }
+
+3. Database Storage:
+   For each PSBT type (repayment, default, liquidation, recovery):
+   - Call storage.storePreSignedTransaction()
+   - Set party_role = "borrower" (they need to sign first)
+   - Set tx_type = "repayment" | "default" | "liquidation" | "recovery"
+   - Set psbt = base64 PSBT string
+   - Set broadcast_status = "pending"
+   - Set signature = "" (unsigned initially)
+
+4. Retrieval Function: getPreSignedTransactions()
+   
+   Parameters:
+   - loanId: number
+   - txType?: string (optional filter)
+   
+   Returns:
+   - Array of PreSignedTransaction objects from database
+
+5. Error Handling:
+   - Wrap Python execution in try/catch
+   - Validate JSON output before parsing
+   - Check all 4 PSBTs are present
+   - Log errors clearly
+   - Throw descriptive errors if Python script fails
+
+6. TypeScript Types:
+   Create interface:
+   
+   interface PreSignedTransactionSet {
+     escrowAddress: string;
+     witnessScript: string;
+     timelockBlocks: number;
+     psbts: {
+       repayment: string;
+       default: string;
+       liquidation: string;
+       recovery: string;
+     };
+   }
+
+Deliverables:
+1. Show me the TransactionTemplateService.ts file structure
+2. Show me the generatePreSignedTransactions() function signature
+3. Show me how Python script is executed (child_process command)
+4. Confirm database storage works (show storePreSignedTransaction calls)
+5. Test the service with mock data - show me example output
+
+IMPORTANT:
+- Don't integrate into loan creation yet (that's Phase 7)
+- This is a standalone service we can test independently
+- Use testnet4 network parameter
+- Handle errors gracefully
+
+STOP after Phase 4 and wait for my approval before continuing.

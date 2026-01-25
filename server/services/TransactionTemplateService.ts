@@ -1,5 +1,35 @@
 import crypto from 'crypto';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
 import { EncryptionService } from './EncryptionService';
+import { storage } from '../storage';
+import type { PreSignedTransaction, InsertPreSignedTransaction } from '@shared/schema';
+
+const execAsync = promisify(exec);
+
+export interface PreSignedTransactionSet {
+  escrowAddress: string;
+  witnessScript: string;
+  timelockBlocks: number;
+  timelockDays: number;
+  psbts: {
+    repayment: string;
+    default: string;
+    liquidation: string;
+    recovery: string;
+  };
+}
+
+export interface GeneratePsbtParams {
+  loanId: number;
+  borrowerPubkey: string;
+  lenderPubkey: string;
+  platformPubkey: string;
+  borrowerAddress: string;
+  lenderAddress: string;
+  collateralAmount: number; // in satoshis
+}
 
 /**
  * TransactionTemplateService - Enforces predefined escrow transaction paths
@@ -311,6 +341,257 @@ export class TransactionTemplateService {
     
     console.log(`[TransactionTemplates] Validating PSBT matches template ${template.id}`);
     return true;
+  }
+
+  /**
+   * Generates pre-signed transaction templates by calling Python bitcoin_escrow.py script
+   * 
+   * This method:
+   * 1. Executes the Python script with loan parameters
+   * 2. Parses the JSON output containing unsigned PSBTs
+   * 3. Stores each PSBT in the database
+   * 4. Returns the complete transaction set
+   * 
+   * @param params - Loan parameters for PSBT generation
+   * @returns PreSignedTransactionSet with all PSBTs and escrow info
+   */
+  static async generatePreSignedTransactions(
+    params: GeneratePsbtParams
+  ): Promise<PreSignedTransactionSet> {
+    const {
+      loanId,
+      borrowerPubkey,
+      lenderPubkey,
+      platformPubkey,
+      borrowerAddress,
+      lenderAddress,
+      collateralAmount
+    } = params;
+
+    console.log(`[TransactionTemplates] Generating PSBTs for loan ${loanId}`);
+    console.log(`[TransactionTemplates] Collateral: ${collateralAmount} sats`);
+
+    // Validate inputs
+    if (!borrowerPubkey || borrowerPubkey.length !== 66) {
+      throw new Error(`Invalid borrower pubkey: must be 66 hex characters`);
+    }
+    if (!lenderPubkey || lenderPubkey.length !== 66) {
+      throw new Error(`Invalid lender pubkey: must be 66 hex characters`);
+    }
+    if (!platformPubkey || platformPubkey.length !== 66) {
+      throw new Error(`Invalid platform pubkey: must be 66 hex characters`);
+    }
+    if (!borrowerAddress || !borrowerAddress.startsWith('tb1')) {
+      throw new Error(`Invalid borrower address: must be testnet bech32 (tb1...)`);
+    }
+    if (!lenderAddress || !lenderAddress.startsWith('tb1')) {
+      throw new Error(`Invalid lender address: must be testnet bech32 (tb1...)`);
+    }
+    if (collateralAmount < 1000) {
+      throw new Error(`Collateral amount too small: minimum 1000 sats`);
+    }
+
+    // Build Python command
+    const scriptPath = path.resolve(process.cwd(), 'bitcoin_escrow.py');
+    const command = [
+      'python3',
+      scriptPath,
+      '--network', 'testnet',
+      '--generate-psbts',
+      '--json',
+      '--silent',
+      '--borrower-pubkey', borrowerPubkey,
+      '--investor-pubkey', lenderPubkey,
+      '--platform-pubkey', platformPubkey,
+      '--borrower-address', borrowerAddress,
+      '--lender-address', lenderAddress,
+      '--input-value', collateralAmount.toString()
+    ].join(' ');
+
+    console.log(`[TransactionTemplates] Executing: python3 bitcoin_escrow.py --network testnet ...`);
+
+    try {
+      // Execute Python script
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: 30000,
+        maxBuffer: 1024 * 1024
+      });
+
+      if (stderr && !stderr.includes('Warning')) {
+        console.error(`[TransactionTemplates] Python stderr: ${stderr}`);
+      }
+
+      // Parse JSON output (may have leading text, find the JSON part)
+      const jsonStart = stdout.indexOf('{');
+      if (jsonStart === -1) {
+        throw new Error(`Python script did not return valid JSON: ${stdout.slice(0, 200)}`);
+      }
+
+      const jsonOutput = stdout.slice(jsonStart);
+      let result: any;
+      
+      try {
+        result = JSON.parse(jsonOutput);
+      } catch (parseError) {
+        throw new Error(`Failed to parse Python JSON output: ${jsonOutput.slice(0, 200)}`);
+      }
+
+      // Validate all required fields are present
+      const requiredFields = [
+        'escrow_address', 'witness_script', 'psbt_repayment', 
+        'psbt_default', 'psbt_liquidation', 'psbt_recovery',
+        'recovery_blocks', 'recovery_days'
+      ];
+
+      for (const field of requiredFields) {
+        if (!result[field]) {
+          throw new Error(`Missing required field in Python output: ${field}`);
+        }
+      }
+
+      // Validate PSBT format (must be base64 and start with PSBT magic after decode)
+      const psbtTypes = ['psbt_repayment', 'psbt_default', 'psbt_liquidation', 'psbt_recovery'];
+      for (const psbtField of psbtTypes) {
+        const psbt = result[psbtField];
+        try {
+          const decoded = Buffer.from(psbt, 'base64');
+          if (decoded.slice(0, 4).toString('hex') !== '70736274') {
+            throw new Error(`Invalid PSBT magic bytes for ${psbtField}`);
+          }
+        } catch (e: any) {
+          throw new Error(`Invalid base64 PSBT for ${psbtField}: ${e.message}`);
+        }
+      }
+
+      console.log(`[TransactionTemplates] Generated escrow address: ${result.escrow_address}`);
+      console.log(`[TransactionTemplates] Recovery timelock: ${result.recovery_blocks} blocks (~${result.recovery_days} days)`);
+
+      // Store PSBTs in database
+      const txTypeMap: Record<string, string> = {
+        'psbt_repayment': 'repayment',
+        'psbt_default': 'default',
+        'psbt_liquidation': 'liquidation',
+        'psbt_recovery': 'recovery'
+      };
+
+      for (const [psbtField, txType] of Object.entries(txTypeMap)) {
+        const psbt = result[psbtField];
+        const txHash = crypto.createHash('sha256').update(psbt).digest('hex').slice(0, 16);
+        
+        const insertData: InsertPreSignedTransaction = {
+          loanId,
+          partyRole: 'borrower',
+          partyPubkey: borrowerPubkey,
+          txType,
+          psbt,
+          signature: '',
+          txHash,
+          validAfter: txType === 'recovery' 
+            ? new Date(Date.now() + result.recovery_days * 24 * 60 * 60 * 1000)
+            : null
+        };
+
+        await storage.storePreSignedTransaction(insertData);
+        console.log(`[TransactionTemplates] Stored ${txType} PSBT for loan ${loanId}`);
+      }
+
+      // Return the complete transaction set
+      const transactionSet: PreSignedTransactionSet = {
+        escrowAddress: result.escrow_address,
+        witnessScript: result.witness_script,
+        timelockBlocks: result.recovery_blocks,
+        timelockDays: result.recovery_days,
+        psbts: {
+          repayment: result.psbt_repayment,
+          default: result.psbt_default,
+          liquidation: result.psbt_liquidation,
+          recovery: result.psbt_recovery
+        }
+      };
+
+      console.log(`[TransactionTemplates] Successfully generated and stored 4 PSBTs for loan ${loanId}`);
+      return transactionSet;
+
+    } catch (error: any) {
+      console.error(`[TransactionTemplates] Error generating PSBTs: ${error.message}`);
+      throw new Error(`Failed to generate pre-signed transactions: ${error.message}`);
+    }
+  }
+
+  /**
+   * Retrieves pre-signed transactions from database
+   * 
+   * @param loanId - The loan ID to retrieve transactions for
+   * @param txType - Optional filter by transaction type
+   * @returns Array of PreSignedTransaction records
+   */
+  static async getPreSignedTransactions(
+    loanId: number,
+    txType?: string
+  ): Promise<PreSignedTransaction[]> {
+    console.log(`[TransactionTemplates] Retrieving PSBTs for loan ${loanId}${txType ? `, type: ${txType}` : ''}`);
+    
+    const transactions = await storage.getPreSignedTransactions(loanId, txType);
+    console.log(`[TransactionTemplates] Found ${transactions.length} transactions`);
+    
+    return transactions;
+  }
+
+  /**
+   * Updates a pre-signed transaction with borrower's signature
+   * 
+   * @param loanId - The loan ID
+   * @param txType - Transaction type (repayment, default, liquidation, recovery)
+   * @param signature - Borrower's signature (hex)
+   * @param signedPsbt - Updated PSBT with signature
+   */
+  static async updateWithBorrowerSignature(
+    loanId: number,
+    txType: string,
+    signature: string,
+    signedPsbt: string
+  ): Promise<void> {
+    const transactions = await storage.getPreSignedTransactions(loanId, txType);
+    
+    if (transactions.length === 0) {
+      throw new Error(`No ${txType} transaction found for loan ${loanId}`);
+    }
+
+    const tx = transactions[0];
+    
+    // Update with signature
+    await storage.updateTransactionBroadcastStatus(tx.id, {
+      broadcastStatus: 'signed'
+    });
+
+    console.log(`[TransactionTemplates] Updated ${txType} with borrower signature for loan ${loanId}`);
+  }
+
+  /**
+   * Test the PSBT generation with mock data
+   * Useful for verifying the Python integration works
+   */
+  static async testGeneration(): Promise<PreSignedTransactionSet> {
+    console.log('[TransactionTemplates] Running test generation...');
+    
+    // Test public keys (standard test vectors)
+    const testParams: GeneratePsbtParams = {
+      loanId: 99999, // Test loan ID
+      borrowerPubkey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+      lenderPubkey: '02e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      platformPubkey: '03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e',
+      borrowerAddress: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+      lenderAddress: 'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
+      collateralAmount: 100000 // 0.001 BTC
+    };
+
+    const result = await this.generatePreSignedTransactions(testParams);
+    
+    console.log('[TransactionTemplates] Test completed successfully');
+    console.log(`[TransactionTemplates] Escrow: ${result.escrowAddress}`);
+    console.log(`[TransactionTemplates] Timelock: ${result.timelockBlocks} blocks`);
+    
+    return result;
   }
 }
 
