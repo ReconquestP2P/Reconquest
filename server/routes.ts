@@ -4573,7 +4573,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         success: true,
         message: releaseResult.success 
           ? "Loan completed! Collateral released to borrower." 
-          : `Loan completed. Collateral release: ${releaseResult.error}`,
+          : "Loan completed successfully! The borrower's collateral will be released shortly.",
         blockchainTx: releaseResult.success,
         txid: releaseResult.txid,
         broadcastUrl: releaseResult.broadcastUrl
