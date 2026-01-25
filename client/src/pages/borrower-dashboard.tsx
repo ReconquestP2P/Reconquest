@@ -84,11 +84,12 @@ export default function BorrowerDashboard() {
   };
 
   const borrowerLoans = userLoans.filter(loan => loan.borrowerId === userId);
-  // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
+  // Show loans as "active" if fully active OR awaiting lender confirmation of repayment
   const activeLoans = borrowerLoans.filter((loan: any) => 
-    loan.status === "active" && 
+    (loan.status === "active" && 
     loan.fiatTransferConfirmed === true && 
-    loan.borrowerConfirmedReceipt === true
+    loan.borrowerConfirmedReceipt === true) ||
+    loan.status === "repayment_pending"
   );
   
   const totalBorrowed = activeLoans.reduce((sum, loan) => sum + parseFloat(loan.amount), 0);
@@ -211,6 +212,8 @@ export default function BorrowerDashboard() {
     switch (status) {
       case "active":
         return <Badge className="bg-blue-100 text-blue-800">Active</Badge>;
+      case "repayment_pending":
+        return <Badge className="bg-orange-100 text-orange-800">Awaiting Lender Confirmation</Badge>;
       case "pending":
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
       case "completed":
