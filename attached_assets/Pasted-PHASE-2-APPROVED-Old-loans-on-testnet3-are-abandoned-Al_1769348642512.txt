@@ -1,0 +1,76 @@
+PHASE 2 APPROVED ✅ - Old loans on testnet3 are abandoned. All future work on testnet4.
+
+Proceed to PHASE 3: Update Python Script for Pre-Signed PSBTs
+
+Current Situation:
+- File: server/bitcoin_escrow.py
+- Currently generates: Just escrow addresses
+- Need it to generate: UNSIGNED PSBT TEMPLATES for pre-signing
+
+Tasks:
+
+1. Modify bitcoin_escrow.py Output:
+   - Instead of just returning the escrow address
+   - Generate 4 UNSIGNED PSBT templates:
+     * REPAYMENT PSBT (cooperative close - 2-of-3 happy path)
+     * DEFAULT PSBT (lender claims after missed payment)
+     * LIQUIDATION PSBT (platform liquidates on LTV breach)
+     * RECOVERY PSBT (borrower recovers after 30-day timelock)
+
+2. Add Timelock to Witness Script:
+   - Current script: 2-of-3 multisig only
+   - Update to: 2-of-3 multisig OR (borrower + 30 days CSV timelock)
+   - Use OP_CHECKSEQUENCEVERIFY for relative timelock
+   - Formula: 30 days = 4320 blocks (30 * 144 blocks/day)
+
+3. PSBT Template Structure:
+   Each PSBT should include:
+   - Input: The funded escrow UTXO (placeholder for now)
+   - Output: Destination address (borrower for repayment/recovery, lender for default/liquidation)
+   - Witness script with timelock
+   - Unsigned - ready for parties to sign
+
+4. Python Script Return Format:
+   Change from:
+   {
+     "escrow_address": "tb1q...",
+     "redeem_script": "..."
+   }
+   
+   To:
+   {
+     "escrow_address": "tb1q...",
+     "redeem_script": "...",
+     "psbt_repayment": "cHNidP8BAF...",      // Base64 PSBT
+     "psbt_default": "cHNidP8BAF...",
+     "psbt_liquidation": "cHNidP8BAF...",
+     "psbt_recovery": "cHNidP8BAF..."
+   }
+
+5. Witness Script Example (OP_CSV):
+   The script should be something like:
+   
+   IF
+     <borrower_pubkey> OP_CHECKSIGVERIFY
+     <4320> OP_CHECKSEQUENCEVERIFY  // 30 days
+   ELSE
+     2 <borrower_pubkey> <lender_pubkey> <platform_pubkey> 3 OP_CHECKMULTISIG
+   ENDIF
+
+6. Network Configuration:
+   - Ensure script uses testnet4 parameters
+   - Generate testnet4 addresses (tb1...)
+   - PSBTs should be for testnet4 transactions
+
+Deliverables:
+1. Show me the updated witness script code with OP_CSV
+2. Show me one example PSBT output (just the repayment one)
+3. Confirm the function signature/return structure
+4. Test running the script manually - show me the output
+
+IMPORTANT: 
+- PSBTs must be UNSIGNED (templates only)
+- Don't broadcast anything yet
+- Just generate the templates ready for signing
+
+STOP after Phase 3 and wait for my approval before continuing.

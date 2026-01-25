@@ -25,11 +25,13 @@ from bitcoinlib.keys import Key
 from bitcoinlib.scripts import Script
 from bitcoinlib.encoding import to_hexstring
 from bitcoinlib.transactions import Output
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 import hashlib
 import base58
 import argparse
 import sys
+import struct
+import io
 
 
 # ANSI color codes for terminal output
@@ -319,6 +321,361 @@ def verify_multisig_address(address: str, witness_script_hex: str, network: str 
         return False
 
 
+# =============================================================================
+# PSBT GENERATION FUNCTIONS
+# =============================================================================
+
+# CSV timelock: 30 days = 4320 blocks (30 * 144 blocks/day)
+DEFAULT_RECOVERY_BLOCKS = 4320
+
+def push_int(value: int) -> bytes:
+    """Push an integer to script (for OP_CSV timelock)."""
+    if value == 0:
+        return bytes([0x00])
+    elif 1 <= value <= 16:
+        return bytes([0x50 + value])  # OP_1 through OP_16
+    else:
+        # Encode as minimal push
+        result = []
+        while value:
+            result.append(value & 0xff)
+            value >>= 8
+        # If high bit is set, add 0x00 to indicate positive
+        if result[-1] & 0x80:
+            result.append(0x00)
+        return bytes([len(result)] + result)
+
+
+def create_timelocked_witness_script(
+    borrower_pubkey_hex: str,
+    investor_pubkey_hex: str, 
+    platform_pubkey_hex: str,
+    recovery_blocks: int = DEFAULT_RECOVERY_BLOCKS
+) -> Dict[str, Any]:
+    """
+    Create a witness script with both 2-of-3 multisig AND borrower recovery path.
+    
+    Script structure:
+      IF
+        <borrower_pubkey> OP_CHECKSIGVERIFY
+        <recovery_blocks> OP_CHECKSEQUENCEVERIFY
+      ELSE
+        OP_3 <pk1> <pk2> <pk3> OP_3 OP_CHECKMULTISIG
+      ENDIF
+    
+    This allows:
+    - Normal path: 3-of-3 multisig (all parties agree)
+    - Recovery path: Borrower alone after timelock expires
+    
+    Args:
+        borrower_pubkey_hex: Borrower's compressed public key
+        investor_pubkey_hex: Platform-operated investor key  
+        platform_pubkey_hex: Platform's compressed public key
+        recovery_blocks: CSV timelock in blocks (default: 4320 = ~30 days)
+        
+    Returns:
+        Dict with witness_script, script_hash, and metadata
+    """
+    # Clean and validate pubkeys
+    borrower_pk = bytes.fromhex(borrower_pubkey_hex.strip())
+    investor_pk = bytes.fromhex(investor_pubkey_hex.strip())
+    platform_pk = bytes.fromhex(platform_pubkey_hex.strip())
+    
+    # Sort pubkeys for deterministic multisig
+    sorted_pks = sorted([borrower_pk, investor_pk, platform_pk])
+    
+    # Build the witness script
+    script = bytearray()
+    
+    # IF branch (recovery path)
+    script.append(0x63)  # OP_IF
+    
+    # Push borrower pubkey
+    script.append(len(borrower_pk))
+    script.extend(borrower_pk)
+    script.append(0xad)  # OP_CHECKSIGVERIFY
+    
+    # Push timelock value
+    timelock_bytes = push_int(recovery_blocks)
+    script.extend(timelock_bytes)
+    script.append(0xb2)  # OP_CHECKSEQUENCEVERIFY
+    script.append(0x75)  # OP_DROP (drop timelock value from stack)
+    script.append(0x51)  # OP_TRUE (leave true on stack)
+    
+    # ELSE branch (3-of-3 multisig)
+    script.append(0x67)  # OP_ELSE
+    script.append(0x53)  # OP_3 (require 3 signatures)
+    
+    for pk in sorted_pks:
+        script.append(len(pk))
+        script.extend(pk)
+    
+    script.append(0x53)  # OP_3 (total keys)
+    script.append(0xae)  # OP_CHECKMULTISIG
+    
+    script.append(0x68)  # OP_ENDIF
+    
+    witness_script = bytes(script)
+    script_hash = hashlib.sha256(witness_script).digest()
+    
+    return {
+        'witness_script': witness_script.hex(),
+        'script_hash': script_hash.hex(),
+        'recovery_blocks': recovery_blocks,
+        'recovery_days': recovery_blocks // 144,
+        'sorted_pubkeys': [pk.hex() for pk in sorted_pks],
+    }
+
+
+def create_unsigned_psbt(
+    input_txid: str,
+    input_vout: int,
+    input_value: int,
+    witness_script_hex: str,
+    outputs: list,
+    sequence: int = 0xffffffff,
+    network: str = 'testnet'
+) -> str:
+    """
+    Create an unsigned PSBT (BIP-174) for a transaction.
+    
+    Args:
+        input_txid: Transaction ID of the UTXO to spend (hex, 64 chars)
+        input_vout: Output index of the UTXO
+        input_value: Value of the UTXO in satoshis
+        witness_script_hex: The witness script in hex
+        outputs: List of dicts with 'address' and 'value' keys
+        sequence: Sequence number (use 0xffffffff for no RBF, or CSV value for timelock)
+        network: 'testnet' or 'mainnet'
+        
+    Returns:
+        Base64-encoded PSBT string
+    """
+    # PSBT magic bytes
+    PSBT_MAGIC = b'psbt\xff'
+    
+    # --- Build unsigned transaction ---
+    tx = io.BytesIO()
+    
+    # Version (4 bytes, little-endian)
+    tx.write(struct.pack('<I', 2))
+    
+    # Input count (varint)
+    tx.write(bytes([1]))
+    
+    # Input: txid (32 bytes, reversed) + vout (4 bytes) + scriptSig (empty) + sequence
+    txid_bytes = bytes.fromhex(input_txid)[::-1]  # Reverse for internal byte order
+    tx.write(txid_bytes)
+    tx.write(struct.pack('<I', input_vout))
+    tx.write(bytes([0x00]))  # Empty scriptSig
+    tx.write(struct.pack('<I', sequence))
+    
+    # Output count
+    tx.write(bytes([len(outputs)]))
+    
+    # Outputs
+    for out in outputs:
+        tx.write(struct.pack('<Q', out['value']))  # 8 bytes, little-endian
+        
+        # Decode address to scriptPubKey
+        address = out['address']
+        if address.startswith('tb1') or address.startswith('bc1'):
+            # Bech32 address - decode to witness program
+            script_pubkey = decode_bech32_to_scriptpubkey(address)
+        else:
+            raise ValueError(f"Unsupported address format: {address}")
+        
+        # Write scriptPubKey with length prefix
+        tx.write(bytes([len(script_pubkey)]))
+        tx.write(script_pubkey)
+    
+    # Locktime (4 bytes)
+    tx.write(struct.pack('<I', 0))
+    
+    unsigned_tx = tx.getvalue()
+    
+    # --- Build PSBT ---
+    psbt = io.BytesIO()
+    psbt.write(PSBT_MAGIC)
+    
+    # Global map
+    # Key 0x00: unsigned transaction
+    psbt.write(bytes([0x01, 0x00]))  # key length 1, key type 0x00
+    write_with_length(psbt, unsigned_tx)
+    
+    # End of global map
+    psbt.write(bytes([0x00]))
+    
+    # Per-input map
+    witness_script = bytes.fromhex(witness_script_hex)
+    
+    # Key 0x01: UTXO (witness utxo for segwit)
+    # Build witness UTXO: value (8 bytes) + scriptPubKey
+    script_hash = hashlib.sha256(witness_script).digest()
+    script_pubkey = bytes([0x00, 0x20]) + script_hash
+    
+    witness_utxo = struct.pack('<Q', input_value) + bytes([len(script_pubkey)]) + script_pubkey
+    psbt.write(bytes([0x01, 0x01]))  # key length 1, key type 0x01
+    write_with_length(psbt, witness_utxo)
+    
+    # Key 0x05: Witness script
+    psbt.write(bytes([0x01, 0x05]))  # key length 1, key type 0x05
+    write_with_length(psbt, witness_script)
+    
+    # End of input map
+    psbt.write(bytes([0x00]))
+    
+    # Per-output maps (one for each output, empty for now)
+    for _ in outputs:
+        psbt.write(bytes([0x00]))
+    
+    # Encode as base64
+    import base64
+    return base64.b64encode(psbt.getvalue()).decode('ascii')
+
+
+def write_with_length(stream, data: bytes):
+    """Write data with compact size prefix."""
+    length = len(data)
+    if length < 0xfd:
+        stream.write(bytes([length]))
+    elif length <= 0xffff:
+        stream.write(bytes([0xfd]))
+        stream.write(struct.pack('<H', length))
+    else:
+        stream.write(bytes([0xfe]))
+        stream.write(struct.pack('<I', length))
+    stream.write(data)
+
+
+def decode_bech32_to_scriptpubkey(address: str) -> bytes:
+    """Decode a bech32/bech32m address to scriptPubKey."""
+    CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+    
+    # Find separator
+    pos = address.rfind('1')
+    if pos < 1:
+        raise ValueError("Invalid bech32 address")
+    
+    hrp = address[:pos]
+    data_part = address[pos+1:]
+    
+    # Decode data
+    data = []
+    for c in data_part:
+        if c not in CHARSET:
+            raise ValueError(f"Invalid character in bech32: {c}")
+        data.append(CHARSET.index(c))
+    
+    # Remove checksum (last 6 chars)
+    data = data[:-6]
+    
+    # First byte is witness version
+    witver = data[0]
+    
+    # Convert remaining data from 5-bit to 8-bit
+    witprog = convertbits(data[1:], 5, 8, False)
+    if witprog is None:
+        raise ValueError("Invalid witness program")
+    
+    # Build scriptPubKey: OP_n <program>
+    if witver == 0:
+        script = bytes([0x00, len(witprog)] + witprog)
+    else:
+        script = bytes([0x50 + witver, len(witprog)] + witprog)
+    
+    return script
+
+
+def generate_psbt_templates(
+    escrow_result: Dict[str, Any],
+    borrower_address: str,
+    lender_address: str,
+    input_txid: str = '0' * 64,
+    input_vout: int = 0,
+    input_value: int = 0,
+    recovery_blocks: int = DEFAULT_RECOVERY_BLOCKS,
+    network: str = 'testnet'
+) -> Dict[str, str]:
+    """
+    Generate all 4 unsigned PSBT templates for a loan escrow.
+    
+    Args:
+        escrow_result: Result from create_multisig_escrow()
+        borrower_address: Borrower's return address (tb1.../bc1...)
+        lender_address: Lender's address for default/liquidation
+        input_txid: UTXO txid (placeholder if not funded yet)
+        input_vout: UTXO vout
+        input_value: UTXO value in satoshis
+        recovery_blocks: CSV timelock for recovery (default: 4320 = 30 days)
+        network: 'testnet' or 'mainnet'
+        
+    Returns:
+        Dict with psbt_repayment, psbt_default, psbt_liquidation, psbt_recovery
+    """
+    witness_script = escrow_result['witness_script']
+    
+    # Calculate output values (input - fee estimate)
+    fee_estimate = 500  # Conservative fee for 1-in-1-out P2WSH
+    output_value = max(input_value - fee_estimate, 546)  # At least dust limit
+    
+    # Split value for liquidation (70% lender, 30% borrower - example)
+    lender_share = int(output_value * 0.7)
+    borrower_share = output_value - lender_share
+    
+    psbts = {}
+    
+    # 1. REPAYMENT PSBT - Returns collateral to borrower (happy path)
+    psbts['psbt_repayment'] = create_unsigned_psbt(
+        input_txid=input_txid,
+        input_vout=input_vout,
+        input_value=input_value,
+        witness_script_hex=witness_script,
+        outputs=[{'address': borrower_address, 'value': output_value}],
+        sequence=0xffffffff,
+        network=network
+    )
+    
+    # 2. DEFAULT PSBT - Lender claims on borrower non-payment
+    psbts['psbt_default'] = create_unsigned_psbt(
+        input_txid=input_txid,
+        input_vout=input_vout,
+        input_value=input_value,
+        witness_script_hex=witness_script,
+        outputs=[{'address': lender_address, 'value': output_value}],
+        sequence=0xffffffff,
+        network=network
+    )
+    
+    # 3. LIQUIDATION PSBT - Platform liquidates on LTV breach (split output)
+    psbts['psbt_liquidation'] = create_unsigned_psbt(
+        input_txid=input_txid,
+        input_vout=input_vout,
+        input_value=input_value,
+        witness_script_hex=witness_script,
+        outputs=[
+            {'address': lender_address, 'value': lender_share},
+            {'address': borrower_address, 'value': borrower_share}
+        ],
+        sequence=0xffffffff,
+        network=network
+    )
+    
+    # 4. RECOVERY PSBT - Borrower recovers after timelock
+    # Uses CSV sequence for relative timelock
+    psbts['psbt_recovery'] = create_unsigned_psbt(
+        input_txid=input_txid,
+        input_vout=input_vout,
+        input_value=input_value,
+        witness_script_hex=witness_script,
+        outputs=[{'address': borrower_address, 'value': output_value}],
+        sequence=recovery_blocks,  # CSV-enabled sequence
+        network=network
+    )
+    
+    return psbts
+
+
 def main():
     """Main entry point with CLI argument parsing."""
     parser = argparse.ArgumentParser(
@@ -373,6 +730,39 @@ Network Prefixes:
         help='Platform public key (hex, 66 chars)'
     )
     
+    parser.add_argument(
+        '--generate-psbts',
+        action='store_true',
+        help='Generate unsigned PSBT templates for pre-signing'
+    )
+    
+    parser.add_argument(
+        '--borrower-address',
+        type=str,
+        default='tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+        help='Borrower return address for PSBTs'
+    )
+    
+    parser.add_argument(
+        '--lender-address',
+        type=str,
+        default='tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
+        help='Lender address for default/liquidation PSBTs'
+    )
+    
+    parser.add_argument(
+        '--input-value',
+        type=int,
+        default=100000,
+        help='Escrow UTXO value in satoshis (default: 100000)'
+    )
+    
+    parser.add_argument(
+        '--json',
+        action='store_true',
+        help='Output results in JSON format'
+    )
+    
     args = parser.parse_args()
     
     # Safety check for mainnet
@@ -421,6 +811,53 @@ Network Prefixes:
             network=args.network
         )
         
+        # Generate PSBT templates if requested
+        psbts = {}
+        timelocked_script = None
+        
+        if args.generate_psbts:
+            # Also generate timelocked witness script
+            timelocked_script = create_timelocked_witness_script(
+                pubkey_borrower,
+                pubkey_investor,
+                pubkey_platform,
+                recovery_blocks=DEFAULT_RECOVERY_BLOCKS
+            )
+            
+            psbts = generate_psbt_templates(
+                escrow_result=result,
+                borrower_address=args.borrower_address,
+                lender_address=args.lender_address,
+                input_txid='0' * 64,  # Placeholder - will be replaced when funded
+                input_vout=0,
+                input_value=args.input_value,
+                recovery_blocks=DEFAULT_RECOVERY_BLOCKS,
+                network=args.network
+            )
+        
+        # JSON output mode
+        if args.json:
+            import json
+            output = {
+                'escrow_address': result['address'],
+                'witness_script': result['witness_script'],
+                'redeem_script': result['redeem_script'],
+                'script_pubkey': result['script_pubkey'],
+                'script_hash': result['script_hash'],
+                'public_keys': result['public_keys'],
+                'network': result['network'],
+                'signatures_required': result['signatures_required'],
+            }
+            if psbts:
+                output.update(psbts)
+            if timelocked_script:
+                output['timelocked_witness_script'] = timelocked_script['witness_script']
+                output['recovery_blocks'] = timelocked_script['recovery_blocks']
+                output['recovery_days'] = timelocked_script['recovery_days']
+            print(json.dumps(output, indent=2))
+            return
+        
+        # Regular output mode
         config = NETWORK_CONFIG[args.network]
         color = config['color']
         
@@ -440,6 +877,22 @@ Network Prefixes:
         print(f"\nPublic Keys (sorted for deterministic script):")
         for i, pubkey in enumerate(result['public_keys'], 1):
             print(f"  {i}. {pubkey}")
+        
+        # Show timelocked script if generated
+        if timelocked_script:
+            print(f"\n{Colors.YELLOW}═══ TIMELOCKED WITNESS SCRIPT (OP_CSV) ═══{Colors.RESET}")
+            print(f"Recovery Blocks: {timelocked_script['recovery_blocks']} (~{timelocked_script['recovery_days']} days)")
+            print(f"Script:          {timelocked_script['witness_script'][:80]}...")
+            print(f"Script Hash:     {timelocked_script['script_hash']}")
+        
+        # Show PSBTs if generated
+        if psbts:
+            print(f"\n{Colors.GREEN}═══ UNSIGNED PSBT TEMPLATES ═══{Colors.RESET}")
+            for name, psbt in psbts.items():
+                print(f"\n{name}:")
+                print(f"  {psbt[:60]}...")
+            print(f"\n📝 PSBTs are UNSIGNED templates ready for signing ceremony")
+            print(f"   Input value: {args.input_value} sats (placeholder UTXO)")
             
         print(f"\n💡 Signing responsibilities:")
         print(f"   - Borrower: Signs client-side with passphrase-derived key")
@@ -449,6 +902,8 @@ Network Prefixes:
             
     except Exception as e:
         print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
