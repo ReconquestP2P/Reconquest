@@ -1,0 +1,116 @@
+PHASE 7 TESTING - Verify Loan Creation Integration Works
+
+Please run these 5 tests and report results:
+
+═══════════════════════════════════════════════════════════
+
+TEST 1: Database Schema Verification
+
+Check if borrower_address column was added:
+
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'loans' 
+  AND column_name = 'borrower_address';
+
+If not found, check for similar columns:
+SELECT column_name 
+FROM information_schema.columns
+WHERE table_name = 'loans' 
+  AND (column_name LIKE '%borrower%' OR column_name LIKE '%return%address%');
+
+Expected:
+- borrower_address column exists (or similar)
+- Type: text or varchar
+- Nullable: yes (optional field)
+
+═══════════════════════════════════════════════════════════
+
+TEST 2: Backend Endpoint Verification
+
+Tasks:
+- Open server/routes.ts
+- Find: app.post("/api/loans/:id/provide-borrower-key"
+- Show me lines where:
+  1. borrowerReturnAddress is extracted from req.body
+  2. Address validation happens (tb1/bc1 prefix check)
+  3. TransactionTemplateService.generatePreSignedTransactions is called
+  4. Response includes requiresSigning and psbts fields
+
+Expected:
+- borrowerReturnAddress accepted in request
+- Validation checks bech32 format
+- PSBT generation called with return address
+- Response has requiresSigning: true when PSBTs generated
+
+═══════════════════════════════════════════════════════════
+
+TEST 3: Frontend Component Verification
+
+Tasks:
+- Open client/src/components/deposit-instructions-card.tsx
+- Verify these elements exist:
+  1. State variable: borrowerReturnAddress
+  2. Input field for return address (tb1q/bc1q)
+  3. State variable: showSigningModal
+  4. SigningCeremonyModal component rendered conditionally
+  5. onSuccess handler checks data.requiresSigning
+
+Show me:
+- The return address input JSX
+- The SigningCeremonyModal conditional rendering
+- The mutation onSuccess logic
+
+Expected:
+- Input field exists for return address
+- Modal shown when requiresSigning: true
+- Proper props passed to SigningCeremonyModal
+
+═══════════════════════════════════════════════════════════
+
+TEST 4: Backward Compatibility Check
+
+Tasks:
+- In server/routes.ts, find the PSBT generation code
+- Verify it's wrapped in try/catch
+- Show me the error handling logic
+- Confirm escrow creation continues even if PSBT generation fails
+
+Expected:
+try {
+  const psbtResult = await TransactionTemplateService.generatePreSignedTransactions(...);
+  requiresSigning = true;
+} catch (psbtError) {
+  console.error(...);
+  // Continue without PSBTs
+}
+
+Old loans work without PSBTs
+requiresSigning = false when PSBTs fail
+
+═══════════════════════════════════════════════════════════
+
+TEST 5: Mock Integration Flow
+
+Simulate the flow (without actual HTTP calls):
+
+console.log("=== SIMULATING LOAN CREATION FLOW ===");
+
+// Step 1: Mock escrow creation
+console.log("Step 1: Create escrow address");
+const mockEscrow = {
+  address: "tb1q...",
+  borrowerPubkey: "02...",
+  lenderPubkey: "03...",
+  platformPubkey: "04..."
+};
+
+// Step 2: Mock PSBT generation
+console.log("Step 2: Generate PSBTs");
+const mockPsbtResult = await TransactionTemplateService.generatePreSignedTransactions({
+  loanId: 88888,
+  borrowerPubkey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+  lenderPubkey: '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+  platformPubkey: '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9',
+  borrowerAddress: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
+  lenderAddress: 'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nc

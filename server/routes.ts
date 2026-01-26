@@ -1641,12 +1641,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           collateralAmount: collateralSats
         });
         
-        if (psbtResult.success && psbtResult.transactions) {
-          console.log(`✅ Generated ${psbtResult.transactions.length} PSBT templates`);
-          psbtTemplates = psbtResult.transactions;
+        // psbtResult is a PreSignedTransactionSet with { psbts: { repayment, default, liquidation, recovery }, escrowAddress, witnessScript }
+        if (psbtResult && psbtResult.psbts) {
+          console.log(`✅ Generated 4 PSBT templates for loan #${loanId}`);
+          // Convert to array format for response
+          psbtTemplates = [
+            { txType: 'repayment', psbtBase64: psbtResult.psbts.repayment },
+            { txType: 'default', psbtBase64: psbtResult.psbts.default },
+            { txType: 'liquidation', psbtBase64: psbtResult.psbts.liquidation },
+            { txType: 'recovery', psbtBase64: psbtResult.psbts.recovery }
+          ];
           requiresSigning = true;
         } else {
-          console.warn(`⚠️ Failed to generate PSBTs: ${psbtResult.error}`);
+          console.warn(`⚠️ PSBT generation returned empty result`);
         }
       } catch (psbtError: any) {
         console.error(`⚠️ PSBT generation error (non-fatal):`, psbtError.message);
