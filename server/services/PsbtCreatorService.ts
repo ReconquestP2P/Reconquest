@@ -468,4 +468,59 @@ export class PsbtCreatorService {
       return false;
     }
   }
+
+  /**
+   * Validates a DER-encoded signature format
+   * Does not verify cryptographically - just checks structure
+   */
+  static validateDerSignature(signatureHex: string): { valid: boolean; reason?: string } {
+    // Check hex format
+    if (!/^[0-9a-fA-F]+$/.test(signatureHex)) {
+      return { valid: false, reason: 'Invalid hex format' };
+    }
+    
+    // Check DER structure (starts with 0x30 = SEQUENCE tag)
+    if (!signatureHex.startsWith('30')) {
+      return { valid: false, reason: 'Invalid DER format (must start with 0x30)' };
+    }
+    
+    // Check length (DER signatures are typically 70-72 bytes = 140-144 hex chars)
+    // Allow flexibility: 68-75 bytes (136-150 hex chars)
+    if (signatureHex.length < 136 || signatureHex.length > 150) {
+      return { valid: false, reason: `Invalid signature length: ${signatureHex.length} chars (expected 136-150)` };
+    }
+    
+    // Verify DER structure: 30 <len> 02 <r_len> <r> 02 <s_len> <s>
+    try {
+      const sig = Buffer.from(signatureHex, 'hex');
+      
+      // Check tag
+      if (sig[0] !== 0x30) {
+        return { valid: false, reason: 'Missing SEQUENCE tag' };
+      }
+      
+      // Check length byte
+      const seqLen = sig[1];
+      if (seqLen + 2 !== sig.length) {
+        return { valid: false, reason: 'Invalid SEQUENCE length' };
+      }
+      
+      // First INTEGER (r)
+      if (sig[2] !== 0x02) {
+        return { valid: false, reason: 'Missing r INTEGER tag' };
+      }
+      
+      const rLen = sig[3];
+      const rEnd = 4 + rLen;
+      
+      // Second INTEGER (s)
+      if (sig[rEnd] !== 0x02) {
+        return { valid: false, reason: 'Missing s INTEGER tag' };
+      }
+      
+      return { valid: true };
+    } catch {
+      return { valid: false, reason: 'Failed to parse DER structure' };
+    }
+  }
 }

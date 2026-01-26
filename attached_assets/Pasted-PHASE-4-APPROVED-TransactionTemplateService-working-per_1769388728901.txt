@@ -1,0 +1,126 @@
+PHASE 4 APPROVED ✅ - TransactionTemplateService working perfectly
+
+Proceed to PHASE 5: Signing Ceremony API Endpoint
+
+Tasks:
+
+1. Create API Endpoint: POST /api/loans/:id/submit-signatures
+   File location: server/routes.ts (add new endpoint)
+   
+   Purpose:
+   - Accept borrower's signatures for the 4 PSBTs
+   - Validate signatures are correct
+   - Update database with signed PSBTs
+   - Mark loan as "ready for activation"
+
+2. Request Body Format:
+   {
+     "signatures": {
+       "repayment": "304502210...",      // DER-encoded signature (hex)
+       "default": "3045022100...",
+       "liquidation": "3044022...",
+       "recovery": "304402207..."
+     },
+     "borrowerPubkey": "02e3b0c44..."     // For verification
+   }
+
+3. Endpoint Logic:
+   
+   Step 1: Fetch loan and verify it exists
+   - GET loan by ID
+   - Check loan.status is appropriate for signing
+   - Verify borrower owns this loan
+   
+   Step 2: Retrieve unsigned PSBTs from database
+   - Call TransactionTemplateService.getPreSignedTransactions(loanId)
+   - Get all 4 PSBTs (repayment, default, liquidation, recovery)
+   
+   Step 3: Validate each signature
+   - For each PSBT type:
+     a) Decode the PSBT from base64
+     b) Verify signature matches the PSBT's signing hash
+     c) Verify signature is from borrower's public key
+     d) Ensure signature is valid DER format
+   
+   Step 4: Update database with signatures
+   - For each valid signature:
+     a) Update the pre_signed_transactions record
+     b) Set signature field = submitted signature
+     c) Keep broadcast_status = "pending" (not broadcasting yet)
+   
+   Step 5: Update loan status
+   - Set loan.pre_signed_complete = true (or similar flag)
+   - Ready for platform to add 2nd signature when needed
+
+4. Response Format:
+   Success (200):
+   {
+     "success": true,
+     "message": "All signatures validated and stored",
+     "signaturesAccepted": {
+       "repayment": true,
+       "default": true,
+       "liquidation": true,
+       "recovery": true
+     }
+   }
+   
+   Error (400):
+   {
+     "success": false,
+     "error": "Invalid signature for repayment transaction",
+     "signaturesAccepted": {
+       "repayment": false,
+       "default": true,
+       "liquidation": true,
+       "recovery": true
+     }
+   }
+
+5. Signature Validation Function:
+   
+   Create helper: validatePsbtSignature()
+   
+   Parameters:
+   - psbtBase64: string (the unsigned PSBT)
+   - signature: string (hex DER signature)
+   - pubkey: string (hex public key)
+   
+   Returns: boolean (true if valid)
+   
+   Implementation:
+   - Use bitcoinjs-lib to parse PSBT
+   - Extract signing hash from PSBT
+   - Verify signature against hash using pubkey
+   - Use secp256k1 signature verification
+
+6. Security Checks:
+   - Rate limiting on endpoint (max 5 attempts per loan)
+   - Validate all 4 signatures before accepting any
+   - Ensure borrower can't overwrite existing valid signatures
+   - Log all signature submission attempts
+   - Return generic error messages (don't leak PSBT details)
+
+7. Database Update Method:
+   Add to TransactionTemplateService:
+   
+   static async updateWithBorrowerSignature(
+     loanId: number,
+     txType: string,
+     signature: string
+   ): Promise<void>
+
+Deliverables:
+1. Show me the POST /api/loans/:id/submit-signatures endpoint code
+2. Show me the validatePsbtSignature() function
+3. Show me the database update logic
+4. Show me error handling for invalid signatures
+5. Test with mock signature data - show me the response
+
+IMPORTANT:
+- Don't connect to frontend yet (that's Phase 6)
+- This endpoint should work independently via Postman/curl
+- Signatures should be validated but not used to broadcast yet
+- Focus on storing valid signatures securely
+
+STOP after Phase 5 and wait for my approval before continuing.
