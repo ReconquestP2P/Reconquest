@@ -1,0 +1,136 @@
+PHASE 8 TESTING - Verify Pre-Signed Collateral Release Works
+
+Please run these 5 tests and report results:
+
+═══════════════════════════════════════════════════════════
+
+TEST 1: Function Signature Verification
+
+Tasks:
+- Open server/services/CollateralReleaseService.ts
+- Find addPlatformSignaturesAndBroadcast() function
+- Verify it accepts preSignedTxId parameter (optional number)
+- Show me the function signature (first 5 lines)
+
+Expected:
+async function addPlatformSignaturesAndBroadcast(
+  storage: any,
+  loan: any,
+  psbtBase64: string,
+  EncryptionService: any,
+  preSignedTxId?: number  // Optional ID for status update
+): Promise<ReleaseResult>
+
+═══════════════════════════════════════════════════════════
+
+TEST 2: Pre-Signed Transaction Detection
+
+Tasks:
+- In releaseCollateral() function
+- Show me the code that:
+  1. Calls getPreSignedTransactions(loanId)
+  2. Filters for 'repayment' type
+  3. Uses the PSBT if found
+  4. Passes preSignedTxId to addPlatformSignaturesAndBroadcast
+
+Expected:
+const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+const repaymentTxs = preSignedTxs.filter(tx => tx.txType === 'repayment' ...);
+if (repaymentTxs.length > 0) {
+  psbtBase64 = repaymentTxs[0].psbt;
+  preSignedTxId = repaymentTxs[0].id;
+}
+
+═══════════════════════════════════════════════════════════
+
+TEST 3: Broadcast Status Update
+
+Tasks:
+- In addPlatformSignaturesAndBroadcast() function
+- Find the code that updates broadcast status after successful broadcast
+- Show me the updateTransactionBroadcastStatus() call
+
+Expected:
+if (preSignedTxId && storage.updateTransactionBroadcastStatus) {
+  await storage.updateTransactionBroadcastStatus(preSignedTxId, {
+    broadcastStatus: 'broadcast',
+    broadcastTxid: broadcastTxid,
+    broadcastedAt: new Date()
+  });
+}
+
+═══════════════════════════════════════════════════════════
+
+TEST 4: Logging Verification
+
+Tasks:
+- Search CollateralReleaseService.ts for logging statements
+- Find logs that distinguish between:
+  * Pre-signed transaction used
+  * Legacy method used
+  * Status update after broadcast
+- Show me 3 different console.log statements
+
+Expected:
+- "[PRE-SIGNED]" prefix for pre-signed path
+- "[LEGACY]" prefix for legacy path
+- "📊 Updated pre-signed transaction" after broadcast
+- Clear indication of which path is being used
+
+═══════════════════════════════════════════════════════════
+
+TEST 5: Mock Collateral Release Flow
+
+Simulate the flow using loan 88888 (which has pre-signed PSBTs):
+
+console.log("=== TEST 5: MOCK COLLATERAL RELEASE FLOW ===");
+
+// Step 1: Check if pre-signed transactions exist
+const preSignedTxs = await storage.getPreSignedTransactions(88888);
+console.log(`Pre-signed transactions found: ${preSignedTxs.length}`);
+
+const repaymentTxs = preSignedTxs.filter(tx => 
+  tx.txType === 'repayment' || tx.txType === 'cooperative_close'
+);
+console.log(`Repayment transactions found: ${repaymentTxs.length}`);
+
+if (repaymentTxs.length > 0) {
+  const repaymentTx = repaymentTxs[0];
+  console.log(`✅ Would use pre-signed PSBT from record #${repaymentTx.id}`);
+  console.log(`   PSBT length: ${repaymentTx.psbt.length} chars`);
+  console.log(`   Borrower signature exists: ${!!repaymentTx.signature && repaymentTx.signature.length > 0}`);
+  console.log(`   Current broadcast status: ${repaymentTx.broadcastStatus}`);
+  
+  // Check what would happen after broadcast
+  console.log(`\n📊 After broadcast, would update record #${repaymentTx.id}:`);
+  console.log(`   broadcastStatus: 'pending' → 'broadcast'`);
+  console.log(`   broadcastTxid: (empty) → (actual txid)`);
+  console.log(`   broadcastedAt: (empty) → (current timestamp)`);
+} else {
+  console.log(`ℹ️ No pre-signed repayment transaction found`);
+  console.log(`   Would use LEGACY dynamic transaction method`);
+}
+
+console.log("\n✓ Mock flow complete");
+
+Expected:
+- Finds pre-signed repayment transaction for loan 88888
+- Shows PSBT data exists
+- Indicates it would use pre-signed path
+- Shows status update plan
+
+═══════════════════════════════════════════════════════════
+
+SUMMARY FORMAT:
+
+After running all tests, provide:
+
+✅ TEST 1: [PASS/FAIL] - Function signature includes preSignedTxId
+✅ TEST 2: [PASS/FAIL] - Pre-signed detection logic exists
+✅ TEST 3: [PASS/FAIL] - Broadcast status update implemented
+✅ TEST 4: [PASS/FAIL] - Logging distinguishes paths clearly
+✅ TEST 5: [PASS/FAIL] - Mock flow shows pre-signed would be used
+
+OVERALL: [X/5 tests passed]
+
+Include any issues or verification needed.
