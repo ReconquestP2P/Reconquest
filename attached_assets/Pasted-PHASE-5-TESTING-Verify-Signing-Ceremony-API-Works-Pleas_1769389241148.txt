@@ -1,0 +1,121 @@
+PHASE 5 TESTING - Verify Signing Ceremony API Works
+
+Please run these 5 tests and report results:
+
+═══════════════════════════════════════════════════════════
+
+TEST 1: Endpoint Exists in Routes
+
+Tasks:
+- Open server/routes.ts
+- Search for: app.post("/api/loans/:id/submit-signatures"
+- Show me lines 2864-2880 (the endpoint definition)
+- Confirm it has: authenticateToken, requireNonAdmin middleware
+- Confirm it accepts req.body.signatures
+
+Expected: Endpoint defined with proper middleware and body parsing
+
+═══════════════════════════════════════════════════════════
+
+TEST 2: Signature Validation Function
+
+Tasks:
+- Open server/services/PsbtCreatorService.ts
+- Show me the validateDerSignature() function (lines 475-528)
+- Test it with valid DER signature:
+  const testSig = "304402201111111111111111111111111111111111111111111111111111111111111111022022222222222222222222222222222222222222222222222222222222222222";
+  const result = PsbtCreatorService.validateDerSignature(testSig);
+  console.log(`Valid signature test: ${result.valid}`);
+
+- Test it with invalid signature (too short):
+  const invalidSig = "3044022011";
+  const result2 = PsbtCreatorService.validateDerSignature(invalidSig);
+  console.log(`Invalid signature test: ${result2.valid}, reason: ${result2.reason}`);
+
+Expected:
+- Function exists and is accessible
+- Valid DER signature returns { valid: true }
+- Invalid signature returns { valid: false, reason: "..." }
+
+═══════════════════════════════════════════════════════════
+
+TEST 3: Database Column Verification
+
+Run this SQL query:
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'loans' 
+  AND column_name = 'borrower_signing_complete';
+
+If column doesn't exist, check for similar columns:
+SELECT column_name 
+FROM information_schema.columns
+WHERE table_name = 'loans' 
+  AND column_name LIKE '%sign%';
+
+Expected:
+- Column exists to track borrower signing status
+- OR show me what column is used to track this
+
+═══════════════════════════════════════════════════════════
+
+TEST 4: Rate Limiting Verification
+
+Tasks:
+- Search routes.ts for rate limiting configuration
+- Look for: rateLimiter or rateLimit near the submit-signatures endpoint
+- Show me the configuration (max attempts, window time)
+
+Expected:
+- Rate limiter configured for 5 attempts per 10 minutes
+- OR show me the actual rate limit settings
+
+═══════════════════════════════════════════════════════════
+
+TEST 5: Mock Endpoint Call (Without Broadcasting)
+
+Create a test that simulates the endpoint logic WITHOUT actually calling HTTP:
+
+const mockTest = async () => {
+  // Step 1: Get PSBTs for loan 99999
+  const psbts = await TransactionTemplateService.getPreSignedTransactions(99999);
+  console.log(`Found ${psbts.length} PSBTs for loan 99999`);
+  
+  // Step 2: Test signature validation on each PSBT
+  const mockSignatures = {
+    repayment: "304402201111111111111111111111111111111111111111111111111111111111111111022022222222222222222222222222222222222222222222222222222222222222",
+    default: "304402203333333333333333333333333333333333333333333333333333333333333333022044444444444444444444444444444444444444444444444444444444444444",
+    liquidation: "304402205555555555555555555555555555555555555555555555555555555555555555022066666666666666666666666666666666666666666666666666666666666666",
+    recovery: "304402207777777777777777777777777777777777777777777777777777777777777777022088888888888888888888888888888888888888888888888888888888888888"
+  };
+  
+  for (const [type, sig] of Object.entries(mockSignatures)) {
+    const validation = PsbtCreatorService.validateDerSignature(sig);
+    console.log(`${type}: ${validation.valid ? 'VALID' : 'INVALID - ' + validation.reason}`);
+  }
+  
+  console.log('\n✓ Mock signature validation complete');
+};
+
+await mockTest();
+
+Expected:
+- All 4 mock signatures validate as proper DER format
+- Validation logic works correctly
+- No errors thrown
+
+═══════════════════════════════════════════════════════════
+
+SUMMARY FORMAT:
+
+After running all tests, provide:
+
+✅ TEST 1: [PASS/FAIL] - Endpoint exists with proper middleware
+✅ TEST 2: [PASS/FAIL] - Signature validation works correctly  
+✅ TEST 3: [PASS/FAIL] - Database column exists
+✅ TEST 4: [PASS/FAIL] - Rate limiting configured
+✅ TEST 5: [PASS/FAIL] - Mock endpoint logic works
+
+OVERALL: [X/5 tests passed]
+
+Include any issues or unexpected results.
