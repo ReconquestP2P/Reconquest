@@ -1,0 +1,70 @@
+PHASE 4 TESTING - Verify TransactionTemplateService Works
+
+Please run these 5 tests and report results:
+
+═══════════════════════════════════════════════════════════
+
+TEST 1: File Structure Verification
+
+Tasks:
+- Confirm server/services/TransactionTemplateService.ts exists
+- Show first 30 lines of the file
+- Verify generatePreSignedTransactions() is exported
+- Verify getPreSignedTransactions() is exported
+
+Expected: File exists with both functions properly exported
+
+═══════════════════════════════════════════════════════════
+
+TEST 2: Database Records Verification
+
+Run this SQL query:
+SELECT 
+  id, 
+  loan_id, 
+  tx_type, 
+  party_role, 
+  broadcast_status, 
+  LENGTH(psbt) as psbt_length,
+  LENGTH(signature) as signature_length
+FROM pre_signed_transactions 
+WHERE loan_id = 99999
+ORDER BY tx_type;
+
+Expected: 4 records with:
+- tx_type: default, liquidation, recovery, repayment
+- party_role: borrower
+- broadcast_status: pending
+- psbt_length: > 200 (has data)
+- signature_length: 0 (empty/unsigned)
+
+═══════════════════════════════════════════════════════════
+
+TEST 3: Retrieval Function Testing
+
+Run this code:
+const allPsbts = await TransactionTemplateService.getPreSignedTransactions(99999);
+console.log(`Total PSBTs found: ${allPsbts.length}`);
+allPsbts.forEach(p => console.log(`  - ${p.txType}: ${p.psbt.substring(0, 30)}...`));
+
+const recoveryOnly = await TransactionTemplateService.getPreSignedTransactions(99999, 'recovery');
+console.log(`Recovery PSBTs found: ${recoveryOnly.length}`);
+console.log(`Recovery validAfter: ${recoveryOnly[0]?.validAfter}`);
+
+Expected:
+- Total PSBTs: 4
+- Each has different txType
+- Recovery filter returns 1 PSBT
+- Recovery has validAfter date (~30 days from now)
+
+═══════════════════════════════════════════════════════════
+
+TEST 4: Fresh Loan PSBT Generation
+
+Generate PSBTs for a new mock loan (ID: 88888):
+
+const freshResult = await TransactionTemplateService.generatePreSignedTransactions({
+  loanId: 88888,
+  borrowerPubkey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+  lenderPubkey: '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5',
+  platformPubkey: '02f9308a019258c31049344f85f89d5229b531c845836f99b08601f
