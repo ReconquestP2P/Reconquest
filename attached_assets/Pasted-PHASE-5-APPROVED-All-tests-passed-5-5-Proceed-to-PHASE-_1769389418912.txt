@@ -1,0 +1,135 @@
+PHASE 5 APPROVED ✅ - All tests passed (5/5)
+
+Proceed to PHASE 6: Frontend Signing Ceremony UI
+
+Tasks:
+
+1. Activate Signing Ceremony Modal Component
+   File: client/src/components/signing-ceremony-modal.tsx
+   
+   This component should:
+   - Appear during loan creation (after escrow address is generated)
+   - Show borrower they need to sign 4 transactions
+   - Accept passphrase input from borrower
+   - Derive private key client-side using PBKDF2
+   - Sign all 4 PSBTs with the derived key
+   - Submit signatures to POST /api/loans/:id/submit-signatures
+   - Show success/error feedback
+
+2. Modal UI Structure:
+   
+   Title: "🔐 Sign Pre-Authorized Transactions"
+   
+   Content:
+   - Explanation text: "For security, you need to sign 4 pre-authorized transactions that protect your collateral."
+   - Show 4 transaction types with icons:
+     ✅ Repayment (happy path - get collateral back)
+     ⚠️ Default (lender claims if you don't repay)
+     📊 Liquidation (if collateral value drops)
+     🔓 Recovery (emergency - you can claim after 30 days)
+   
+   - Passphrase input field (password type)
+   - "Important: Remember this passphrase - needed for emergency recovery"
+   - Warning: "Never share this passphrase with anyone"
+   
+   - Button: "Sign Transactions" (disabled until passphrase entered)
+   - Progress indicator while signing
+   - Success/error message display
+
+3. Client-Side Key Derivation (PBKDF2):
+   
+   Function: derivePrivateKey(passphrase: string, salt: string): Promise<string>
+   
+   Implementation:
+   - Use Web Crypto API (crypto.subtle.importKey + crypto.subtle.deriveKey)
+   - Algorithm: PBKDF2
+   - Hash: SHA-256
+   - Iterations: 100,000 (balance security vs performance)
+   - Salt: Use loan ID + borrower address as salt (deterministic)
+   - Output: 32-byte private key (hex)
+   
+   IMPORTANT: All happens client-side, private key NEVER sent to server
+
+4. PSBT Signing Function:
+   
+   Function: signPsbt(psbtBase64: string, privateKeyHex: string): string
+   
+   Implementation:
+   - Parse PSBT from base64
+   - Use bitcoinjs-lib or similar library
+   - Sign the PSBT with private key
+   - Extract signature (DER format)
+   - Return signature as hex string (140 chars)
+   
+   Sign all 4 PSBTs (repayment, default, liquidation, recovery)
+
+5. API Integration:
+   
+   After signing all 4 PSBTs:
+   
+   POST /api/loans/:id/submit-signatures
+   Headers: { Authorization: `Bearer ${token}` }
+   Body: {
+     signatures: {
+       repayment: "304402201111...",
+       default: "304402203333...",
+       liquidation: "304402205555...",
+       recovery: "304402207777..."
+     },
+     borrowerPubkey: "02e3b0c44..." // Derived from private key
+   }
+   
+   Handle response:
+   - Success: Close modal, show "✅ Signatures submitted successfully"
+   - Error: Show error message, allow retry
+
+6. Integration with Loan Creation Flow:
+   
+   Modify loan creation component to:
+   
+   Step 1: User fills out loan form
+   Step 2: Click "Create Loan" button
+   Step 3: Backend generates escrow + PSBTs
+   Step 4: SHOW SIGNING CEREMONY MODAL (pause here)
+   Step 5: User signs transactions
+   Step 6: Continue with loan activation
+   
+   The modal should be BLOCKING - loan not activated until signed
+
+7. Security Considerations:
+   
+   - ✅ Private key derived client-side only
+   - ✅ Private key never stored (only in memory during signing)
+   - ✅ Clear private key from memory after signing
+   - ✅ Show warning about passphrase security
+   - ✅ Validate passphrase strength (min 12 chars recommended)
+   - ✅ No autocomplete on passphrase field
+   - ✅ Show/hide passphrase toggle
+
+8. TypeScript Types:
+   
+   interface SigningCeremonyProps {
+     loanId: number;
+     psbts: {
+       repayment: string;
+       default: string;
+       liquidation: string;
+       recovery: string;
+     };
+     onSuccess: () => void;
+     onCancel: () => void;
+   }
+   
+   interface SigningProgress {
+     repayment: 'pending' | 'signing' | 'signed' | 'error';
+     default: 'pending' | 'signing' | 'signed' | 'error';
+     liquidation: 'pending' | 'signing' | 'signed' | 'error';
+     recovery: 'pending' | 'signing' | 'signed' | 'error';
+   }
+
+Deliverables:
+1. Show me the signing-ceremony-modal.tsx component code
+2. Show me the derivePrivateKey() function
+3. Show me the signPsbt() function
+4. Show me how it integrates with loan creation
+5. Show me the UI design (desc

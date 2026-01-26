@@ -36,11 +36,18 @@ interface SigningCeremonyModalProps {
 }
 
 interface SignedTransaction {
-  type: 'recovery' | 'cooperative_close' | 'default';
+  type: 'repayment' | 'default' | 'liquidation' | 'recovery';
   psbt: string;
   signature: string;
   txHash: string;
   validAfter?: number;
+}
+
+interface SigningProgress {
+  repayment: 'pending' | 'signing' | 'signed' | 'error';
+  default: 'pending' | 'signing' | 'signed' | 'error';
+  liquidation: 'pending' | 'signing' | 'signed' | 'error';
+  recovery: 'pending' | 'signing' | 'signed' | 'error';
 }
 
 export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: SigningCeremonyModalProps) {
@@ -51,6 +58,12 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
   const [recoveryFile, setRecoveryFile] = useState<File | null>(null);
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [transactionsGenerated, setTransactionsGenerated] = useState(false);
+  const [signingProgress, setSigningProgress] = useState<SigningProgress>({
+    repayment: 'pending',
+    default: 'pending',
+    liquidation: 'pending',
+    recovery: 'pending'
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -203,90 +216,89 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
   const signTransactions = async (privateKey: Uint8Array, publicKey: string) => {
     const signedTransactions: SignedTransaction[] = [];
+    const signatures: Record<string, string> = {};
     
+    // Reset progress
+    setSigningProgress({
+      repayment: 'pending',
+      default: 'pending',
+      liquidation: 'pending',
+      recovery: 'pending'
+    });
+    
+    // Borrowers sign all 4 transaction types
     if (role === 'borrower') {
-      const borrowerGracePeriodDays = 14;
-      const borrowerTimelock = (loan.termMonths * 30 + borrowerGracePeriodDays) * 24 * 60 * 60;
+      const txTypes: Array<'repayment' | 'default' | 'liquidation' | 'recovery'> = ['repayment', 'default', 'liquidation', 'recovery'];
       
-      const recoveryPsbt = await fetchPSBTTemplate(loan.id, 'recovery');
-      if (recoveryPsbt) {
-        const messageHash = sha256(new TextEncoder().encode(recoveryPsbt.psbtBase64));
-        const signature = await secp256k1.sign(messageHash, privateKey);
-        const sigHex = serializeSignature(signature);
-        
-        signedTransactions.push({
-          type: 'recovery',
-          psbt: recoveryPsbt.psbtBase64,
-          signature: sigHex,
-          txHash: recoveryPsbt.txHash,
-          validAfter: Date.now() + (borrowerTimelock * 1000),
-        });
+      for (const txType of txTypes) {
+        try {
+          setSigningProgress(prev => ({ ...prev, [txType]: 'signing' }));
+          
+          const psbtData = await fetchPSBTTemplate(loan.id, txType);
+          if (psbtData) {
+            // Sign the PSBT content
+            const messageHash = sha256(new TextEncoder().encode(psbtData.psbtBase64));
+            const signature = await secp256k1.sign(messageHash, privateKey);
+            
+            // Convert to DER format for the new API
+            const derSig = serializeSignatureDER(signature);
+            signatures[txType] = derSig;
+            
+            signedTransactions.push({
+              type: txType,
+              psbt: psbtData.psbtBase64,
+              signature: derSig,
+              txHash: psbtData.txHash,
+            });
+            
+            setSigningProgress(prev => ({ ...prev, [txType]: 'signed' }));
+            console.log(`✓ Signed ${txType} transaction`);
+          } else {
+            console.warn(`No PSBT found for ${txType}`);
+            setSigningProgress(prev => ({ ...prev, [txType]: 'error' }));
+          }
+        } catch (err) {
+          console.error(`Error signing ${txType}:`, err);
+          setSigningProgress(prev => ({ ...prev, [txType]: 'error' }));
+        }
       }
     }
     
-    const cooperativePsbt = await fetchPSBTTemplate(loan.id, 'cooperative_close');
-    if (cooperativePsbt) {
-      const messageHash = sha256(new TextEncoder().encode(cooperativePsbt.psbtBase64));
-      const signature = await secp256k1.sign(messageHash, privateKey);
-      const sigHex = serializeSignature(signature);
-      
-      signedTransactions.push({
-        type: 'cooperative_close',
-        psbt: cooperativePsbt.psbtBase64,
-        signature: sigHex,
-        txHash: cooperativePsbt.txHash,
-      });
-    }
-    
-    if (role === 'lender') {
-      const lenderTimelock = loan.termMonths * 30 * 24 * 60 * 60;
-      
-      const defaultPsbt = await fetchPSBTTemplate(loan.id, 'default');
-      if (defaultPsbt) {
-        const messageHash = sha256(new TextEncoder().encode(defaultPsbt.psbtBase64));
-        const signature = await secp256k1.sign(messageHash, privateKey);
-        const sigHex = serializeSignature(signature);
-        
-        signedTransactions.push({
-          type: 'default',
-          psbt: defaultPsbt.psbtBase64,
-          signature: sigHex,
-          txHash: defaultPsbt.txHash,
-          validAfter: Date.now() + (lenderTimelock * 1000),
-        });
-      }
-    }
-    
+    // Wipe private key immediately after signing
     privateKey.fill(0);
     console.log('Private key wiped from memory');
     
-    if (signedTransactions.length === 0) {
+    if (Object.keys(signatures).length === 0) {
       throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet.');
     }
     
-    console.log(`Signed ${signedTransactions.length} transactions`);
+    console.log(`Signed ${Object.keys(signatures).length} transactions`);
     
-    for (const tx of signedTransactions) {
-      await apiRequest(`/api/loans/${loan.id}/transactions/store`, 'POST', {
-        partyRole: role,
-        partyPubkey: publicKey,
-        txType: tx.type,
-        psbt: tx.psbt,
-        signature: tx.signature,
-        txHash: tx.txHash,
-        validAfter: tx.validAfter,
+    // Submit all signatures to the new API endpoint
+    try {
+      const submitResponse = await apiRequest(`/api/loans/${loan.id}/submit-signatures`, 'POST', {
+        signatures,
+        borrowerPubkey: publicKey
       });
+      
+      const submitData = await submitResponse.json();
+      
+      if (!submitData.success) {
+        throw new Error(submitData.error || 'Failed to submit signatures');
+      }
+      
+      console.log('All signatures submitted to platform');
+    } catch (err: any) {
+      console.error('Error submitting signatures:', err);
+      throw new Error(`Failed to submit signatures: ${err.message}`);
     }
     
-    console.log('All transactions stored on platform');
-    
+    // Download recovery file
     const result = { publicKey, signedTransactions };
     downloadSignedTransactions(loan.id, role, result);
-    
     console.log('Recovery file downloaded');
     
-    console.log('Key remains in browser vault for future use');
-    
+    // Complete signing ceremony
     const response = await apiRequest(`/api/loans/${loan.id}/complete-signing`, 'POST', { role });
     const data = await response.json();
     
@@ -331,11 +343,11 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            Signing Ceremony - Phase 3
+            <Lock className="h-5 w-5 text-primary" />
+            🔐 Sign Pre-Authorized Transactions
           </DialogTitle>
           <DialogDescription>
-            Sign all required transactions to secure your escrow
+            For security, you need to sign 4 pre-authorized transactions that protect your collateral.
           </DialogDescription>
         </DialogHeader>
 
@@ -361,25 +373,28 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
               </Alert>
 
               <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                <h3 className="font-semibold text-sm">What Will Happen:</h3>
-                <ol className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex gap-2">
-                    <span className="font-bold text-primary">1.</span>
-                    <span><strong>Sign Transactions:</strong> Pre-sign all required transactions (recovery, cooperative close, default)</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-primary">2.</span>
-                    <span><strong>Store on Platform:</strong> Signed transactions saved for automated execution</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-primary">3.</span>
-                    <span><strong>Download Backup:</strong> Recovery file saved to your device</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="font-bold text-primary">4.</span>
-                    <span><strong>Wipe Key:</strong> Private key permanently removed</span>
-                  </li>
-                </ol>
+                <h3 className="font-semibold text-sm">🔐 Sign 4 Pre-Authorized Transactions:</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">✅</span>
+                    <span><strong>Repayment:</strong> Get collateral back when you repay the loan</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    <span><strong>Default:</strong> Lender claims collateral if you don't repay</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
+                    <span><strong>Liquidation:</strong> Automatic if collateral value drops too low</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔓</span>
+                    <span><strong>Recovery:</strong> Emergency claim after 30 days if platform fails</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  These pre-signed transactions protect your Bitcoin collateral and ensure fair outcomes.
+                </p>
               </div>
 
               <div className="pt-4 space-y-3">
@@ -551,22 +566,56 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
           )}
 
           {step === 'generating' && (
-            <div className="py-8 text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold">Signing Transactions...</h3>
+            <div className="py-6 space-y-4">
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
+                  <Lock className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold mt-2">Signing Pre-Authorized Transactions</h3>
                 <p className="text-sm text-muted-foreground">
-                  Please wait while we sign and store your transactions
+                  Sign 4 pre-authorized transactions to protect your collateral
                 </p>
               </div>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Signing transactions...</p>
-                <p>Storing on platform...</p>
-                <p>Downloading backup...</p>
-                <p>Wiping key from memory...</p>
+              
+              <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
+                {[
+                  { type: 'repayment' as const, icon: '✅', label: 'Repayment', desc: 'Get collateral back when you repay' },
+                  { type: 'default' as const, icon: '⚠️', label: 'Default', desc: 'Lender claims if you don\'t repay' },
+                  { type: 'liquidation' as const, icon: '📊', label: 'Liquidation', desc: 'If collateral value drops too low' },
+                  { type: 'recovery' as const, icon: '🔓', label: 'Recovery', desc: 'Emergency claim after 30 days' },
+                ].map(({ type, icon, label, desc }) => (
+                  <div key={type} className="flex items-center justify-between p-2 rounded bg-background/50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{icon}</span>
+                      <div>
+                        <p className="font-medium text-sm">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {signingProgress[type] === 'pending' && (
+                        <span className="text-xs text-muted-foreground">Waiting</span>
+                      )}
+                      {signingProgress[type] === 'signing' && (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      )}
+                      {signingProgress[type] === 'signed' && (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      )}
+                      {signingProgress[type] === 'error' && (
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+              
+              <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-sm">
+                  <strong>Remember your passphrase!</strong> It's needed for emergency recovery if the platform becomes unavailable.
+                </AlertDescription>
+              </Alert>
             </div>
           )}
 
@@ -658,6 +707,55 @@ function serializeSignature(signature: any): string {
   
   console.error('Unable to serialize signature:', signature);
   throw new Error('Invalid signature format');
+}
+
+/**
+ * Serialize signature to DER format for Bitcoin transactions
+ * DER format: 30 <len> 02 <r_len> <r> 02 <s_len> <s>
+ */
+function serializeSignatureDER(signature: any): string {
+  let rHex: string;
+  let sHex: string;
+  
+  // Extract r and s values
+  if (signature.r !== undefined && signature.s !== undefined) {
+    rHex = signature.r.toString(16).padStart(64, '0');
+    sHex = signature.s.toString(16).padStart(64, '0');
+  } else if (typeof signature.toCompactRawBytes === 'function') {
+    const compact = signature.toCompactRawBytes();
+    rHex = bytesToHex(compact.slice(0, 32));
+    sHex = bytesToHex(compact.slice(32, 64));
+  } else if (signature instanceof Uint8Array && signature.length === 64) {
+    rHex = bytesToHex(signature.slice(0, 32));
+    sHex = bytesToHex(signature.slice(32, 64));
+  } else {
+    throw new Error('Cannot extract r/s from signature');
+  }
+  
+  // Remove leading zeros but keep at least one byte
+  rHex = rHex.replace(/^(00)+/, '') || '00';
+  sHex = sHex.replace(/^(00)+/, '') || '00';
+  
+  // Add leading 00 if high bit is set (to indicate positive number)
+  if (parseInt(rHex[0], 16) >= 8) {
+    rHex = '00' + rHex;
+  }
+  if (parseInt(sHex[0], 16) >= 8) {
+    sHex = '00' + sHex;
+  }
+  
+  // Pad to even length
+  if (rHex.length % 2 !== 0) rHex = '0' + rHex;
+  if (sHex.length % 2 !== 0) sHex = '0' + sHex;
+  
+  const rLen = (rHex.length / 2).toString(16).padStart(2, '0');
+  const sLen = (sHex.length / 2).toString(16).padStart(2, '0');
+  
+  // Build DER: 30 <total_len> 02 <r_len> <r> 02 <s_len> <s>
+  const innerContent = '02' + rLen + rHex + '02' + sLen + sHex;
+  const totalLen = (innerContent.length / 2).toString(16).padStart(2, '0');
+  
+  return '30' + totalLen + innerContent;
 }
 
 export default SigningCeremonyModal;
