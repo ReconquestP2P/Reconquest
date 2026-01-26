@@ -126,7 +126,8 @@ async function addPlatformSignaturesAndBroadcast(
   storage: any,
   loan: any,
   psbtBase64: string,
-  EncryptionService: any
+  EncryptionService: any,
+  preSignedTxId?: number  // Optional: ID of pre-signed transaction record for status update
 ): Promise<ReleaseResult> {
   try {
     const network = getNetwork();
@@ -227,6 +228,21 @@ async function addPlatformSignaturesAndBroadcast(
     // Broadcast
     const broadcastTxid = await broadcastToTestnet4(txHex);
     
+    // Update broadcast status in database if we have the transaction record ID
+    if (preSignedTxId && storage.updateTransactionBroadcastStatus) {
+      try {
+        await storage.updateTransactionBroadcastStatus(preSignedTxId, {
+          broadcastStatus: 'broadcast',
+          broadcastTxid: broadcastTxid,
+          broadcastedAt: new Date()
+        });
+        console.log(`📊 Updated pre-signed transaction #${preSignedTxId} status to 'broadcast'`);
+      } catch (updateError: any) {
+        console.warn(`⚠️ Failed to update broadcast status: ${updateError.message}`);
+        // Non-fatal - transaction was already broadcast successfully
+      }
+    }
+    
     return {
       success: true,
       txid: broadcastTxid,
@@ -293,9 +309,12 @@ export async function releaseCollateral(
         );
         
         let psbtBase64 = loan.txRepaymentHex;
+        let preSignedTxId: number | undefined;
+        
         if (repaymentTxs.length > 0) {
           psbtBase64 = repaymentTxs[0].psbt;
-          console.log(`   Using PSBT from pre_signed_transactions table`);
+          preSignedTxId = repaymentTxs[0].id;  // Track ID for broadcast status update
+          console.log(`   Using PSBT from pre_signed_transactions table (record #${preSignedTxId})`);
         }
         
         // The pre-signed PSBT should have borrower's signature
@@ -304,11 +323,12 @@ export async function releaseCollateral(
           storage,
           loan,
           psbtBase64,
-          EncryptionService
+          EncryptionService,
+          preSignedTxId  // Pass ID for broadcast status update
         );
         
         if (result.success) {
-          console.log(`✅ Pre-signed transaction broadcast successful: ${result.txid}`);
+          console.log(`✅ [PRE-SIGNED] Transaction broadcast successful: ${result.txid}`);
           return result;
         }
         
@@ -427,12 +447,12 @@ export async function releaseCollateral(
       const txHex = tx.toHex();
       const txid = tx.getId();
       
-      console.log(`✅ Transaction finalized with platform + lender keys: ${txid}`);
+      console.log(`✅ [LEGACY] Transaction finalized with platform + lender keys: ${txid}`);
       
       // Broadcast
       const broadcastTxid = await broadcastToTestnet4(txHex);
       
-      console.log(`📡 Transaction broadcast successful: ${broadcastTxid}`);
+      console.log(`📡 [LEGACY] Transaction broadcast successful: ${broadcastTxid}`);
       
       return {
         success: true,

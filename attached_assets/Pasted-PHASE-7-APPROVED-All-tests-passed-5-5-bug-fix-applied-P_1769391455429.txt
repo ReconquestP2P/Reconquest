@@ -1,0 +1,168 @@
+PHASE 7 APPROVED ✅ - All tests passed (5/5) + bug fix applied
+
+Proceed to PHASE 8: Update Collateral Release to Use Pre-Signed Transactions
+
+This is where the pre-signed system actually gets USED!
+
+Tasks:
+
+1. Update CollateralReleaseService.ts
+   File: server/services/CollateralReleaseService.ts
+   
+   Current behavior:
+   - Builds transaction dynamically every time
+   - Gets UTXOs, creates inputs/outputs, signs, broadcasts
+   
+   NEW behavior:
+   - FIRST: Try to load pre-signed REPAYMENT PSBT from database
+   - If found: Add platform's signature (2nd of 3), broadcast
+   - If NOT found: Fall back to old dynamic method (backward compatibility)
+
+2. Main Function to Modify: releaseCollateral()
+   
+   Add at the beginning:
+   
+   async releaseCollateral(loanId: number): Promise<string> {
+     console.log(`[CollateralRelease] Starting release for loan ${loanId}`);
+     
+     // NEW: Try to use pre-signed transaction first
+     const preSignedTxid = await this.tryPreSignedRelease(loanId);
+     if (preSignedTxid) {
+       console.log(`✅ Used pre-signed transaction: ${preSignedTxid}`);
+       return preSignedTxid;
+     }
+     
+     // Fallback: Use old dynamic transaction method
+     console.log(`ℹ️ No pre-signed transaction found, using legacy method`);
+     // ... existing dynamic transaction code continues ...
+   }
+
+3. New Method: tryPreSignedRelease()
+   
+   async tryPreSignedRelease(loanId: number): Promise<string | null> {
+     try {
+       // Step 1: Get pre-signed repayment PSBT from database
+       const psbts = await TransactionTemplateService.getPreSignedTransactions(loanId, 'repayment');
+       if (psbts.length === 0) {
+         console.log(`No pre-signed repayment transaction found for loan ${loanId}`);
+         return null;
+       }
+       
+       const repaymentPsbt = psbts[0];
+       
+       // Step 2: Check borrower has already signed
+       if (!repaymentPsbt.signature || repaymentPsbt.signature.length === 0) {
+         console.log(`Repayment PSBT not yet signed by borrower`);
+         return null;
+       }
+       
+       // Step 3: Load PSBT and add platform's signature
+       const psbt = bitcoin.Psbt.fromBase64(repaymentPsbt.psbt);
+       
+       // Get platform's private key
+       const platformPrivateKey = Buffer.from(process.env.PLATFORM_PRIVATE_KEY, 'hex');
+       
+       // Sign with platform key (2nd signature of 2-of-3 multisig)
+       psbt.signAllInputs(platformPrivateKey);
+       psbt.finalizeAllInputs();
+       
+       // Step 4: Extract and broadcast transaction
+       const tx = psbt.extractTransaction();
+       const txHex = tx.toHex();
+       const txid = await this.broadcastTransaction(txHex);
+       
+       // Step 5: Update database
+       await storage.updateTransactionBroadcastStatus(repaymentPsbt.id, {
+         broadcastStatus: 'broadcast',
+         broadcastTxid: txid,
+         broadcastedAt: new Date()
+       });
+       
+       console.log(`✅ Pre-signed repayment transaction broadcast: ${txid}`);
+       return txid;
+       
+     } catch (error) {
+       console.error(`Error using pre-signed transaction:`, error.message);
+       return null;  // Fall back to dynamic method
+     }
+   }
+
+4. Update Database Helper (if needed):
+   
+   Check if storage.updateTransactionBroadcastStatus() exists.
+   
+   If not, add to storage.ts:
+   
+   async updateTransactionBroadcastStatus(
+     transactionId: number, 
+     updates: {
+       broadcastStatus?: string;
+       broadcastTxid?: string;
+       broadcastedAt?: Date;
+       confirmedAt?: Date;
+     }
+   ): Promise<void> {
+     await db.update(preSignedTransactions)
+       .set(updates)
+       .where(eq(preSignedTransactions.id, transactionId));
+   }
+
+5. Broadcast Transaction Helper:
+   
+   Verify broadcastTransaction() method exists in CollateralReleaseService.
+   
+   Should use mempool.space API:
+   POST https://mempool.space/testnet4/api/tx (for testnet4)
+   Body: raw transaction hex
+   
+   Or use existing BitcoinService.broadcastTransaction() if available.
+
+6. Logging and Monitoring:
+   
+   Add clear logging to distinguish between:
+   - ✅ Pre-signed transaction used
+   - ℹ️ No pre-signed found, using legacy
+   - ⚠️ Pre-signed failed, falling back to legacy
+   - ❌ Both methods failed (error)
+   
+   This helps debug which path is being used.
+
+7. Testing Strategy:
+   
+   NEW loans (with pre-signed PSBTs):
+   - Should use pre-signed repayment transaction
+   - Faster (no UTXO fetching, just add signature and broadcast)
+   - More secure (borrower approved the transaction)
+   
+   OLD loans (without pre-signed PSBTs):
+   - Should fall back to legacy dynamic method
+   - Still works (backward compatibility maintained)
+
+8. Security Validation:
+   
+   Before broadcasting pre-signed transaction:
+   - ✅ Verify borrower signature exists
+   - ✅ Verify transaction sends to borrower's return address
+   - ✅ Verify amount matches expected collateral
+   - ✅ Verify PSBT is for the correct loan
+   
+   Add validation:
+   
+   if (repaymentPsbt.loanId !== loanId) {
+     throw new Error('PSBT loan ID mismatch');
+   }
+
+Deliverables:
+1. Show me the updated releaseCollateral() function
+2. Show me the new tryPreSignedRelease() function
+3. Show me the broadcastTransaction() method being used
+4. Confirm updateTransactionBroadcastStatus() exists in storage
+5. Show me the logging output distinguishing pre-signed vs legacy
+
+IMPORTANT:
+- Maintain backward compatibility (old loans must still work)
+- Pre-signed is attempted FIRST, legacy is FALLBACK
+- All errors in pre-signed path should fallback gracefully
+- Add clear logging to track which path is used
+
+STOP after Phase 8 and wait for my approval before continuing.
