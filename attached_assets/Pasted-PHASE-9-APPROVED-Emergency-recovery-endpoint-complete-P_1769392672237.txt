@@ -1,0 +1,112 @@
+PHASE 9 APPROVED ✅ - Emergency recovery endpoint complete!
+
+Proceed to PHASE 10: Final Testing & Documentation (FINAL PHASE!)
+
+This is the wrap-up phase. We need to:
+1. Test the complete end-to-end flow
+2. Document the new pre-signed system
+3. Create a deployment checklist
+
+Tasks:
+
+═══════════════════════════════════════════════════════════
+
+PART 1: End-to-End Flow Documentation
+
+Create a markdown document summarizing the complete flow:
+
+File: docs/PRE_SIGNED_TRANSACTIONS.md
+
+Content:
+
+# Pre-Signed Transaction System
+
+## Overview
+The Reconquest platform now uses pre-signed transactions for true non-custodial Bitcoin escrow, following the Firefish protocol architecture.
+
+## Key Features
+✅ Borrowers pre-sign 4 transactions during loan creation
+✅ Platform adds 2nd signature only when needed (2-of-3 multisig)
+✅ 30-day recovery timelock enables emergency withdrawals
+✅ Backward compatible with old loans (no pre-signed)
+
+## Transaction Types
+
+1. **REPAYMENT** - Cooperative close (happy path)
+   - Triggered when: Borrower repays loan successfully
+   - Signatures needed: 2-of-3 (borrower + platform)
+   - Sends to: Borrower's return address
+
+2. **DEFAULT** - Non-payment
+   - Triggered when: Borrower fails to repay
+   - Signatures needed: 2-of-3 (lender + platform)
+   - Sends to: Lender's address
+
+3. **LIQUIDATION** - LTV breach
+   - Triggered when: Collateral value drops below threshold
+   - Signatures needed: 2-of-3 (lender + platform)
+   - Sends to: Split (lender + platform fees)
+
+4. **RECOVERY** - Emergency timelock
+   - Triggered when: Platform unavailable + 30 days passed
+   - Signatures needed: Borrower only (OP_CSV timelock path)
+   - Sends to: Borrower's return address
+
+## Loan Creation Flow
+
+### Step 1: Borrower Creates Loan
+- Posts loan request with terms
+- Status: "posted"
+
+### Step 2: Lender Commits
+- Lender funds the loan
+- Status: "funded"
+- escrowState: "awaiting_borrower_key"
+
+### Step 3: Borrower Key Ceremony
+- Borrower provides public key + Bitcoin return address
+- Escrow address created (2-of-3 multisig)
+- 4 PSBT templates generated
+- Frontend receives PSBTs
+
+### Step 4: Signing Ceremony (NEW!)
+- Modal appears with 4 transaction types
+- Borrower enters passphrase
+- Client-side key derivation (PBKDF2, 100k iterations)
+- Sign all 4 PSBTs in browser
+- Submit signatures to: POST /api/loans/:id/submit-signatures
+- borrower_signing_complete = true
+
+### Step 5: Borrower Deposits BTC
+- Borrower sends collateral to escrow address
+- Loan activates after confirmation
+
+### Step 6: Loan Lifecycle
+- Repayment: Use pre-signed REPAYMENT PSBT
+- Default: Use pre-signed DEFAULT PSBT
+- Liquidation: Use pre-signed LIQUIDATION PSBT
+
+### Step 7: Emergency Recovery (if needed)
+- Platform down + 30 days passed
+- Call: POST /api/loans/:id/emergency-recovery
+- Download recovery PSBT
+- Broadcast manually using any Bitcoin wallet
+
+## API Endpoints
+
+### POST /api/loans/:id/submit-signatures
+Submit borrower signatures for 4 pre-signed transactions.
+
+**Authentication:** Required (borrower only)
+
+**Request:**
+```json
+{
+  "signatures": {
+    "repayment": "304402201111...",
+    "default": "304402203333...",
+    "liquidation": "304402205555...",
+    "recovery": "304402207777..."
+  },
+  "borrowerPubkey": "02e3b0c44..."
+}
