@@ -3110,6 +3110,128 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  // ================================================================
+  // EMERGENCY RECOVERY ENDPOINT
+  // Allows borrowers to recover collateral if platform is unavailable
+  // NO AUTHENTICATION REQUIRED (emergency scenario)
+  // ================================================================
+  
+  // Rate limiting for emergency recovery endpoint
+  const emergencyRecoveryAttempts = new Map<string, { count: number; resetTime: number }>();
+  
+  app.post("/api/loans/:id/emergency-recovery", async (req: any, res) => {
+    const loanId = parseInt(req.params.id);
+    const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
+    
+    // Rate limiting: Max 10 requests per hour per loan, 50 per hour per IP
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    const loanKey = `loan:${loanId}`;
+    const ipKey = `ip:${clientIp}`;
+    
+    for (const key of [loanKey, ipKey]) {
+      const limit = key.startsWith('loan:') ? 10 : 50;
+      const record = emergencyRecoveryAttempts.get(key);
+      
+      if (record && now < record.resetTime) {
+        if (record.count >= limit) {
+          console.warn(`🚨 [EmergencyRecovery] Rate limit exceeded for ${key}`);
+          return res.status(429).json({ 
+            error: "Too many recovery attempts. Please try again later.",
+            retryAfter: Math.ceil((record.resetTime - now) / 1000)
+          });
+        }
+        record.count++;
+      } else {
+        emergencyRecoveryAttempts.set(key, { count: 1, resetTime: now + oneHour });
+      }
+    }
+    
+    try {
+      console.log(`🚨 [EmergencyRecovery] Recovery requested for loan #${loanId} from IP ${clientIp}`);
+      
+      // Step 1: Get loan details
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ error: "Loan not found" });
+      }
+      
+      // Step 2: Get pre-signed recovery transaction
+      const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+      const recoveryTxs = preSignedTxs.filter(tx => 
+        tx.txType === 'recovery' || tx.txType === 'RECOVERY' || tx.txType === 'borrower_recovery'
+      );
+      
+      if (recoveryTxs.length === 0) {
+        return res.status(404).json({ 
+          error: "No recovery transaction found for this loan",
+          message: "This loan may not have pre-signed transactions enabled. Legacy loans require platform assistance for recovery."
+        });
+      }
+      
+      const recoveryTx = recoveryTxs[0];
+      
+      // Step 3: Check if timelock has expired
+      const currentTime = new Date();
+      const ALLOW_TIMELOCK_BYPASS = process.env.NODE_ENV === 'development' || 
+                                    process.env.BITCOIN_NETWORK === 'testnet4';
+      
+      if (recoveryTx.validAfter && currentTime < recoveryTx.validAfter) {
+        const daysRemaining = Math.ceil((recoveryTx.validAfter.getTime() - currentTime.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (!ALLOW_TIMELOCK_BYPASS) {
+          // Production behavior: enforce timelock
+          return res.status(403).json({
+            error: "Recovery timelock has not expired yet",
+            validAfter: recoveryTx.validAfter,
+            daysRemaining,
+            message: `Recovery transaction can be broadcast after ${recoveryTx.validAfter.toISOString()}. This timelock protects against premature recovery.`
+          });
+        } else {
+          // Development/testnet: warn but allow for testing
+          console.warn(`⚠️ [EmergencyRecovery] DEV MODE: Bypassing timelock check for loan #${loanId}`);
+          console.warn(`   Timelock would expire at: ${recoveryTx.validAfter.toISOString()}`);
+        }
+      }
+      
+      // Step 4: Return recovery PSBT to borrower
+      console.log(`🚨 [EmergencyRecovery] Returning recovery PSBT for loan #${loanId}`);
+      console.log(`   Timelock expired: ${recoveryTx.validAfter || 'N/A'}`);
+      console.log(`   Borrower can now broadcast recovery transaction`);
+      
+      res.json({
+        success: true,
+        message: "Recovery transaction available for broadcast",
+        recovery: {
+          psbt: recoveryTx.psbt,
+          txType: recoveryTx.txType,
+          validAfter: recoveryTx.validAfter,
+          borrowerSignatureIncluded: !!(recoveryTx.signature && recoveryTx.signature.length > 0),
+          instructions: [
+            "1. This PSBT contains your pre-signed recovery transaction",
+            "2. The timelock has expired, so you can broadcast immediately",
+            "3. Use a Bitcoin wallet (Sparrow, Electrum) or broadcasting service to finalize and broadcast",
+            "4. After 1 confirmation, your collateral will be returned to your designated address",
+            "5. If you need to sign again, use your original passphrase to derive your key"
+          ]
+        },
+        loan: {
+          id: loan.id,
+          escrowAddress: loan.escrowAddress,
+          collateralBtc: loan.collateralBtc,
+          status: loan.status,
+          borrowerAddress: loan.borrowerAddress
+        },
+        securityNotice: "This endpoint is designed for emergency recovery when the platform is unavailable. The 30-day timelock ensures you cannot recover collateral before giving the platform time to resolve issues."
+      });
+      
+    } catch (error: any) {
+      console.error(`🚨 [EmergencyRecovery] Error for loan #${loanId}:`, error);
+      res.status(500).json({ error: "Failed to retrieve recovery transaction" });
+    }
+  });
+
   /**
    * Verify pre-signed transactions exist for a loan
    * Returns status of all required pre-signed transactions

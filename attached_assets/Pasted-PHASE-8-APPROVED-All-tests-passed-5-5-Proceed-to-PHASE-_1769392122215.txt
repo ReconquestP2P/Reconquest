@@ -1,0 +1,181 @@
+PHASE 8 APPROVED ✅ - All tests passed (5/5)
+
+Proceed to PHASE 9: Emergency Recovery Endpoint
+
+This is the LAST FEATURE PHASE! This endpoint enables true non-custodial security.
+
+Purpose:
+If the platform becomes unavailable, borrowers can use this endpoint to recover their collateral after the 30-day timelock expires. This is the safety mechanism that makes the system truly non-custodial.
+
+Tasks:
+
+1. Create API Endpoint: POST /api/loans/:id/emergency-recovery
+   File location: server/routes.ts
+   
+   Authentication:
+   - Can be called WITH or WITHOUT authentication
+   - If authenticated: verify user is the borrower
+   - If NOT authenticated: allow (emergency scenario, platform may be down)
+   
+   Purpose:
+   - Return the pre-signed RECOVERY PSBT to the borrower
+   - Borrower can broadcast it themselves (after timelock expires)
+   - No platform signature needed (timelock path in witness script)
+
+2. Endpoint Implementation:
+   
+   app.post("/api/loans/:id/emergency-recovery", async (req: any, res) => {
+     const loanId = parseInt(req.params.id);
+     
+     try {
+       // Step 1: Get loan details
+       const loan = await storage.getLoan(loanId);
+       if (!loan) {
+         return res.status(404).json({ error: "Loan not found" });
+       }
+       
+       // Step 2: Get pre-signed recovery transaction
+       const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+       const recoveryTxs = preSignedTxs.filter(tx => tx.txType === 'recovery');
+       
+       if (recoveryTxs.length === 0) {
+         return res.status(404).json({ 
+           error: "No recovery transaction found for this loan",
+           message: "This loan may not have pre-signed transactions enabled"
+         });
+       }
+       
+       const recoveryTx = recoveryTxs[0];
+       
+       // Step 3: Check if timelock has expired
+       const now = new Date();
+       if (recoveryTx.validAfter && now < recoveryTx.validAfter) {
+         const daysRemaining = Math.ceil((recoveryTx.validAfter.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+         return res.status(403).json({
+           error: "Recovery timelock has not expired yet",
+           validAfter: recoveryTx.validAfter,
+           daysRemaining,
+           message: `Recovery transaction can be broadcast after ${recoveryTx.validAfter.toISOString()}`
+         });
+       }
+       
+       // Step 4: Return recovery PSBT to borrower
+       res.json({
+         success: true,
+         message: "Recovery transaction available for broadcast",
+         recovery: {
+           psbt: recoveryTx.psbt,
+           txType: recoveryTx.txType,
+           validAfter: recoveryTx.validAfter,
+           borrowerSignature: recoveryTx.signature,
+           instructions: [
+             "1. This PSBT already contains your signature",
+             "2. The timelock has expired, so you can broadcast immediately",
+             "3. Use a Bitcoin wallet or broadcasting service to finalize and broadcast",
+             "4. After 1 confirmation, your collateral will be returned to your address"
+           ]
+         },
+         loan: {
+           id: loan.id,
+           escrowAddress: loan.escrowAddress,
+           collateralBtc: loan.collateralBtc,
+           status: loan.status
+         }
+       });
+       
+       // Step 5: Log the recovery attempt
+       console.log(`🚨 Emergency recovery requested for loan ${loanId}`);
+       console.log(`   Timelock expired: ${recoveryTx.validAfter}`);
+       console.log(`   Borrower can now broadcast recovery transaction`);
+       
+     } catch (error: any) {
+       console.error(`Error in emergency recovery:`, error);
+       res.status(500).json({ error: "Failed to retrieve recovery transaction" });
+     }
+   });
+
+3. Optional: Test Timelock Override (Development Only)
+   
+   For testing purposes, add a development-only flag:
+   
+   // In development/testnet, allow bypassing timelock for testing
+   const ALLOW_TIMELOCK_BYPASS = process.env.NODE_ENV === 'development' || 
+                                  process.env.BITCOIN_NETWORK === 'testnet4';
+   
+   if (recoveryTx.validAfter && now < recoveryTx.validAfter) {
+     if (!ALLOW_TIMELOCK_BYPASS) {
+       // Return error (production behavior)
+     } else {
+       console.warn(`⚠️ DEV MODE: Bypassing timelock check for testing`);
+       // Allow anyway (testing only)
+     }
+   }
+
+4. Frontend Recovery Page (Optional - Low Priority)
+   
+   Create a simple recovery page: /loans/:id/recovery
+   
+   Shows:
+   - Loan details
+   - Timelock status (expired or X days remaining)
+   - "Download Recovery Transaction" button
+   - Instructions on how to broadcast manually
+   - Warning: "Only use if platform is unavailable"
+   
+   NOTE: This is optional - borrowers can also call API directly via curl/Postman
+
+5. Documentation for Recovery Process:
+   
+   Add to loan details page or help section:
+   
+   "Emergency Recovery Process:
+   
+   If the Reconquest platform becomes unavailable and your loan timelock has expired (30 days after loan creation), you can recover your collateral:
+   
+   1. Call: POST /api/loans/{loanId}/emergency-recovery
+   2. Download the recovery PSBT
+   3. Broadcast using any Bitcoin wallet or broadcasting service
+   4. After 1 confirmation, your collateral is returned to your address
+   
+   This ensures you never lose access to your funds, even if the platform is offline."
+
+6. Security Considerations:
+   
+   ✅ Timelock enforced (can't recover before 30 days)
+   ✅ No authentication required (platform may be down)
+   ✅ Recovery PSBT already signed by borrower (from signing ceremony)
+   ✅ Transaction sends to borrower's return address (set during loan creation)
+   ✅ Platform signature NOT needed (timelock path in witness script)
+   
+   This is the TRUE non-custodial feature!
+
+7. Rate Limiting:
+   
+   Add rate limiting to prevent abuse:
+   - Max 10 requests per hour per loan
+   - Max 50 requests per hour per IP
+   - Prevents DoS attacks on recovery endpoint
+
+8. Testing Strategy:
+   
+   Test cases:
+   - ✅ Recovery request before timelock expires → Error with days remaining
+   - ✅ Recovery request after timelock expires → Return PSBT
+   - ✅ Recovery request for loan without PSBTs → Error message
+   - ✅ Recovery request for non-existent loan → 404 error
+   - ✅ Verify returned PSBT matches what was stored during signing ceremony
+
+Deliverables:
+1. Show me the POST /api/loans/:id/emergency-recovery endpoint code
+2. Show me the timelock validation logic
+3. Show me the response format with instructions
+4. Show me the logging for recovery attempts
+5. Test with loan 88888 (which has recovery PSBT) - show the response
+
+IMPORTANT:
+- This endpoint works WITHOUT authentication (emergency scenario)
+- Timelock MUST be validated (30 days after validAfter date)
+- Return clear instructions on how to broadcast
+- This is what makes the system truly non-custodial!
+
+STOP after Phase 9 and wait for my approval before continuing to final testing.
