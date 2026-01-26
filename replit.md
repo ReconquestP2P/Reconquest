@@ -188,6 +188,10 @@ Preferred communication style: Simple, everyday language.
 - **Returns**: Real vs stressed prices, LTV results for all active loans
 - **Purpose**: Test email notifications and liquidation triggers before production
 
+## Documentation
+
+- **Pre-Signed Transactions**: See `docs/PRE_SIGNED_TRANSACTIONS.md` for complete documentation of the pre-signed transaction system, including API endpoints, security architecture, and troubleshooting guide.
+
 ## External Dependencies
 
 - **Database**: Neon (PostgreSQL)
