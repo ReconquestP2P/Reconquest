@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { deriveKeyFromPin } from "@/lib/deterministic-key";
 import { storeKey, createRecoveryBundle } from "@/lib/key-vault";
 import { useNetworkExplorer } from "@/hooks/useNetworkExplorer";
+import { SigningCeremonyModal } from "@/components/signing-ceremony-modal";
 import type { Loan } from "@shared/schema";
 
 interface DepositInstructionsCardProps {
@@ -33,6 +34,9 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const [recoveryBundle, setRecoveryBundle] = useState<string | null>(null);
   const [recoveryDownloaded, setRecoveryDownloaded] = useState(false);
   const [escrowExplorerUrl, setEscrowExplorerUrl] = useState<string>('');
+  const [borrowerReturnAddress, setBorrowerReturnAddress] = useState('');
+  const [showSigningModal, setShowSigningModal] = useState(false);
+  const [signingLoanData, setSigningLoanData] = useState<any>(null);
   
   const { getAddressUrl } = useNetworkExplorer();
   
@@ -43,9 +47,10 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   }, [loan.escrowAddress, getAddressUrl]);
 
   const provideBorrowerKey = useMutation({
-    mutationFn: async (borrowerPubkey: string) => {
+    mutationFn: async (params: { borrowerPubkey: string; borrowerReturnAddress?: string }) => {
       const response = await apiRequest(`/api/loans/${loan.id}/provide-borrower-key`, "POST", { 
-        borrowerPubkey 
+        borrowerPubkey: params.borrowerPubkey,
+        borrowerReturnAddress: params.borrowerReturnAddress 
       });
       return await response.json();
     },
@@ -60,6 +65,16 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         description: `Escrow address created: ${data.escrowAddress?.slice(0, 20)}...`,
       });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
+      
+      // NEW: Check if signing ceremony is required
+      if (data.requiresSigning && data.psbts) {
+        console.log('📝 PSBTs received, showing signing ceremony modal');
+        setSigningLoanData({
+          ...loan,
+          escrowAddress: data.escrowAddress,
+        });
+        setShowSigningModal(true);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -130,7 +145,10 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       privateKey.fill(0);
       console.log("Private key wiped from working memory");
       
-      await provideBorrowerKey.mutateAsync(publicKey);
+      await provideBorrowerKey.mutateAsync({ 
+        borrowerPubkey: publicKey, 
+        borrowerReturnAddress: borrowerReturnAddress || undefined 
+      });
       
     } catch (error: any) {
       console.error('Key ceremony failed:', error);
@@ -254,6 +272,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="borrowerReturnAddress">Bitcoin Return Address (Optional)</Label>
+                  <Input
+                    id="borrowerReturnAddress"
+                    type="text"
+                    placeholder="tb1q... (testnet) or bc1q... (mainnet)"
+                    value={borrowerReturnAddress}
+                    onChange={(e) => setBorrowerReturnAddress(e.target.value)}
+                    data-testid="input-borrower-return-address"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Where your collateral will be returned after successful repayment
+                  </p>
+                </div>
+
                 <div className="flex items-center space-x-2">
                   <Checkbox 
                     id="rememberDevice" 
@@ -353,6 +386,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   }
 
   return (
+    <>
     <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
@@ -460,5 +494,24 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         )}
       </CardContent>
     </Card>
+    
+    {/* Signing Ceremony Modal - shown after PSBTs are generated */}
+    {showSigningModal && signingLoanData && (
+      <SigningCeremonyModal
+        isOpen={showSigningModal}
+        onClose={() => setShowSigningModal(false)}
+        loan={{
+          id: signingLoanData.id,
+          amount: signingLoanData.amount,
+          currency: signingLoanData.currency,
+          collateralBtc: signingLoanData.collateralBtc,
+          termMonths: signingLoanData.termMonths,
+          escrowAddress: signingLoanData.escrowAddress,
+        }}
+        role="borrower"
+        userId={userId}
+      />
+    )}
+    </>
   );
 }

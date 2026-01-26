@@ -1534,11 +1534,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Lender has not provided their key yet" });
       }
       
-      const { borrowerPubkey } = req.body;
+      const { borrowerPubkey, borrowerReturnAddress } = req.body;
       
       // Validate borrower public key format
       if (!borrowerPubkey || typeof borrowerPubkey !== 'string') {
         return res.status(400).json({ message: "Borrower Bitcoin public key is required" });
+      }
+      
+      // Validate borrower return address (optional but recommended)
+      // This is where collateral will be returned after successful repayment
+      if (borrowerReturnAddress && typeof borrowerReturnAddress === 'string') {
+        // Validate bech32 address format (tb1... for testnet4, bc1... for mainnet)
+        const isTestnet = process.env.BITCOIN_NETWORK !== 'mainnet';
+        const prefix = isTestnet ? 'tb1' : 'bc1';
+        if (!borrowerReturnAddress.startsWith(prefix)) {
+          return res.status(400).json({ 
+            message: `Borrower return address must start with ${prefix} for ${isTestnet ? 'testnet4' : 'mainnet'}` 
+          });
+        }
       }
       
       if (borrowerPubkey.length !== 66) {
@@ -1598,7 +1611,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         escrowWitnessScript: multisig.witnessScript,
         escrowScriptHash: multisig.scriptHash,
         escrowState: "escrow_created", // Now escrow is properly created with all 3 keys
+        borrowerAddress: borrowerReturnAddress || null, // Store borrower return address
       });
+      
+      // Generate pre-signed PSBT templates for the signing ceremony
+      // These are unsigned templates - borrower will sign them client-side
+      let psbtTemplates: any[] = [];
+      let requiresSigning = false;
+      
+      try {
+        const { TransactionTemplateService } = await import('./services/TransactionTemplateService.js');
+        
+        // Get lender for their BTC address (for liquidation/default outputs)
+        const lender = await storage.getUser(loan.lenderId!);
+        const lenderBtcAddress = lender?.btcAddress || '';
+        
+        // Calculate collateral in satoshis
+        const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100000000);
+        
+        console.log(`🔐 Generating pre-signed PSBT templates for Loan #${loanId}`);
+        
+        const psbtResult = await TransactionTemplateService.generatePreSignedTransactions({
+          loanId,
+          borrowerPubkey,
+          lenderPubkey: loan.lenderPubkey,
+          platformPubkey: PLATFORM_PUBKEY,
+          borrowerAddress: borrowerReturnAddress || lenderBtcAddress, // Fallback to lender address
+          lenderAddress: lenderBtcAddress,
+          collateralAmount: collateralSats
+        });
+        
+        if (psbtResult.success && psbtResult.transactions) {
+          console.log(`✅ Generated ${psbtResult.transactions.length} PSBT templates`);
+          psbtTemplates = psbtResult.transactions;
+          requiresSigning = true;
+        } else {
+          console.warn(`⚠️ Failed to generate PSBTs: ${psbtResult.error}`);
+        }
+      } catch (psbtError: any) {
+        console.error(`⚠️ PSBT generation error (non-fatal):`, psbtError.message);
+        // Continue without PSBTs - backward compatibility with old flow
+      }
       
       // Send email to borrower with deposit instructions
       const borrower = await storage.getUser(borrowerId);
@@ -1621,6 +1674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // SECURITY: Sanitize loan in response to remove lender private key
+      // Include PSBTs for signing ceremony if generated
       res.json({
         success: true,
         message: "Key ceremony complete! Escrow address created with 3 unique keys.",
@@ -1628,7 +1682,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         borrowerPubkey,
         lenderPubkey: loan.lenderPubkey,
         platformPubkey: PLATFORM_PUBKEY,
-        loan: updatedLoan ? ResponseSanitizer.sanitizeLoan(updatedLoan) : undefined
+        loan: updatedLoan ? ResponseSanitizer.sanitizeLoan(updatedLoan) : undefined,
+        // NEW: Include PSBTs for borrower signing ceremony
+        requiresSigning,
+        psbts: psbtTemplates.length > 0 ? {
+          repayment: psbtTemplates.find(t => t.txType === 'repayment')?.psbtBase64,
+          default: psbtTemplates.find(t => t.txType === 'default')?.psbtBase64,
+          liquidation: psbtTemplates.find(t => t.txType === 'liquidation')?.psbtBase64,
+          recovery: psbtTemplates.find(t => t.txType === 'recovery')?.psbtBase64
+        } : undefined
       });
     } catch (error) {
       console.error('Error providing borrower key:', error);

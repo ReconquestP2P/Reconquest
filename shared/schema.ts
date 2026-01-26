@@ -154,6 +154,9 @@ export const loans = pgTable("loans", {
   // Signing Ceremony Status
   borrowerSigningComplete: boolean("borrower_signing_complete").default(false), // Borrower completed signing ceremony
   
+  // Borrower Return Address (where collateral is returned after successful repayment)
+  borrowerAddress: text("borrower_address"), // tb1q... or bc1q... bech32 address
+  
   // Partial Deposit Warning
   partialDepositWarningAt: timestamp("partial_deposit_warning_at"), // When we sent insufficient deposit warning email
   partialDepositAmountSats: integer("partial_deposit_amount_sats"), // Amount detected that was insufficient

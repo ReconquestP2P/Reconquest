@@ -1,0 +1,161 @@
+PHASE 6 APPROVED ✅ - All tests passed (5/5)
+
+Proceed to PHASE 7: Integrate Signing Ceremony into Loan Creation Flow
+
+Tasks:
+
+1. Modify Loan Creation API Endpoint
+   File: server/routes.ts - POST /api/loans endpoint
+   
+   Current flow:
+   Step 1: Create loan record in database
+   Step 2: Generate Bitcoin escrow address
+   Step 3: Return loan data to frontend
+   
+   NEW flow:
+   Step 1: Create loan record in database
+   Step 2: Generate Bitcoin escrow address
+   Step 3: Generate 4 pre-signed PSBT templates (NEW)
+   Step 4: Return loan data + PSBTs to frontend
+   Step 5: Wait for borrower signatures (frontend handles)
+   Step 6: Loan activation happens after signatures submitted
+
+2. Add PSBT Generation to Loan Creation:
+   
+   In POST /api/loans endpoint, after escrow creation:
+   
+   // Generate escrow (existing code)
+   const escrowResult = await BitcoinEscrowService.createEscrow(...);
+   
+   // NEW: Generate pre-signed transaction templates
+   const psbtResult = await TransactionTemplateService.generatePreSignedTransactions({
+     loanId: loan.id,
+     borrowerPubkey: escrowResult.borrowerPubkey,
+     lenderPubkey: escrowResult.lenderPubkey,
+     platformPubkey: escrowResult.platformPubkey,
+     borrowerAddress: borrowerReturnAddress,  // From request body
+     lenderAddress: lender.btcAddress,
+     collateralAmount: collateralSats
+   });
+   
+   // Return PSBTs to frontend
+   return res.json({
+     loan,
+     escrowAddress: escrowResult.address,
+     witnessScript: escrowResult.witnessScript,
+     psbts: psbtResult.psbts,  // NEW: Include PSBTs
+     requiresSigning: true      // NEW: Signal frontend to show modal
+   });
+
+3. Frontend Loan Creation Integration:
+   File: client/src/pages/CreateLoan.tsx (or similar)
+   
+   Modify the loan creation submission:
+   
+   const handleCreateLoan = async (formData) => {
+     // Submit loan creation request
+     const response = await apiRequest('/api/loans', 'POST', formData);
+     
+     // NEW: Check if signing is required
+     if (response.requiresSigning && response.psbts) {
+       // Show signing ceremony modal
+       setShowSigningModal(true);
+       setSigningData({
+         loanId: response.loan.id,
+         psbts: response.psbts
+       });
+     } else {
+       // Old loans without pre-signing (fallback)
+       navigate(`/loans/${response.loan.id}`);
+     }
+   };
+   
+   // NEW: Signing modal component
+   {showSigningModal && (
+     <SigningCeremonyModal
+       loanId={signingData.loanId}
+       psbts={signingData.psbts}
+       onSuccess={() => {
+         setShowSigningModal(false);
+         navigate(`/loans/${signingData.loanId}`);
+       }}
+       onCancel={() => {
+         // Optional: Allow cancellation?
+         setShowSigningModal(false);
+       }}
+     />
+   )}
+
+4. Update Loan Status After Signing:
+   
+   The signing ceremony already calls:
+   POST /api/loans/:id/submit-signatures
+   
+   This endpoint (from Phase 5) already updates:
+   - borrower_signing_complete = true
+   
+   No changes needed here - already implemented ✅
+
+5. Handle Backward Compatibility:
+   
+   Old loans (created before this update) won't have PSBTs.
+   
+   Strategy:
+   - Check if loan has pre-signed transactions in database
+   - If YES: Use pre-signed system
+   - If NO: Fall back to old dynamic transaction system
+   
+   Add check in CollateralReleaseService:
+   
+   const psbts = await TransactionTemplateService.getPreSignedTransactions(loanId);
+   if (psbts.length > 0) {
+     // Use pre-signed PSBT (Phase 8 will implement this)
+     console.log('Using pre-signed repayment transaction');
+   } else {
+     // Fall back to old dynamic transaction building
+     console.log('No pre-signed transactions found, using legacy method');
+   }
+
+6. Add Borrower Return Address Field:
+   
+   Frontend form needs new field:
+   - Label: "Bitcoin Return Address (tb1...)"
+   - Description: "Your testnet4 address where collateral will be returned"
+   - Validation: Must be valid tb1q... bech32 address
+   - Required: Yes
+   
+   This is where repayment transaction will send collateral.
+
+7. Update Loan Schema (if needed):
+   
+   Check if loans table has:
+   - borrower_signing_complete (boolean) - Already exists ✅
+   - borrower_return_address (text) - Add if missing
+   
+   If missing, add migration:
+   ALTER TABLE loans ADD COLUMN borrower_return_address TEXT;
+
+8. Testing Integration Points:
+   
+   After implementation, we should be able to:
+   - Create new loan
+   - See signing ceremony modal appear
+   - Sign 4 transactions
+   - Signatures stored in database
+   - Loan marked as "signing complete"
+   - Can proceed to funding
+
+Deliverables:
+1. Show me the updated POST /api/loans endpoint with PSBT generation
+2. Show me the frontend integration code (CreateLoan component)
+3. Confirm borrower_return_address field added to form
+4. Show database query checking if column exists
+5. Show backward compatibility check in code
+
+IMPORTANT:
+- Don't modify collateral release yet (that's Phase 8)
+- Focus only on loan CREATION flow
+- Ensure old loans still work (backward compatibility)
+- Test that signing modal appears during creation
+
+STOP after Phase 7 and wait for my approval before continuing.
