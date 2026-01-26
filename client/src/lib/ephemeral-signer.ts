@@ -33,7 +33,7 @@ secp256k1.hashes.hmacSha256 = (key: Uint8Array, ...msgs: Uint8Array[]): Uint8Arr
 };
 
 export interface SignedTransaction {
-  type: 'recovery' | 'cooperative_close' | 'default';
+  type: 'recovery' | 'cooperative_close' | 'default' | 'repayment' | 'liquidation';
   psbt: string;              // Base64 encoded PSBT
   signature: string;         // Signature
   txHash: string;            // Transaction hash for reference
