@@ -1,0 +1,152 @@
+CRITICAL BUG FIX: Pre-Signed Transactions Must Be Signed BEFORE Deposit
+
+Replit misunderstood the Firefish protocol. Pre-signed transactions are signed with PLACEHOLDER UTXOs, then the real UTXO is added during broadcast.
+
+═══════════════════════════════════════════════════════════
+
+ISSUE:
+The signing ceremony is currently blocked until after deposit. This is INCORRECT and breaks the non-custodial security model.
+
+CORRECT FLOW:
+1. Escrow created → PSBTs generated
+2. Borrower signs PSBTs (this step)
+3. Borrower deposits BTC
+4. Platform broadcasts using pre-signed PSBTs
+
+═══════════════════════════════════════════════════════════
+
+FIX 1: Remove Deposit Check from Signing Ceremony
+
+File: client/src/components/signing-ceremony-modal.tsx
+
+Find any check that blocks signing if deposit hasn't happened yet.
+
+REMOVE this kind of logic:
+if (!loan.fundingTxid) {
+  return <div>Please deposit Bitcoin first</div>;
+}
+
+The signing ceremony should work BEFORE any deposit.
+
+═══════════════════════════════════════════════════════════
+
+FIX 2: Update Python Script to Use Placeholder UTXO
+
+File: server/bitcoin_escrow.py
+
+The PSBT generation should create transactions with PLACEHOLDER inputs.
+
+In the PSBT creation code, use:
+
+# Placeholder UTXO (will be updated during broadcast)
+placeholder_txid = "0" * 64  # 32 bytes of zeros
+placeholder_vout = 0
+placeholder_amount = collateralAmount  # From input parameter
+
+# Create PSBT input with placeholder
+psbt_input = {
+  'txid': placeholder_txid,
+  'vout': placeholder_vout,
+  'amount': placeholder_amount,
+  'witness_script': witness_script
+}
+
+The borrower signs the WITNESS SCRIPT and OUTPUTS, not the specific UTXO.
+
+When broadcasting later, the platform will:
+1. Replace placeholder UTXO with real funding transaction
+2. Keep borrower's signature (still valid for witness script)
+3. Add platform's signature
+4. Broadcast
+
+═══════════════════════════════════════════════════════════
+
+FIX 3: Update Collateral Release to Insert Real UTXO
+
+File: server/services/CollateralReleaseService.ts
+
+In tryPreSignedRelease() or addPlatformSignaturesAndBroadcast():
+
+// Load pre-signed PSBT (has placeholder UTXO)
+const psbt = bitcoin.Psbt.fromBase64(repaymentPsbt.psbt);
+
+// Get REAL UTXO from loan funding
+if (!loan.fundingTxid) {
+  throw new Error('Loan not funded - no UTXO to spend');
+}
+
+// UPDATE the PSBT input with real UTXO data
+psbt.updateInput(0, {
+  witnessUtxo: {
+    script: Buffer.from(loan.witnessScript, 'hex'),
+    value: loan.collateralSats
+  },
+  // Keep existing witness script
+});
+
+// The borrower's signature is STILL VALID because it signed the witness script
+// Now add platform's signature
+const platformKey = ECPair.fromPrivateKey(Buffer.from(process.env.PLATFORM_PRIVATE_KEY, 'hex'));
+psbt.signInput(0, platformKey);
+
+// Finalize and broadcast
+psbt.finalizeAllInputs();
+const tx = psbt.extractTransaction();
+const txid = await broadcastTransaction(tx.toHex());
+
+═══════════════════════════════════════════════════════════
+
+FIX 4: Update Signing Flow Trigger
+
+The signing ceremony should appear IMMEDIATELY after escrow creation:
+
+Correct Flow:
+1. Borrower provides key + return address
+2. Backend creates escrow + generates PSBTs
+3. Frontend receives escrowAddress + PSBTs
+4. 🔐 Signing ceremony modal appears RIGHT NOW
+5. Borrower signs all 4 PSBTs
+6. THEN borrower is shown deposit instructions
+
+Current Flow (WRONG):
+1. Borrower provides key
+2. Backend creates escrow + generates PSBTs
+3. Frontend shows deposit instructions
+4. Borrower deposits
+5. Signing ceremony appears ❌ TOO LATE!
+
+═══════════════════════════════════════════════════════════
+
+KEY CONCEPT: Witness Script Signing
+
+In Bitcoin P2WSH (Pay-to-Witness-Script-Hash):
+- The signature validates AGAINST THE WITNESS SCRIPT
+- The signature is NOT tied to the specific UTXO being spent
+- You can sign "I authorize spending any UTXO locked by this script to address X"
+- Later, when broadcasting, you specify WHICH UTXO to spend
+
+This is how pre-signed transactions work in Firefish protocol.
+
+═══════════════════════════════════════════════════════════
+
+SUMMARY OF FIXES:
+
+1. Remove deposit check from signing ceremony ✓
+2. Python script uses placeholder UTXO ✓
+3. Collateral release updates PSBT with real UTXO ✓
+4. Signing happens BEFORE deposit ✓
+
+This restores the non-custodial security model.
+
+═══════════════════════════════════════════════════════════
+
+TESTING:
+
+After fixes:
+1. Create loan → escrow created
+2. Signing ceremony appears BEFORE deposit
+3. Sign all 4 PSBTs successfully
+4. THEN deposit BTC
+5. Release collateral → uses pre-signed PSBT with real UTXO
+
+This is the correct flow!

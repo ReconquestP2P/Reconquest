@@ -269,7 +269,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
     console.log('Private key wiped from memory');
     
     if (Object.keys(signatures).length === 0) {
-      throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet.');
+      throw new Error('NO_PSBTS_FOUND: No pre-signed transaction templates found. Please complete the key ceremony first.');
     }
     
     console.log(`Signed ${Object.keys(signatures).length} transactions`);
@@ -315,16 +315,22 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
   const handleSigningError = (error: any) => {
     const errorMsg = error?.message || '';
-    if (errorMsg.includes('UTXO_NOT_FOUND') || errorMsg.includes('escrow has been funded')) {
+    if (errorMsg.includes('NO_PSBTS_FOUND')) {
       toast({
-        title: "Waiting for Bitcoin Deposit",
-        description: "The escrow address hasn't been funded yet. Please deposit the Bitcoin collateral first.",
+        title: "Templates Not Found",
+        description: "Pre-signed transaction templates not found. Please complete the key ceremony first.",
+        variant: "destructive",
+      });
+    } else if (errorMsg.includes('Public key mismatch')) {
+      toast({
+        title: "Wrong Passphrase",
+        description: "The passphrase doesn't match the key used during the key ceremony. Please try again.",
         variant: "destructive",
       });
     } else {
       toast({
         title: "Error",
-        description: "Failed to sign transactions. Please try again.",
+        description: errorMsg || "Failed to sign transactions. Please try again.",
         variant: "destructive",
       });
     }
@@ -662,9 +668,23 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
 async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbtBase64: string; txHash: string } | null> {
   try {
-    const response = await apiRequest(`/api/loans/${loanId}/psbt-template?txType=${txType}`, 'GET');
+    // Fetch stored PSBTs from database (generated during key ceremony with placeholder UTXOs)
+    // This allows signing BEFORE deposit, per Firefish protocol
+    const response = await apiRequest(`/api/loans/${loanId}/transactions?txType=${txType}`, 'GET');
     const data = await response.json();
     
+    // The endpoint returns an array of transactions
+    if (Array.isArray(data) && data.length > 0) {
+      const tx = data[0]; // Get the first matching transaction
+      if (tx.psbt) {
+        return {
+          psbtBase64: tx.psbt,
+          txHash: tx.txHash || '',
+        };
+      }
+    }
+    
+    // Fallback for legacy format
     if (data.psbtBase64) {
       return {
         psbtBase64: data.psbtBase64,
