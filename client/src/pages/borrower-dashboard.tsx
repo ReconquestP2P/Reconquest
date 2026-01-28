@@ -711,7 +711,7 @@ export default function BorrowerDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Loans Matched - Awaiting BTC Deposit</CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-2">
                     Your loan has been matched with a lender! Deposit Bitcoin to the escrow address below to activate your loan.
                   </p>
                 </div>

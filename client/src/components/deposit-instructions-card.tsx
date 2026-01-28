@@ -205,6 +205,32 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Loan Info Summary */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
+            <div className="flex items-center gap-2 mb-3">
+              <Bitcoin className="h-5 w-5 text-amber-500" />
+              <span className="font-semibold text-purple-800 dark:text-purple-300">Loan #{loan.id} Details</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">Amount</p>
+                <p className="font-medium">{loan.currency === 'EUR' ? '€' : '$'}{Number(loan.amount).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">Term</p>
+                <p className="font-medium">{loan.termMonths} months</p>
+              </div>
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">Interest Rate</p>
+                <p className="font-medium">{loan.interestRate}%</p>
+              </div>
+              <div>
+                <p className="text-gray-500 dark:text-gray-400">Collateral Required</p>
+                <p className="font-medium text-amber-600">{Number(loan.collateralBtc).toFixed(6)} BTC</p>
+              </div>
+            </div>
+          </div>
+
           <Alert className="bg-white dark:bg-gray-800 border-purple-300">
             <AlertCircle className="h-4 w-4 text-purple-600" />
             <AlertDescription className="text-sm">
