@@ -22,7 +22,6 @@ export default function MyAccount() {
     phoneNumber: user?.phoneNumber || "",
     iban: user?.iban || "",
     bankAccountHolder: user?.bankAccountHolder || "",
-    btcAddress: user?.btcAddress || "",
   });
 
   if (!isAuthenticated || !user) {
@@ -50,7 +49,7 @@ export default function MyAccount() {
       if (response.requiresConfirmation) {
         toast({
           title: "Email Confirmation Required",
-          description: "Basic info updated. Please check your email to confirm your bank/Bitcoin address changes.",
+          description: "Basic info updated. Please check your email to confirm your bank details changes.",
           duration: 8000,
         });
         // Reset sensitive fields to their original values since they weren't applied yet
@@ -58,7 +57,6 @@ export default function MyAccount() {
           ...prev,
           iban: user?.iban || "",
           bankAccountHolder: user?.bankAccountHolder || "",
-          btcAddress: user?.btcAddress || "",
         }));
       } else {
         toast({
@@ -242,37 +240,6 @@ export default function MyAccount() {
                 />
                 <p className="text-xs text-muted-foreground">
                   International Bank Account Number (for European banks)
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bitcoin className="h-5 w-5 text-orange-500" />
-                Bitcoin Address
-              </CardTitle>
-              <CardDescription>
-                Your Bitcoin address for receiving collateral returns, recovery funds, and refunds.
-                <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
-                  Required for borrowers before generating a recovery plan.
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="btcAddress">BTC Address</Label>
-                <Input
-                  id="btcAddress"
-                  placeholder="bc1q... or 3... or 1..."
-                  value={formData.btcAddress}
-                  onChange={handleChange("btcAddress")}
-                  className="font-mono"
-                  data-testid="input-btc-address"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter a valid Bitcoin address (mainnet or testnet). This is where your Bitcoin will be sent in case of loan completion, cancellation, or recovery.
                 </p>
               </div>
             </CardContent>

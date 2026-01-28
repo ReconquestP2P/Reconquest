@@ -119,6 +119,18 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
       return;
     }
     
+    if (!borrowerReturnAddress || borrowerReturnAddress.trim() === '') {
+      setPassphraseError('Bitcoin return address is required');
+      return;
+    }
+    
+    // Basic Bitcoin address validation (testnet or mainnet)
+    const btcAddressPattern = /^(tb1|bc1|[123mn])[a-zA-HJ-NP-Z0-9]{25,62}$/;
+    if (!btcAddressPattern.test(borrowerReturnAddress.trim())) {
+      setPassphraseError('Please enter a valid Bitcoin address (tb1... for testnet, bc1... for mainnet)');
+      return;
+    }
+    
     setGeneratingKey(true);
     
     try {
@@ -299,7 +311,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="borrowerReturnAddress">Bitcoin Return Address (Optional)</Label>
+                  <Label htmlFor="borrowerReturnAddress">Bitcoin Return Address <span className="text-red-500">*</span></Label>
                   <Input
                     id="borrowerReturnAddress"
                     type="text"
@@ -307,9 +319,10 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                     value={borrowerReturnAddress}
                     onChange={(e) => setBorrowerReturnAddress(e.target.value)}
                     data-testid="input-borrower-return-address"
+                    required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Where your collateral will be returned after successful repayment
+                    Where your collateral will be returned after successful repayment. <span className="text-red-500 font-medium">Required.</span>
                   </p>
                 </div>
 
@@ -345,7 +358,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 </Button>
                 <Button
                   onClick={handleKeyCeremony}
-                  disabled={generatingKey || provideBorrowerKey.isPending || passphrase.length < 8}
+                  disabled={generatingKey || provideBorrowerKey.isPending || passphrase.length < 8 || !borrowerReturnAddress.trim()}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-generate-borrower-key"
                 >
