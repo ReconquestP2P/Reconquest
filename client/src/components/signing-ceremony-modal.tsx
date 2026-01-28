@@ -662,13 +662,27 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
 async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbtBase64: string; txHash: string } | null> {
   try {
-    const response = await apiRequest(`/api/loans/${loanId}/psbt-template?txType=${txType}`, 'GET');
+    // Use psbt-templates (plural) endpoint which supports placeholder UTXOs for pre-signing
+    // This allows signing BEFORE deposit, as per P2WSH signing behavior
+    const response = await apiRequest(`/api/loans/${loanId}/psbt-templates`, 'GET');
     const data = await response.json();
     
-    if (data.psbtBase64) {
+    // Map txType to the template type format used by the endpoint
+    const typeMap: Record<string, string> = {
+      'repayment': 'REPAYMENT',
+      'default': 'DEFAULT_LIQUIDATION',
+      'liquidation': 'FULL_LIQUIDATION',
+      'recovery': 'BORROWER_RECOVERY'
+    };
+    const targetType = typeMap[txType] || txType.toUpperCase();
+    
+    // Find the matching template from the array
+    const template = data.find((t: any) => t.type === targetType || t.type.includes(txType.toUpperCase()));
+    
+    if (template?.psbtBase64) {
       return {
-        psbtBase64: data.psbtBase64,
-        txHash: data.txHash || '',
+        psbtBase64: template.psbtBase64,
+        txHash: template.txHash || '',
       };
     }
     return null;

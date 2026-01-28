@@ -1,0 +1,172 @@
+URGENT: Please REVERT All Changes from the Last "Fix"
+
+I need you to roll back all changes made in the recent "fix" that moved 
+signing to AFTER deposit. This was based on a misunderstanding of Bitcoin 
+P2WSH (Pay-to-Witness-Script-Hash) transactions.
+
+═══════════════════════════════════════════════════════════
+
+WHY THE ROLLBACK IS NECESSARY:
+
+Your statement: "Bitcoin signatures commit to the actual transaction input 
+(txid:vout)" is INCORRECT for P2WSH transactions.
+
+BITCOIN P2WSH TECHNICAL REALITY:
+
+In P2WSH (which we use for 2-of-3 multisig):
+✅ Signatures commit to: witness script, output address, amount
+❌ Signatures DO NOT commit to: specific UTXO (txid:vout)
+
+The UTXO can be specified/updated AFTER signing without invalidating 
+the signature.
+
+This is exactly how:
+- Lightning Network commitment transactions work
+- Firefish protocol pre-signed transactions work
+- Any Bitcoin pre-signed transaction system works
+
+REFERENCE: BIP 141 (SegWit), BIP 174 (PSBT), Lightning Network BOLT specs
+
+═══════════════════════════════════════════════════════════
+
+WHAT NEEDS TO BE RESTORED:
+
+Please revert to the state BEFORE your recent changes:
+
+1. Remove /api/loans/:id/generate-psbts endpoint (new endpoint)
+2. Remove upsertPreSignedTransaction() function (new function)
+3. Restore original signing modal behavior (fetch PSBTs immediately)
+4. Restore original borrower dashboard (show signing before deposit)
+5. Restore original documentation flow
+
+CORRECT FLOW (What we had before):
+1. Key ceremony → escrow created + PSBTs generated
+2. 🔐 Signing ceremony appears IMMEDIATELY
+3. Borrower signs all 4 PSBTs (with placeholder UTXO)
+4. THEN borrower deposits BTC
+5. Platform broadcasts using pre-signed PSBT (inserts real UTXO)
+
+INCORRECT FLOW (What you just implemented):
+1. Key ceremony → escrow created
+2. Borrower deposits BTC first ❌
+3. PSBTs generated after deposit ❌
+4. Then signing happens ❌
+
+═══════════════════════════════════════════════════════════
+
+WHY SIGNING MUST HAPPEN BEFORE DEPOSIT:
+
+This is the CORE SECURITY FEATURE of the Firefish protocol:
+
+BEFORE DEPOSIT:
+- Borrower pre-authorizes HOW their collateral can be spent
+- Recovery path is guaranteed (30-day timelock transaction signed)
+- Platform CANNOT change terms after deposit
+- TRUE non-custodial security
+
+AFTER DEPOSIT (Your implementation):
+- Borrower has already sent BTC
+- Platform could refuse to cooperate
+- No recovery guarantee until AFTER funds at risk
+- Semi-custodial (trust required)
+
+═══════════════════════════════════════════════════════════
+
+HOW P2WSH SIGNING ACTUALLY WORKS:
+
+Step 1 - SIGNING TIME (Before deposit):
+PSBT with placeholder UTXO:
+Input: txid=0000...0000, vout=0 (placeholder)
+Script: OP_2 <pubkey1> <pubkey2> <pubkey3> OP_3 OP_CHECKMULTISIG
+Output: tb1q... (borrower return address)
+Amount: 0.00235294 BTC
+
+Borrower signs → Signature commits to:
+✅ The witness script (2-of-3 multisig)
+✅ The output address
+✅ The amount
+❌ NOT the placeholder UTXO
+
+text
+
+Step 2 - BROADCAST TIME (After deposit):
+Update PSBT with real UTXO:
+Input: txid=abc123...def, vout=0 (REAL funding tx)
+Script: [SAME witness script]
+Output: [SAME address]
+Amount: [SAME amount]
+
+Borrower's signature: STILL VALID! ✅
+
+Platform adds 2nd signature → Broadcast!
+
+text
+
+The signature remains valid because it signed the WITNESS SCRIPT, 
+not the specific UTXO.
+
+═══════════════════════════════════════════════════════════
+
+SPECIFIC FILES TO REVERT:
+
+Please roll back these changes:
+
+1. server/routes.ts
+   - Remove new /api/loans/:id/generate-psbts endpoint
+   - Restore original /api/loans/:id/provide-borrower-key logic
+
+2. server/storage.ts
+   - Remove upsertPreSignedTransaction() function
+   - Keep only original storePreSignedTransaction()
+
+3. client/src/components/signing-ceremony-modal.tsx
+   - Restore to trigger immediately after key ceremony
+   - Remove dependency on deposit confirmation
+
+4. client/src/components/borrower-dashboard.tsx
+   - Show signing section before deposit
+   - Remove deposit confirmation check
+
+5. docs/PRE_SIGNED_TRANSACTIONS.md
+   - Restore "Sign → Deposit" flow documentation
+
+═══════════════════════════════════════════════════════════
+
+CONFIRMATION NEEDED:
+
+After rollback, please confirm:
+
+□ Signing ceremony appears BEFORE deposit instruction
+□ PSBTs are generated during key ceremony (not after deposit)
+□ pre_signed_transactions table populated immediately
+□ borrower_signing_complete set BEFORE deposit
+□ Original flow restored: Key → Sign → Deposit → Activate
+
+═══════════════════════════════════════════════════════════
+
+TECHNICAL REFERENCES:
+
+If you need verification of P2WSH signing behavior:
+
+1. BIP 141 (Segregated Witness): 
+   Section on P2WSH witness script commitment
+
+2. BIP 174 (PSBT Specification):
+   Section 1.1 - "Roles" - explains signing vs finalizing
+
+3. Lightning Network BOLT #3:
+   Commitment transactions are PRE-SIGNED before funding
+   Uses exact same P2WSH pattern we're implementing
+
+4. Firefish Protocol:
+   github.com/Firefish-io/firefish-protocol
+   Explicitly requires signing before deposit
+
+═══════════════════════════════════════════════════════════
+
+PLEASE PROCEED WITH ROLLBACK.
+
+This is critical for maintaining the non-custodial security model 
+that is the entire purpose of the pre-signed transaction system.
+
+Let me know when the rollback is complete and I'll test the restored flow.
