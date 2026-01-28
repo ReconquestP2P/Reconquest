@@ -269,7 +269,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
     console.log('Private key wiped from memory');
     
     if (Object.keys(signatures).length === 0) {
-      throw new Error('NO_PSBTS_FOUND: No pre-signed transaction templates found. Please complete the key ceremony first.');
+      throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet.');
     }
     
     console.log(`Signed ${Object.keys(signatures).length} transactions`);
@@ -315,22 +315,16 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
   const handleSigningError = (error: any) => {
     const errorMsg = error?.message || '';
-    if (errorMsg.includes('NO_PSBTS_FOUND')) {
+    if (errorMsg.includes('UTXO_NOT_FOUND') || errorMsg.includes('escrow has been funded')) {
       toast({
-        title: "Templates Not Found",
-        description: "Pre-signed transaction templates not found. Please complete the key ceremony first.",
-        variant: "destructive",
-      });
-    } else if (errorMsg.includes('Public key mismatch')) {
-      toast({
-        title: "Wrong Passphrase",
-        description: "The passphrase doesn't match the key used during the key ceremony. Please try again.",
+        title: "Waiting for Bitcoin Deposit",
+        description: "The escrow address hasn't been funded yet. Please deposit the Bitcoin collateral first.",
         variant: "destructive",
       });
     } else {
       toast({
         title: "Error",
-        description: errorMsg || "Failed to sign transactions. Please try again.",
+        description: "Failed to sign transactions. Please try again.",
         variant: "destructive",
       });
     }
@@ -666,44 +660,17 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
   );
 }
 
-// Cache for generated PSBTs (shared across fetchPSBTTemplate calls)
-let psbtCache: Record<string, { psbtBase64: string; txHash: string }> = {};
-let psbtCacheLoanId: number | null = null;
-
 async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbtBase64: string; txHash: string } | null> {
   try {
-    // Check cache first (if we already fetched PSBTs for this loan)
-    if (psbtCacheLoanId === loanId && psbtCache[txType]) {
-      return psbtCache[txType];
-    }
-    
-    // Generate fresh PSBTs with real UTXO (after deposit confirmed)
-    // This endpoint creates PSBTs using the actual funding transaction
-    const response = await apiRequest(`/api/loans/${loanId}/generate-psbts`, 'POST');
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(`Failed to generate PSBTs:`, errorData.message);
-      // Do NOT fallback to stored PSBTs - they may have invalid placeholder UTXOs
-      // User must wait for deposit confirmation before signing
-      throw new Error(errorData.message || 'Failed to generate PSBTs. Please ensure your BTC deposit is confirmed.');
-    }
-    
+    const response = await apiRequest(`/api/loans/${loanId}/psbt-template?txType=${txType}`, 'GET');
     const data = await response.json();
     
-    if (data.success && data.psbts) {
-      // Cache all PSBTs for this loan
-      psbtCacheLoanId = loanId;
-      psbtCache = {
-        repayment: { psbtBase64: data.psbts.repayment, txHash: '' },
-        default: { psbtBase64: data.psbts.default, txHash: '' },
-        liquidation: { psbtBase64: data.psbts.liquidation, txHash: '' },
-        recovery: { psbtBase64: data.psbts.recovery, txHash: '' },
+    if (data.psbtBase64) {
+      return {
+        psbtBase64: data.psbtBase64,
+        txHash: data.txHash || '',
       };
-      
-      return psbtCache[txType] || null;
     }
-    
     return null;
   } catch (e) {
     console.error(`Error fetching PSBT template for ${txType}:`, e);

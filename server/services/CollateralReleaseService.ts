@@ -131,7 +131,7 @@ async function addPlatformSignaturesAndBroadcast(
 ): Promise<ReleaseResult> {
   try {
     const network = getNetwork();
-    let psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
     
     // SECURITY: Verify PSBT input has borrower's signature
     const input = psbt.data.inputs[0];
@@ -146,7 +146,7 @@ async function addPlatformSignaturesAndBroadcast(
     
     // SECURITY: Verify witness script matches loan's escrow script
     if (loan.escrowWitnessScript) {
-      const psbtWitnessHex = Buffer.from(input.witnessScript!).toString('hex').toLowerCase();
+      const psbtWitnessHex = input.witnessScript.toString('hex').toLowerCase();
       const expectedWitnessHex = loan.escrowWitnessScript.toLowerCase();
       if (psbtWitnessHex !== expectedWitnessHex) {
         return { success: false, error: 'SECURITY: PSBT witness script does not match escrow' };
@@ -155,30 +155,26 @@ async function addPlatformSignaturesAndBroadcast(
       return { success: false, error: 'SECURITY: Loan has no escrow witness script' };
     }
     
-    // SECURITY: Verify borrower's pubkey exists for signature verification
+    // SECURITY: Cryptographically verify borrower's signature (not just presence)
     if (!loan.borrowerPubkey) {
       return { success: false, error: 'SECURITY: No borrower pubkey to verify signature' };
     }
     
-    // SECURITY: Verify PSBT input matches the loan's funding UTXO
-    // PSBTs are now signed after deposit, so they should have real UTXO data
+    const isValidSig = PsbtCreatorService.verifySignature(psbtBase64, loan.borrowerPubkey, 0);
+    if (!isValidSig) {
+      return { success: false, error: 'SECURITY: Borrower signature cryptographic verification failed' };
+    }
+    
+    // SECURITY: Verify PSBT input matches escrow UTXO (txid/vout)
     if (loan.fundingTxid) {
       const expectedVout = loan.fundingVout ?? 0;
       const utxoMatch = PsbtCreatorService.verifyPsbtUtxo(psbtBase64, loan.fundingTxid, expectedVout);
       if (!utxoMatch) {
         return { success: false, error: 'SECURITY: PSBT input does not match escrow UTXO' };
       }
-      
-      // Verify borrower's signature is valid
-      const isValidSig = PsbtCreatorService.verifySignature(psbtBase64, loan.borrowerPubkey, 0);
-      if (!isValidSig) {
-        return { success: false, error: 'SECURITY: Borrower signature cryptographic verification failed' };
-      }
-    } else {
-      return { success: false, error: 'Cannot broadcast: loan has not been funded yet (no deposit txid)' };
     }
     
-    console.log('✅ PSBT security validation passed');
+    console.log('✅ PSBT security validation passed (cryptographic verification)');
     
     // Get platform private key
     const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
