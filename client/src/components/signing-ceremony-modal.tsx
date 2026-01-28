@@ -666,31 +666,44 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
   );
 }
 
+// Cache for generated PSBTs (shared across fetchPSBTTemplate calls)
+let psbtCache: Record<string, { psbtBase64: string; txHash: string }> = {};
+let psbtCacheLoanId: number | null = null;
+
 async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbtBase64: string; txHash: string } | null> {
   try {
-    // Fetch stored PSBTs from database (generated during key ceremony with placeholder UTXOs)
-    // This allows signing BEFORE deposit, per Firefish protocol
-    const response = await apiRequest(`/api/loans/${loanId}/transactions?txType=${txType}`, 'GET');
+    // Check cache first (if we already fetched PSBTs for this loan)
+    if (psbtCacheLoanId === loanId && psbtCache[txType]) {
+      return psbtCache[txType];
+    }
+    
+    // Generate fresh PSBTs with real UTXO (after deposit confirmed)
+    // This endpoint creates PSBTs using the actual funding transaction
+    const response = await apiRequest(`/api/loans/${loanId}/generate-psbts`, 'POST');
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`Failed to generate PSBTs:`, errorData.message);
+      // Do NOT fallback to stored PSBTs - they may have invalid placeholder UTXOs
+      // User must wait for deposit confirmation before signing
+      throw new Error(errorData.message || 'Failed to generate PSBTs. Please ensure your BTC deposit is confirmed.');
+    }
+    
     const data = await response.json();
     
-    // The endpoint returns an array of transactions
-    if (Array.isArray(data) && data.length > 0) {
-      const tx = data[0]; // Get the first matching transaction
-      if (tx.psbt) {
-        return {
-          psbtBase64: tx.psbt,
-          txHash: tx.txHash || '',
-        };
-      }
+    if (data.success && data.psbts) {
+      // Cache all PSBTs for this loan
+      psbtCacheLoanId = loanId;
+      psbtCache = {
+        repayment: { psbtBase64: data.psbts.repayment, txHash: '' },
+        default: { psbtBase64: data.psbts.default, txHash: '' },
+        liquidation: { psbtBase64: data.psbts.liquidation, txHash: '' },
+        recovery: { psbtBase64: data.psbts.recovery, txHash: '' },
+      };
+      
+      return psbtCache[txType] || null;
     }
     
-    // Fallback for legacy format
-    if (data.psbtBase64) {
-      return {
-        psbtBase64: data.psbtBase64,
-        txHash: data.txHash || '',
-      };
-    }
     return null;
   } catch (e) {
     console.error(`Error fetching PSBT template for ${txType}:`, e);

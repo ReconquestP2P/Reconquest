@@ -53,20 +53,24 @@ The Reconquest platform uses pre-signed transactions for true non-custodial Bitc
 - Key derivation: PBKDF2(SHA256, passphrase, salt, 100000 iterations)
 - Borrower provides Bitcoin return address
 - Escrow address created (2-of-3 multisig)
-- 4 PSBT templates generated and stored
+- escrowState: `escrow_created`
 
-### Step 4: Signing Ceremony
+### Step 4: Borrower Deposits BTC
+- Borrower sends collateral to escrow address
+- Platform monitors for deposit confirmation (1+ confirmations)
+- Status: `awaiting_signatures`
+- escrowState: `deposit_confirmed`
+
+### Step 5: Signing Ceremony (After Deposit Confirmed)
+- **IMPORTANT:** Signing MUST happen after deposit, not before
+- Bitcoin signatures cryptographically commit to the input UTXO (txid:vout)
+- PSBTs are generated with the real funding UTXO from the deposit
 - Modal displays all 4 transaction types with explanations
 - Borrower re-enters passphrase to re-derive key
 - Client-side signing (private key never leaves browser)
-- All 4 PSBTs signed in browser
-- Signatures submitted to: `POST /api/loans/:id/submit-signatures`
+- All 4 PSBTs signed in browser and submitted
 - Loan updated: `borrower_signing_complete = true`
-
-### Step 5: Borrower Deposits BTC
-- Borrower sends collateral to escrow address
-- Platform monitors for deposit confirmation
-- Loan activates after 1+ confirmations
+- Status: `active`
 
 ### Step 6: Loan Lifecycle
 - **Repayment:** Lender confirms fiat received → Platform broadcasts pre-signed REPAYMENT

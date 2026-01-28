@@ -4834,6 +4834,99 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       res.status(500).json({ message: "Failed to fetch transactions" });
     }
   });
+  
+  // Generate fresh PSBTs with real UTXO for signing ceremony (called after deposit confirmed)
+  app.post("/api/loans/:id/generate-psbts", authenticateToken, requireNonAdmin, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      // Verify user is borrower
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only borrower can generate PSBTs" });
+      }
+      
+      // Enforce deposit-confirmed gating with explicit escrowState check
+      if (loan.escrowState !== 'deposit_confirmed') {
+        return res.status(400).json({ 
+          message: "BTC deposit must be confirmed before signing. Please deposit BTC first and wait for blockchain confirmation." 
+        });
+      }
+      
+      // Must have confirmed deposit
+      if (!loan.fundingTxid || !loan.escrowAddress) {
+        return res.status(400).json({ message: "Deposit must be confirmed before generating PSBTs" });
+      }
+      
+      // Must have all keys
+      if (!loan.borrowerPubkey || !loan.lenderPubkey || !loan.platformPubkey) {
+        return res.status(400).json({ message: "Key ceremony must be complete" });
+      }
+
+      console.log(`🔐 Generating PSBTs with real UTXO for Loan #${loanId}`);
+      
+      const { TransactionTemplateService } = await import('./services/TransactionTemplateService.js');
+      
+      // Get addresses
+      const lender = await storage.getUser(loan.lenderId!);
+      const borrower = await storage.getUser(loan.borrowerId);
+      const lenderBtcAddress = lender?.btcAddress || '';
+      const borrowerBtcAddress = borrower?.btcAddress || '';
+      
+      if (!borrowerBtcAddress) {
+        return res.status(400).json({ message: "Borrower must set BTC return address before signing" });
+      }
+      
+      // Use stored collateral amount in satoshis
+      const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100000000);
+      
+      const psbtResult = await TransactionTemplateService.generatePreSignedTransactions({
+        loanId,
+        borrowerPubkey: loan.borrowerPubkey,
+        lenderPubkey: loan.lenderPubkey,
+        platformPubkey: loan.platformPubkey,
+        borrowerAddress: borrowerBtcAddress,
+        lenderAddress: lenderBtcAddress,
+        collateralAmount: collateralSats,
+      });
+      
+      console.log(`✅ PSBTs generated for Loan #${loanId}`);
+      
+      // Store/update the generated PSBTs in database (overwrites any placeholder PSBTs)
+      // Using upsert to ensure real-UTXO PSBTs replace placeholder versions
+      const txTypes = ['repayment', 'default', 'liquidation', 'recovery'] as const;
+      for (const txType of txTypes) {
+        const psbtBase64 = psbtResult.psbts[txType];
+        if (psbtBase64) {
+          await storage.upsertPreSignedTransaction({
+            loanId,
+            partyRole: 'borrower',
+            partyPubkey: loan.borrowerPubkey,
+            txType,
+            psbt: psbtBase64,
+            signature: null,
+            txHash: null,
+          });
+          console.log(`   Upserted ${txType} PSBT template with real UTXO`);
+        }
+      }
+      
+      // Return PSBTs for signing
+      res.json({
+        success: true,
+        psbts: psbtResult.psbts,
+        escrowAddress: psbtResult.escrowAddress,
+      });
+    } catch (error: any) {
+      console.error("Error generating PSBTs:", error);
+      res.status(500).json({ message: error.message || "Failed to generate PSBTs" });
+    }
+  });
 
   // Mark signing ceremony complete for a party
   app.post("/api/loans/:id/complete-signing", authenticateToken, requireNonAdmin, async (req: any, res) => {

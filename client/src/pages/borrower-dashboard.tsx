@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Coins, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro, Upload, Loader2, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { Coins, Bitcoin, TrendingUp, Trophy, RefreshCw, Euro, Upload, Loader2, ExternalLink, ChevronDown, ChevronUp, Key, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -740,6 +741,70 @@ export default function BorrowerDashboard() {
                     .filter(loan => (loan.escrowState === 'escrow_created' || loan.escrowState === 'awaiting_borrower_key' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed')
                     .map((loan) => (
                       <DepositInstructionsCard key={loan.id} loan={loan} userId={userId} />
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Loans Awaiting Signatures - After deposit confirmed */}
+          <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-900/10">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                    <Key className="h-5 w-5" />
+                    Sign Pre-Authorized Transactions
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Your BTC deposit has been confirmed! Sign pre-authorized transactions to protect your collateral.
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {borrowerLoans.filter(loan => 
+                (loan.status === 'awaiting_signatures' || loan.escrowState === 'deposit_confirmed') && 
+                !loan.borrowerSigningComplete
+              ).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No loans awaiting your signatures. Loans will appear here after your BTC deposit is confirmed.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {borrowerLoans
+                    .filter(loan => 
+                      (loan.status === 'awaiting_signatures' || loan.escrowState === 'deposit_confirmed') && 
+                      !loan.borrowerSigningComplete
+                    )
+                    .map((loan) => (
+                      <div key={loan.id} className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-amber-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold">Loan #{loan.id}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {parseFloat(loan.amount).toLocaleString()} {loan.currency} • {loan.collateralBtc} BTC collateral
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setSigningLoan(loan)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            data-testid={`button-sign-loan-${loan.id}`}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Sign Transactions
+                          </Button>
+                        </div>
+                        <Alert className="mt-3 bg-amber-100 dark:bg-amber-900/30 border-amber-300">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-sm">
+                            Sign 4 pre-authorized transactions to enable automatic collateral release on repayment, 
+                            default protection, and emergency recovery. Your private key never leaves your browser.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
                     ))}
                 </div>
               )}

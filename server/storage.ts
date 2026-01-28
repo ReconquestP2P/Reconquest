@@ -69,6 +69,7 @@ export interface IStorage {
   
   // Pre-signed Transaction operations (Firefish Ephemeral Key Model)
   storePreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction>;
+  upsertPreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction>;
   getPreSignedTransactions(loanId: number, txType?: string): Promise<PreSignedTransaction[]>;
   updateTransactionBroadcastStatus(id: number, updates: {
     broadcastStatus: string;
@@ -747,6 +748,45 @@ export class DatabaseStorage implements IStorage {
 
   // Pre-signed Transaction Operations (Firefish Ephemeral Key Model)
   async storePreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction> {
+    const [transaction] = await db
+      .insert(preSignedTransactions)
+      .values(tx)
+      .returning();
+    return transaction;
+  }
+
+  // Upsert: Update existing or insert new PSBT (overwrites placeholder PSBTs with real UTXO versions)
+  async upsertPreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction> {
+    const { and } = await import("drizzle-orm");
+    
+    // Check if transaction already exists for this loan/party/txType
+    const existing = await db
+      .select()
+      .from(preSignedTransactions)
+      .where(and(
+        eq(preSignedTransactions.loanId, tx.loanId),
+        eq(preSignedTransactions.partyRole, tx.partyRole),
+        eq(preSignedTransactions.txType, tx.txType)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      // Update existing record with new PSBT
+      const [updated] = await db
+        .update(preSignedTransactions)
+        .set({
+          psbt: tx.psbt,
+          partyPubkey: tx.partyPubkey,
+          signature: tx.signature,
+          txHash: tx.txHash,
+          validAfter: tx.validAfter,
+        })
+        .where(eq(preSignedTransactions.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    
+    // Insert new record
     const [transaction] = await db
       .insert(preSignedTransactions)
       .values(tx)

@@ -472,46 +472,14 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           </div>
         </div>
 
-        {/* SIGNING SECTION - Firefish Protocol: Sign BEFORE deposit */}
-        {!loan.borrowerSigningComplete && (
-          <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300">
-            <Lock className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-sm">
-              <p className="font-semibold text-amber-800 dark:text-amber-300">Step 1: Sign Pre-Authorized Transactions</p>
-              <p className="mt-1 mb-3">Before depositing, sign 4 pre-authorized transactions that protect your collateral in all scenarios.</p>
-              <Button
-                onClick={() => {
-                  setSigningLoanData(loan);
-                  setShowSigningModal(true);
-                }}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                data-testid="button-sign-transactions"
-              >
-                <Key className="h-4 w-4 mr-2" />
-                Sign Transactions
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {loan.borrowerSigningComplete && (
-          <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-sm">
-              <p className="font-semibold text-green-800 dark:text-green-300">Pre-signed transactions complete!</p>
-              <p>Your recovery transactions are safely stored.</p>
-            </AlertDescription>
-          </Alert>
-        )}
-
         <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
           <AlertDescription className="text-sm space-y-2">
             <p className="font-semibold">Next Steps:</p>
             <ol className="list-decimal ml-4 space-y-1">
-              {!loan.borrowerSigningComplete && <li><strong>Sign transactions</strong> (click button above)</li>}
               <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> to the address above</li>
               <li>Wait for blockchain confirmation</li>
               <li>Click "Confirm Deposit" below</li>
+              <li>Sign pre-authorized transactions (after deposit confirmed)</li>
             </ol>
           </AlertDescription>
         </Alert>
