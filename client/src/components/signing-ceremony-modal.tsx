@@ -343,6 +343,8 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
     setStep('checking');
     setPassphrase('');
     setPassphraseError(null);
+    // Refresh loan data to show updated escrow address and status
+    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
     onClose();
   };
 

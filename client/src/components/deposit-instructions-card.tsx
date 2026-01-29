@@ -538,7 +538,10 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     {showSigningModal && signingLoanData && (
       <SigningCeremonyModal
         isOpen={showSigningModal}
-        onClose={() => setShowSigningModal(false)}
+        onClose={() => {
+          setShowSigningModal(false);
+          // Query invalidation happens inside the modal's handleClose
+        }}
         loan={{
           id: signingLoanData.id,
           amount: signingLoanData.amount,
