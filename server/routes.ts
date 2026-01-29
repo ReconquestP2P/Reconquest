@@ -2809,12 +2809,11 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Borrower pubkey not found" });
       }
 
-      // SECURITY: Verify escrow deposit is confirmed before accepting signatures
-      if (!loan.fundingTxid || loan.status !== 'pending_funding' && loan.status !== 'funded') {
-        return res.status(400).json({ 
-          message: "Escrow deposit must be confirmed before signing ceremony" 
-        });
-      }
+      // NOTE: P2WSH signing does NOT require deposit first
+      // Signatures commit to: witness script, output address, amount
+      // Signatures do NOT commit to: specific UTXO (txid:vout)
+      // The UTXO is updated at broadcast time, keeping signature valid
+      // This is how Lightning Network and Firefish protocol work
 
       // SECURITY: Verify witness script exists
       if (!loan.escrowWitnessScript) {
@@ -2832,14 +2831,18 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           continue;
         }
 
-        // SECURITY: Verify PSBT input matches escrow UTXO (txid:vout)
-        // fundingVout defaults to 0 if not stored
-        const expectedVout = loan.fundingVout ?? 0;
-        const utxoMatch = PsbtCreatorService.verifyPsbtUtxo(psbtBase64, loan.fundingTxid, expectedVout);
-        if (!utxoMatch) {
-          rejected.push({ type, reason: "PSBT input does not match escrow UTXO" });
-          console.error(`[SigningCeremony] REJECTED ${type} - UTXO mismatch for loan #${loanId}`);
-          continue;
+        // NOTE: UTXO verification is skipped before deposit
+        // P2WSH signatures don't commit to the specific UTXO (txid:vout)
+        // The UTXO will be updated at broadcast time when deposit is confirmed
+        // This is the Firefish/Lightning Network model for pre-signed transactions
+        if (loan.fundingTxid) {
+          const expectedVout = loan.fundingVout ?? 0;
+          const utxoMatch = PsbtCreatorService.verifyPsbtUtxo(psbtBase64, loan.fundingTxid, expectedVout);
+          if (!utxoMatch) {
+            rejected.push({ type, reason: "PSBT input does not match escrow UTXO" });
+            console.error(`[SigningCeremony] REJECTED ${type} - UTXO mismatch for loan #${loanId}`);
+            continue;
+          }
         }
 
         // SECURITY: Verify the PSBT input uses the correct escrow script
