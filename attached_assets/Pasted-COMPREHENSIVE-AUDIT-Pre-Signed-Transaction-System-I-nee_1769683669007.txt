@@ -1,0 +1,426 @@
+COMPREHENSIVE AUDIT: Pre-Signed Transaction System
+
+I need a complete sweep of the codebase to find and fix ALL issues 
+related to pre-signed transactions. Please systematically check every 
+component, endpoint, and flow.
+
+═══════════════════════════════════════════════════════════
+
+AUDIT CHECKLIST - Check Each Item and Report Status:
+
+═══════════════════════════════════════════════════════════
+
+SECTION 1: FLOW VALIDATION
+
+Check the complete flow works in this EXACT order:
+
+□ 1.1: Loan Creation
+   - Borrower creates loan request
+   - Status = "posted"
+   - No PSBTs generated yet ✓
+
+□ 1.2: Lender Commitment  
+   - Lender commits to fund
+   - Status = "funded"
+   - escrow_state = "awaiting_borrower_key"
+   - Still no PSBTs ✓
+
+□ 1.3: Key Ceremony
+   - Endpoint: POST /api/loans/:id/provide-borrower-key
+   - Accepts: borrowerPubkey, borrowerReturnAddress (REQUIRED)
+   - Validates return address format (tb1/bc1)
+   - Creates escrow address (2-of-3 multisig)
+   - Calls: TransactionTemplateService.generatePreSignedTransactions()
+   - Generates 4 PSBTs with PLACEHOLDER UTXOs
+   - Stores PSBTs in pre_signed_transactions table
+   - Returns: { escrowAddress, requiresSigning: true, psbts: {...} }
+
+□ 1.4: Signing Ceremony (CRITICAL - Must happen BEFORE deposit)
+   - Frontend receives requiresSigning: true
+   - Signing modal appears IMMEDIATELY
+   - NO check for deposit/funding_txid
+   - Fetches PSBTs from: GET /api/loans/:id/psbt-templates (plural)
+   - Borrower signs all 4 PSBTs client-side
+   - Submits to: POST /api/loans/:id/submit-signatures
+   - Database updated: signatures stored, borrower_signing_complete = true
+   - Modal closes, shows deposit instructions
+
+□ 1.5: Deposit
+   - Borrower sends BTC to escrow address
+   - Confirmation detected
+   - funding_txid populated
+   - Loan activates
+
+□ 1.6: Collateral Release
+   - Calls: CollateralReleaseService.releaseCollateral()
+   - Tries: getPreSignedTransactions(loanId, 'repayment')
+   - If found: Uses pre-signed PSBT
+   - Updates PSBT with real UTXO (funding_txid)
+   - Adds platform signature
+   - Broadcasts transaction
+   - Updates broadcast_status to 'broadcast'
+
+VERIFY: Run through this flow end-to-end and report which step fails.
+
+═══════════════════════════════════════════════════════════
+
+SECTION 2: ENDPOINT AUDIT
+
+Check EVERY endpoint that touches pre-signed transactions:
+
+□ 2.1: POST /api/loans/:id/provide-borrower-key
+   FILE: server/routes.ts
+   
+   Checklist:
+   - Validates borrowerReturnAddress is REQUIRED (not optional)
+   - Validates address format (tb1/bc1 prefix)
+   - Calls TransactionTemplateService.generatePreSignedTransactions()
+   - Returns psbts in response: { psbts: { repayment, default, liquidation, recovery } }
+   - Returns requiresSigning: true
+   - Does NOT check for deposit before generating PSBTs
+   
+   VERIFY: Show me the code that generates PSBTs in this endpoint
+
+□ 2.2: GET /api/loans/:id/psbt-templates (plural)
+   FILE: server/routes.ts
+   
+   Should exist and return PSBTs from database.
+   Does this endpoint exist? If not, create it.
+   
+   Expected behavior:
+   - Fetches from pre_signed_transactions table
+   - Returns all 4 PSBTs for the loan
+   - Works even if funding_txid is NULL
+   - Does NOT require deposit confirmation
+   
+   VERIFY: Does this endpoint exist? Show me the code.
+
+□ 2.3: POST /api/loans/:id/submit-signatures
+   FILE: server/routes.ts
+   
+   Checklist:
+   - Accepts: { signatures: { repayment, default, liquidation, recovery }, borrowerPubkey }
+   - Validates DER signature format for each
+   - Updates pre_signed_transactions table with signatures
+   - Sets borrower_signing_complete = true on loans table
+   - Does NOT require funding_txid to be set
+   
+   VERIFY: Show me the signature validation code
+
+□ 2.4: POST /api/loans/:id/emergency-recovery
+   FILE: server/routes.ts
+   
+   Checklist:
+   - No authentication required
+   - Gets recovery PSBT from database
+   - Checks timelock has expired (or bypass in dev)
+   - Returns PSBT with instructions
+   
+   VERIFY: Confirm this endpoint exists and works
+
+□ 2.5: Collateral Release Logic
+   FILE: server/services/CollateralReleaseService.ts
+   
+   Checklist:
+   - First tries to load pre-signed repayment PSBT
+   - If found: Updates PSBT with real UTXO data
+   - Adds platform signature
+   - Broadcasts
+   - If not found: Falls back to legacy method
+   - Logs clearly: "[PRE-SIGNED]" vs "[LEGACY]"
+   
+   VERIFY: Show me the tryPreSignedRelease() function
+
+═══════════════════════════════════════════════════════════
+
+SECTION 3: FRONTEND COMPONENT AUDIT
+
+Check ALL frontend components:
+
+□ 3.1: Deposit Instructions Card
+   FILE: client/src/components/deposit-instructions-card.tsx
+   
+   Checklist:
+   - Has borrowerReturnAddress state variable
+   - Return address input is REQUIRED (not optional)
+   - Button disabled if address missing or invalid
+   - Validates tb1/bc1 format before submission
+   - After key ceremony success with requiresSigning: true
+   - Sets showSigningModal = true IMMEDIATELY
+   - Does NOT check for funding_txid before showing modal
+   
+   VERIFY: Show me the mutation onSuccess handler
+
+□ 3.2: Signing Ceremony Modal
+   FILE: client/src/components/signing-ceremony-modal.tsx
+   
+   Checklist:
+   - Opens when showSigningModal = true
+   - Fetches PSBTs from correct endpoint (GET /api/loans/:id/psbt-templates)
+   - Does NOT require loan.fundingTxid
+   - Shows all 4 transaction types
+   - Client-side signing with PBKDF2 key derivation
+   - Submits to: POST /api/loans/:id/submit-signatures
+   - On success: Closes modal, proceeds to deposit instructions
+   
+   VERIFY: Show me the PSBT fetching code
+   
+   CRITICAL CHECK:
+   Search for any code that checks:
+   - if (!loan.fundingTxid)
+   - if (!loan.depositConfirmed)  
+   - "Please deposit first"
+   
+   These checks should NOT exist in signing modal.
+
+□ 3.3: Borrower Dashboard
+   FILE: client/src/components/borrower-dashboard.tsx or similar
+   
+   Checklist:
+   - Shows signing section BEFORE deposit is confirmed
+   - Does not hide signing button based on funding status
+   - Triggers signing modal when clicked
+   
+   VERIFY: Is there any deposit check before showing signing option?
+
+═══════════════════════════════════════════════════════════
+
+SECTION 4: SERVICE LAYER AUDIT
+
+Check backend services:
+
+□ 4.1: TransactionTemplateService
+   FILE: server/services/TransactionTemplateService.ts
+   
+   Function: generatePreSignedTransactions()
+   
+   Checklist:
+   - Accepts: loanId, pubkeys, addresses, collateralAmount
+   - Validates borrowerAddress is provided and not empty
+   - Calls Python script: bitcoin_escrow.py
+   - Python generates PSBTs with PLACEHOLDER UTXOs
+   - Stores 4 PSBTs in database via storage.storePreSignedTransaction()
+   - Returns: { escrowAddress, psbts: {...}, witnessScript, timelockBlocks }
+   - Does NOT require loan.fundingTxid
+   
+   VERIFY: Show me the Python script execution code
+
+□ 4.2: CollateralReleaseService
+   FILE: server/services/CollateralReleaseService.ts
+   
+   Function: releaseCollateral()
+   
+   Checklist:
+   - Calls: storage.getPreSignedTransactions(loanId)
+   - Filters for tx_type = 'repayment'
+   - If found: Loads PSBT, updates with real UTXO
+   - Verifies borrower signature exists
+   - Adds platform signature
+   - Broadcasts
+   - Updates broadcast_status
+   - If not found or error: Falls back to legacy
+   
+   VERIFY: Show me the PSBT UTXO update code
+
+□ 4.3: Storage Methods
+   FILE: server/storage.ts
+   
+   Required methods:
+   - storePreSignedTransaction() - Creates new record
+   - getPreSignedTransactions(loanId, txType?) - Retrieves PSBTs
+   - updateTransactionBroadcastStatus() - Updates after broadcast
+   
+   VERIFY: Confirm all three methods exist
+
+═══════════════════════════════════════════════════════════
+
+SECTION 5: PYTHON SCRIPT AUDIT
+
+□ 5.1: Bitcoin Escrow Script
+   FILE: server/bitcoin_escrow.py
+   
+   Checklist:
+   - Accepts --generate-psbts flag
+   - Accepts --borrower-address, --lender-address
+   - Accepts --input-value (collateral amount)
+   - Creates witness script with OP_CHECKSEQUENCEVERIFY
+   - Generates 4 PSBTs:
+     * REPAYMENT: to borrower address
+     * DEFAULT: to lender address  
+     * LIQUIDATION: split output
+     * RECOVERY: to borrower with timelock
+   - Uses PLACEHOLDER UTXO (txid = "0"*64, vout = 0)
+   - Returns JSON with all 4 PSBTs
+   
+   VERIFY: Show me the PSBT generation code for REPAYMENT
+
+═══════════════════════════════════════════════════════════
+
+SECTION 6: DATABASE SCHEMA AUDIT
+
+□ 6.1: pre_signed_transactions Table
+   
+   Required columns:
+   - id (primary key)
+   - loan_id (foreign key)
+   - party_role (borrower/lender/platform)
+   - party_pubkey
+   - tx_type (repayment/default/liquidation/recovery)
+   - psbt (base64, NOT NULL)
+   - signature (DER hex, initially empty)
+   - tx_hash
+   - broadcast_status (pending/broadcast/confirmed)
+   - broadcast_txid
+   - broadcasted_at
+   - confirmed_at
+   - valid_after (for recovery timelock)
+   - created_at
+   
+   VERIFY: Run: DESCRIBE pre_signed_transactions;
+
+□ 6.2: loans Table Additions
+   
+   Required columns:
+   - borrower_address (text, for return address)
+   - borrower_signing_complete (boolean)
+   - tx_repayment_hex (text, for storing PSBT)
+   - tx_default_hex (text)
+   - tx_liquidation_hex (text)
+   - tx_recovery_hex (text)
+   
+   VERIFY: Run: DESCRIBE loans;
+
+═══════════════════════════════════════════════════════════
+
+SECTION 7: ERROR HANDLING AUDIT
+
+Search for these anti-patterns:
+
+□ 7.1: Deposit Checks Before Signing
+   
+   SEARCH FOR (should NOT exist):
+   - "Please deposit Bitcoin first"
+   - "Deposit required before signing"
+   - if (!loan.fundingTxid) { block signing }
+   - if (!depositConfirmed) { block signing }
+   
+   If found, REMOVE these checks.
+
+□ 7.2: UTXO Requirements in Signing
+   
+   SEARCH FOR (should NOT be in signing flow):
+   - "UTXO required"
+   - "No UTXO found"
+   - "Funding transaction required"
+   
+   These should only appear in BROADCAST, not SIGNING.
+
+□ 7.3: Endpoint Confusion
+   
+   VERIFY:
+   - /api/loans/:id/psbt-template (singular) - Can require UTXO, used for other purposes
+   - /api/loans/:id/psbt-templates (plural) - Should NOT require UTXO, used for signing
+   
+   Signing modal should ONLY use the plural endpoint.
+
+═══════════════════════════════════════════════════════════
+
+SECTION 8: LOGGING AUDIT
+
+□ 8.1: Consistent Logging
+   
+   Required log prefixes:
+   - [TransactionTemplates] - When generating PSBTs
+   - [SigningCeremony] - Frontend signing process
+   - [PRE-SIGNED] - Using pre-signed PSBT for release
+   - [LEGACY] - Using old dynamic method
+   - [EmergencyRecovery] - Recovery endpoint called
+   
+   VERIFY: Search codebase for these prefixes
+
+□ 8.2: Critical Log Points
+   
+   Should log:
+   - PSBT generation: "Generated and stored 4 PSBTs for loan X"
+   - Signature submission: "All signatures validated and stored for loan X"
+   - Collateral release: "[PRE-SIGNED] Transaction broadcast successful: txid"
+   - Fallback: "No pre-signed found, using legacy method"
+   
+   VERIFY: Add these logs if missing
+
+═══════════════════════════════════════════════════════════
+
+SECTION 9: VALIDATION AUDIT
+
+□ 9.1: Return Address Validation
+   
+   Check these locations ALL validate borrowerReturnAddress:
+   - Frontend: deposit-instructions-card.tsx (before submission)
+   - Backend: POST /api/loans/:id/provide-borrower-key (server validation)
+   - Service: TransactionTemplateService.generatePreSignedTransactions()
+   
+   Required validations:
+   - Not empty
+   - Starts with tb1 (testnet4) or bc1 (mainnet)
+   - Min length 42 chars
+   - Valid bech32 format
+   
+   VERIFY: Show validation code in all 3 locations
+
+□ 9.2: Signature Validation
+   
+   In POST /api/loans/:id/submit-signatures:
+   - All 4 signatures present
+   - Each signature is valid DER format
+   - Length 136-150 hex chars
+   - Starts with 0x30 (SEQUENCE)
+   
+   VERIFY: Show DER validation function
+
+═══════════════════════════════════════════════════════════
+
+SECTION 10: INTEGRATION TESTING
+
+□ 10.1: End-to-End Test Script
+   
+   Create a test that simulates:
+   
+   ```javascript
+   async function testPreSignedFlow() {
+     // 1. Create loan
+     const loan = await createTestLoan();
+     console.log('✓ Loan created:', loan.id);
+     
+     // 2. Lender commits
+     await lenderCommit(loan.id);
+     console.log('✓ Lender committed');
+     
+     // 3. Key ceremony
+     const escrow = await provideKey(loan.id, {
+       borrowerPubkey: TEST_PUBKEY,
+       borrowerReturnAddress: 'tb1qtest...'
+     });
+     console.log('✓ Escrow created:', escrow.escrowAddress);
+     console.log('✓ PSBTs generated:', Object.keys(escrow.psbts));
+     
+     // 4. Check database
+     const psbts = await db.query('SELECT * FROM pre_signed_transactions WHERE loan_id = ?', [loan.id]);
+     assert(psbts.length === 4, 'Should have 4 PSBTs');
+     console.log('✓ PSBTs stored in database');
+     
+     // 5. Simulate signing
+     const signatures = await signPSBTs(escrow.psbts);
+     await submitSignatures(loan.id, signatures);
+     console.log('✓ Signatures submitted');
+     
+     // 6. Verify signing complete
+     const updated = await db.query('SELECT borrower_signing_complete FROM loans WHERE id = ?', [loan.id]);
+     assert(updated.borrower_signing_complete === true, 'Signing should be complete');
+     console.log('✓ borrower_signing_complete = true');
+     
+     // 7. Verify funding_txid still null
+     assert(updated.funding_txid === null, 'Should not be funded yet');
+     console.log('✓ No deposit yet (correct!)');
+     
+     console.log('\n✅ PRE-SIGNED FLOW TEST PASSED');
+   }

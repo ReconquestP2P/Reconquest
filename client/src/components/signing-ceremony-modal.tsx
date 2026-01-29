@@ -269,7 +269,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
     console.log('Private key wiped from memory');
     
     if (Object.keys(signatures).length === 0) {
-      throw new Error('UTXO_NOT_FOUND: The escrow address has not been funded yet.');
+      throw new Error('No PSBT templates found. Please ensure the key ceremony completed successfully.');
     }
     
     console.log(`Signed ${Object.keys(signatures).length} transactions`);
@@ -315,16 +315,24 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
 
   const handleSigningError = (error: any) => {
     const errorMsg = error?.message || '';
-    if (errorMsg.includes('UTXO_NOT_FOUND') || errorMsg.includes('escrow has been funded')) {
+    console.error('[SigningCeremony] Error:', errorMsg);
+    
+    if (errorMsg.includes('UTXO_NOT_FOUND') || errorMsg.includes('No PSBT templates found')) {
       toast({
-        title: "Waiting for Bitcoin Deposit",
-        description: "The escrow address hasn't been funded yet. Please deposit the Bitcoin collateral first.",
+        title: "PSBT Templates Not Found",
+        description: "The transaction templates couldn't be loaded. Please refresh and try again.",
+        variant: "destructive",
+      });
+    } else if (errorMsg.includes('Failed to submit')) {
+      toast({
+        title: "Submission Failed",
+        description: errorMsg,
         variant: "destructive",
       });
     } else {
       toast({
-        title: "Error",
-        description: "Failed to sign transactions. Please try again.",
+        title: "Signing Error",
+        description: errorMsg || "Failed to sign transactions. Please try again.",
         variant: "destructive",
       });
     }

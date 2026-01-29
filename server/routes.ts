@@ -1541,17 +1541,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Borrower Bitcoin public key is required" });
       }
       
-      // Validate borrower return address (optional but recommended)
+      // Validate borrower return address (REQUIRED for pre-signed transactions)
       // This is where collateral will be returned after successful repayment
-      if (borrowerReturnAddress && typeof borrowerReturnAddress === 'string') {
-        // Validate bech32 address format (tb1... for testnet4, bc1... for mainnet)
-        const isTestnet = process.env.BITCOIN_NETWORK !== 'mainnet';
-        const prefix = isTestnet ? 'tb1' : 'bc1';
-        if (!borrowerReturnAddress.startsWith(prefix)) {
-          return res.status(400).json({ 
-            message: `Borrower return address must start with ${prefix} for ${isTestnet ? 'testnet4' : 'mainnet'}` 
-          });
-        }
+      if (!borrowerReturnAddress || typeof borrowerReturnAddress !== 'string') {
+        return res.status(400).json({ 
+          message: "Borrower Bitcoin return address is required for escrow creation" 
+        });
+      }
+      
+      // Validate bech32 address format (tb1... for testnet4, bc1... for mainnet)
+      const isTestnet = process.env.BITCOIN_NETWORK !== 'mainnet';
+      const addressPrefix = isTestnet ? 'tb1' : 'bc1';
+      if (!borrowerReturnAddress.startsWith(addressPrefix)) {
+        return res.status(400).json({ 
+          message: `Borrower return address must start with ${addressPrefix} for ${isTestnet ? 'testnet4' : 'mainnet'}` 
+        });
       }
       
       if (borrowerPubkey.length !== 66) {
@@ -2681,11 +2685,14 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
 
       // Get borrower and lender addresses
+      // Use loan.borrowerAddress first (set during key ceremony), fallback to user profile
       const borrower = await storage.getUser(loan.borrowerId);
       const lender = loan.lenderId ? await storage.getUser(loan.lenderId) : null;
-
-      if (!borrower?.btcAddress) {
-        return res.status(400).json({ message: "Borrower BTC return address not set" });
+      
+      // Borrower address: prefer loan-specific address, then user profile
+      const borrowerAddress = loan.borrowerAddress || borrower?.btcAddress;
+      if (!borrowerAddress) {
+        return res.status(400).json({ message: "Borrower BTC return address not set. Please complete key ceremony first." });
       }
 
       // For UTXO, use funding txid or mock for template creation
@@ -2705,7 +2712,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         const repaymentPsbt = PsbtCreatorService.createRepaymentPsbt({
           witnessScriptHex: loan.escrowWitnessScript,
           escrowUtxo,
-          borrowerAddress: borrower.btcAddress
+          borrowerAddress: borrowerAddress
         });
         templates.push({
           type: 'REPAYMENT',
@@ -2730,7 +2737,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
             witnessScriptHex: loan.escrowWitnessScript,
             escrowUtxo,
             lenderAddress: lender.btcAddress,
-            borrowerAddress: borrower.btcAddress,
+            borrowerAddress: borrowerAddress,
             amountOwedSats
           });
           templates.push({
@@ -2752,7 +2759,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           const recoveryPsbt = PsbtCreatorService.createRecoveryPsbt({
             pubkeys: [loan.borrowerPubkey, loan.lenderPubkey, loan.platformPubkey],
             escrowUtxo,
-            borrowerAddress: borrower.btcAddress,
+            borrowerAddress: borrowerAddress,
             timelockBlocks
           });
           templates.push({
