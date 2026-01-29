@@ -5896,5 +5896,163 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     });
   });
   
+  // =====================================================
+  // AUTOMATIC COLLATERAL RELEASE ENDPOINTS
+  // =====================================================
+  
+  /**
+   * Webhook: Called when repayment is confirmed
+   * Triggers automatic collateral release for a specific loan
+   */
+  app.post("/api/webhooks/repayment-confirmed", async (req, res) => {
+    try {
+      const { loanId } = req.body;
+      
+      if (!loanId) {
+        return res.status(400).json({ error: "loanId required" });
+      }
+      
+      console.log(`[Webhook] Repayment confirmed for loan ${loanId}`);
+      
+      const { processLoanRelease } = await import('./services/AutoCollateralReleaseService.js');
+      const result = await processLoanRelease(storage, parseInt(loanId));
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Collateral released automatically',
+          txid: result.txid,
+          broadcastUrl: result.broadcastUrl
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error('[Webhook] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  /**
+   * Admin trigger: Process all repaid loans needing collateral release
+   */
+  app.post("/api/admin/trigger-auto-release", authenticateToken, async (req: any, res) => {
+    try {
+      // Verify admin access
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      console.log('[Admin] Triggering auto-release batch processing');
+      
+      const { processRepaidLoans } = await import('./services/AutoCollateralReleaseService.js');
+      const result = await processRepaidLoans(storage);
+      
+      res.json({
+        success: result.success,
+        message: 'Auto-release processing triggered',
+        processed: result.processed,
+        released: result.released,
+        failed: result.failed,
+        results: result.results
+      });
+    } catch (error: any) {
+      console.error('[Admin] Auto-release error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  /**
+   * Immediate release for specific loan (called by UI after repayment confirmation)
+   */
+  app.post("/api/loans/:id/auto-release", authenticateToken, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      
+      if (isNaN(loanId)) {
+        return res.status(400).json({ error: "Invalid loan ID" });
+      }
+      
+      // Verify user is authorized (borrower, lender, or admin)
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ error: "Loan not found" });
+      }
+      
+      const user = await storage.getUser(req.user.id);
+      const isAdmin = user?.role === 'admin';
+      const isBorrower = loan.borrowerId === req.user.id;
+      const isLender = loan.lenderId === req.user.id;
+      
+      if (!isAdmin && !isBorrower && !isLender) {
+        return res.status(403).json({ error: "Not authorized to release collateral for this loan" });
+      }
+      
+      console.log(`[API] Auto-release triggered for loan ${loanId} by user ${req.user.id}`);
+      
+      const { processLoanRelease } = await import('./services/AutoCollateralReleaseService.js');
+      const result = await processLoanRelease(storage, loanId);
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Collateral released',
+          txid: result.txid,
+          broadcastUrl: result.broadcastUrl
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error(`[API] Auto-release error for loan:`, error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  /**
+   * Get auto-release status for a loan
+   */
+  app.get("/api/loans/:id/release-status", async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      
+      if (isNaN(loanId)) {
+        return res.status(400).json({ error: "Invalid loan ID" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ error: "Loan not found" });
+      }
+      
+      res.json({
+        loanId,
+        status: loan.status,
+        collateralReleased: loan.collateralReleased || false,
+        collateralReleaseTxid: loan.collateralReleaseTxid,
+        collateralReleasedAt: loan.collateralReleasedAt,
+        collateralReleaseError: loan.collateralReleaseError,
+        explorerUrl: loan.collateralReleaseTxid 
+          ? `https://mempool.space/testnet4/tx/${loan.collateralReleaseTxid}`
+          : null
+      });
+    } catch (error: any) {
+      console.error('[API] Error getting release status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Start auto-release cron job (optional - uncomment to enable)
+  // import('./services/AutoCollateralReleaseService.js').then(({ startAutoReleaseCron }) => {
+  //   startAutoReleaseCron(storage);
+  // });
+  
   return httpServer;
 }
