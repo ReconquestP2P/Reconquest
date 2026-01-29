@@ -667,6 +667,9 @@ async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbt
     const response = await apiRequest(`/api/loans/${loanId}/psbt-templates`, 'GET');
     const data = await response.json();
     
+    // Response format: { loanId, escrowAddress, templates: [...], instructions }
+    const templates = data.templates || [];
+    
     // Map txType to the template type format used by the endpoint
     const typeMap: Record<string, string> = {
       'repayment': 'REPAYMENT',
@@ -676,15 +679,21 @@ async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbt
     };
     const targetType = typeMap[txType] || txType.toUpperCase();
     
-    // Find the matching template from the array
-    const template = data.find((t: any) => t.type === targetType || t.type.includes(txType.toUpperCase()));
+    // Find the matching template from the templates array
+    const template = templates.find((t: any) => 
+      t.type === targetType || 
+      t.type?.includes(txType.toUpperCase()) ||
+      t.type?.toUpperCase() === txType.toUpperCase()
+    );
     
     if (template?.psbtBase64) {
+      console.log(`Found PSBT template for ${txType}:`, template.type);
       return {
         psbtBase64: template.psbtBase64,
         txHash: template.txHash || '',
       };
     }
+    console.warn(`No matching template found for ${txType}, available types:`, templates.map((t: any) => t.type));
     return null;
   } catch (e) {
     console.error(`Error fetching PSBT template for ${txType}:`, e);
