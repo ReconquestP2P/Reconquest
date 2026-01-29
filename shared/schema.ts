@@ -181,8 +181,10 @@ export const loans = pgTable("loans", {
   lenderSignedAt: timestamp("lender_signed_at"), // When lender signed
   
   // Collateral Release Tracking
+  collateralReleased: boolean("collateral_released").default(false), // Whether collateral has been released
   collateralReleaseTxid: text("collateral_release_txid"), // TXID when collateral returned to borrower
   collateralReleasedAt: timestamp("collateral_released_at"), // When collateral was released
+  collateralReleaseError: text("collateral_release_error"), // Error message if release failed
   
   // Network Type (testnet4, mainnet)
   networkType: text("network_type").default("testnet4"),
