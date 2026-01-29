@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { AddressLink, TxLink } from "@/components/explorer-link";
+import { CollateralReleaseStatus } from "@/components/collateral-release-status";
 import type { Loan } from "@shared/schema";
 
 export default function BorrowerDashboard() {
@@ -89,7 +90,8 @@ export default function BorrowerDashboard() {
     (loan.status === "active" && 
     loan.fiatTransferConfirmed === true && 
     loan.borrowerConfirmedReceipt === true) ||
-    loan.status === "repayment_pending"
+    loan.status === "repayment_pending" ||
+    loan.status === "repaid"
   );
   
   const totalBorrowed = activeLoans.reduce((sum, loan) => sum + parseFloat(loan.amount), 0);
@@ -535,16 +537,38 @@ export default function BorrowerDashboard() {
                                 </TableCell>
                                 <TableCell>{getStatusBadge(loan.status)}</TableCell>
                                 <TableCell>
-                                  <Button
-                                    onClick={() => setRepayingLoan(loan)}
-                                    size="sm"
-                                    className="bg-green-600 hover:bg-green-700"
-                                    data-testid={`button-repay-loan-${loan.id}`}
-                                  >
-                                    Repay Loan
-                                  </Button>
+                                  {loan.status === 'repaid' ? (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                      Repaid
+                                    </Badge>
+                                  ) : (
+                                    <Button
+                                      onClick={() => setRepayingLoan(loan)}
+                                      size="sm"
+                                      className="bg-green-600 hover:bg-green-700"
+                                      data-testid={`button-repay-loan-${loan.id}`}
+                                    >
+                                      Repay Loan
+                                    </Button>
+                                  )}
                                 </TableCell>
                               </TableRow>
+                              
+                              {/* Collateral Release Status for repaid loans */}
+                              {loan.status === 'repaid' && (
+                                <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                                  <TableCell colSpan={8} className="p-4">
+                                    <CollateralReleaseStatus
+                                      loanId={loan.id}
+                                      status={loan.status}
+                                      collateralReleased={loan.collateralReleased}
+                                      collateralReleaseTxid={loan.collateralReleaseTxid}
+                                      collateralReleasedAt={loan.collateralReleasedAt}
+                                      collateralReleaseError={loan.collateralReleaseError}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              )}
                               
                               {/* Collateral Deposit History (expandable) */}
                               {isExpanded && (
