@@ -41,6 +41,7 @@ Preferred communication style: Simple, everyday language.
 - **Bitcoin Multisig Escrow**: Automated 3-of-3 multisig Bitcoin testnet escrow address generation.
 - **Bitcoin-Blind Lender Design**: Lenders NEVER handle Bitcoin keys - platform operates their escrow position.
 - **Deterministic Outcome Engine**: A pure function maps objective facts to one of the pre-signed transaction types for fair and transparent dispute resolution.
+- **Automatic Collateral Release**: When loans are repaid, collateral is automatically released to borrowers using pre-signed PSBTs with platform co-signing.
 
 ### Security Architecture - Bitcoin-Blind Lender Model
 
@@ -105,10 +106,13 @@ Preferred communication style: Simple, everyday language.
 ### Key Files for Implementation
 - `server/services/BitcoinEscrowService.ts`: 3-of-3 multisig creation, lender key generation
 - `server/services/EncryptionService.ts`: AES-256-GCM encryption for lender private keys
+- `server/services/AutoCollateralReleaseService.ts`: Automatic collateral release on loan repayment
+- `server/services/CollateralReleaseService.ts`: PSBT co-signing and broadcast for collateral release
 - `client/src/lib/deterministic-key.ts`: Borrower PBKDF2 key derivation
 - `client/src/components/lender-funding-modal.tsx`: Simple lender commitment (no key ceremony)
 - `client/src/components/deposit-instructions-card.tsx`: Borrower passphrase creation
 - `client/src/components/signing-ceremony-modal.tsx`: Borrower-only transaction signing
+- `client/src/components/collateral-release-status.tsx`: UI for collateral release status
 - `bitcoin_escrow.py`: Python script for 3-of-3 P2WSH multisig address creation
 
 ### Schema Fields for Bitcoin-Blind Lender

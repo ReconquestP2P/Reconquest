@@ -24,12 +24,7 @@ export function CollateralReleaseStatus({
   const { toast } = useToast();
   
   const { data: releaseStatus } = useQuery({
-    queryKey: ['/api/loans', loanId, 'release-status'],
-    queryFn: async () => {
-      const res = await fetch(`/api/loans/${loanId}/release-status`);
-      if (!res.ok) throw new Error('Failed to fetch release status');
-      return res.json();
-    },
+    queryKey: [`/api/loans/${loanId}/release-status`],
     enabled: status === 'repaid',
     refetchInterval: collateralReleased ? false : 30000
   });

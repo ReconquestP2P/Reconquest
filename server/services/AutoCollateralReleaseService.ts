@@ -161,7 +161,7 @@ async function notifyBorrower(storage: IStorage, loanId: number, txid: string): 
     if (!borrower || !borrower.email) return;
     
     // Import email service dynamically
-    const { sendEmail } = await import('./email.js');
+    const { sendEmail } = await import('../email.js');
     
     const explorerUrl = `https://mempool.space/testnet4/tx/${txid}`;
     
