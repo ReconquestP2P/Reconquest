@@ -4915,34 +4915,24 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         }
       }
 
-      // Check if both parties have now signed
+      // After signing, the loan stays in escrow_created state
+      // Loan will ONLY become active after BTC deposit is confirmed
       const updatedLoan = await storage.getLoan(loanId);
-      if (updatedLoan?.borrowerKeysGeneratedAt && updatedLoan?.lenderKeysGeneratedAt) {
-        // Both parties have signed - activate the loan!
-        // Note: Don't overwrite loanStartedAt if already set (from confirm-deposit +5 days)
-        const activationUpdate: any = {
-          status: 'active',
-          escrowState: 'keys_generated',
-        };
-        if (!updatedLoan.loanStartedAt) {
-          activationUpdate.loanStartedAt = now;
-        }
-        await storage.updateLoan(loanId, activationUpdate);
+      
+      // Update escrow state to reflect signing is complete, but don't activate yet
+      // Borrower still needs to deposit BTC to the escrow address
+      await storage.updateLoan(loanId, {
+        escrowState: 'escrow_created', // Keep in escrow_created so deposit instructions show
+        // Status stays as 'funded' - will become 'active' after BTC deposit confirmed
+      });
 
-        console.log(`🎉 Loan #${loanId} activated! Both parties have completed signing ceremony.`);
-        res.json({ 
-          success: true, 
-          loanActivated: true,
-          message: "Signing complete! Loan is now active." 
-        });
-      } else {
-        console.log(`✅ ${role} completed signing for loan #${loanId}. Waiting for other party...`);
-        res.json({ 
-          success: true, 
-          loanActivated: false,
-          message: "Signing complete! Waiting for other party to sign." 
-        });
-      }
+      console.log(`✅ ${role} completed signing for loan #${loanId}. Waiting for BTC deposit to escrow.`);
+      res.json({ 
+        success: true, 
+        loanActivated: false,
+        escrowAddress: updatedLoan?.escrowAddress,
+        message: "Signing complete! Please deposit Bitcoin to the escrow address." 
+      });
 
     } catch (error) {
       console.error("Error completing signing ceremony:", error);
