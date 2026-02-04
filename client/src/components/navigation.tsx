@@ -18,7 +18,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-28">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src={logoImage} alt="Reconquest" className="h-24 w-auto dark:grayscale dark:invert" />
+              <img src={logoImage} alt="Reconquest" className="h-24 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               {isAuthenticated && (
