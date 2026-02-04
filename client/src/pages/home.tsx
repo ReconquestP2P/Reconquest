@@ -5,6 +5,9 @@ import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "l
 import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import bitcoinIcon from "@assets/image_1752547022307.png";
 import { useAuth } from "@/hooks/useAuth";
+import { ScrollAnimation, ScaleIn, SlideInLeft, SlideInRight } from "@/components/scroll-animation";
+import { AnimatedCounter } from "@/components/animated-counter";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -13,21 +16,41 @@ export default function Home() {
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900">
         <div className="max-w-7xl mx-auto text-center">
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-4 font-medium">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-xl text-gray-600 dark:text-gray-300 mb-4 font-medium"
+          >
             The Future of Lending Is Bitcoin-Backed
-          </p>
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+          </motion.p>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6"
+          >
             <div className="mb-2">The Global Marketplace for</div>
             <div className="flex items-center justify-center gap-0.5">
-              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16 rounded-full object-cover" />
+              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16 rounded-full object-cover floating" />
               <span className="text-gradient-gold">itcoin-Backed Loans</span>
             </div>
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto"
+          >
             Built for Bitcoiners seeking capital and Investors looking for safe, fixed returns.<br />
             Secure, non-custodial lending with Bitcoin as collateral.
-          </p>
-          <div className="flex gap-4 justify-center mt-12">
+          </motion.p>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex gap-4 justify-center mt-12"
+          >
             <Link href={isAuthenticated ? "/borrower" : "/login"}>
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
                 Start Borrowing
@@ -38,13 +61,18 @@ export default function Home() {
                 Start Lending
               </Button>
             </Link>
-          </div>
+          </motion.div>
 
           {/* Explainer Video */}
-          <div className="mt-12 max-w-3xl mx-auto">
-            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-12 max-w-3xl mx-auto"
+          >
+            <div className="relative w-full p-1 rounded-2xl glassmorphism" style={{ paddingBottom: 'calc(56.25% + 8px)' }}>
               <iframe
-                className="absolute top-0 left-0 w-full h-full rounded-xl shadow-2xl"
+                className="absolute top-1 left-1 right-1 bottom-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-xl shadow-2xl"
                 src="https://www.youtube.com/embed/6XizFXdNDUs"
                 title="Welcome to Reconquest"
                 frameBorder="0"
@@ -52,53 +80,66 @@ export default function Home() {
                 allowFullScreen
               />
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="mt-12 text-sm text-gray-500 dark:text-gray-400"
+          >
             Trusted by <span className="font-semibold text-primary">1,000+</span> users • 
             <span className="font-semibold text-primary ml-2">500+</span> BTC collateralized
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Key Features */}
       <section className="py-16 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Reconquest?</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">The most secure and efficient Bitcoin-backed lending platform</p>
-          </div>
+          <ScrollAnimation>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Reconquest?</h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300">The most secure and efficient Bitcoin-backed lending platform</p>
+            </div>
+          </ScrollAnimation>
           
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="text-center p-0">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Shield className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 dark:text-white">Non-Custodial Security</h3>
-                <p className="text-gray-600 dark:text-gray-300">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
-              </CardContent>
-            </Card>
+            <ScrollAnimation delay={0.1}>
+              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardContent className="text-center p-0">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Shield className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Non-Custodial Security</h3>
+                  <p className="text-gray-600 dark:text-gray-300">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
+                </CardContent>
+              </Card>
+            </ScrollAnimation>
             
-            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="text-center p-0">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 dark:text-white">Competitive Rates</h3>
-                <p className="text-gray-600 dark:text-gray-300">Borrowers get low rates, lenders earn attractive yields.</p>
-              </CardContent>
-            </Card>
+            <ScrollAnimation delay={0.2}>
+              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardContent className="text-center p-0">
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Competitive Rates</h3>
+                  <p className="text-gray-600 dark:text-gray-300">Borrowers get low rates, lenders earn attractive yields.</p>
+                </CardContent>
+              </Card>
+            </ScrollAnimation>
             
-            <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardContent className="text-center p-0">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Code className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 dark:text-white">Smart Contracts</h3>
-                <p className="text-gray-600 dark:text-gray-300">Automated, transparent lending with programmable escrow.</p>
-              </CardContent>
-            </Card>
+            <ScrollAnimation delay={0.3}>
+              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+                <CardContent className="text-center p-0">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Code className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Smart Contracts</h3>
+                  <p className="text-gray-600 dark:text-gray-300">Automated, transparent lending with programmable escrow.</p>
+                </CardContent>
+              </Card>
+            </ScrollAnimation>
           </div>
         </div>
       </section>
@@ -106,14 +147,16 @@ export default function Home() {
       {/* How It Works Section */}
       <section id="how-it-works" className="py-16 bg-gradient-to-b from-transparent via-gray-50/30 to-transparent dark:via-gray-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">How Reconquest Works</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure Bitcoin-backed lending in 4 steps</p>
-          </div>
+          <ScrollAnimation>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">How Reconquest Works</h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure Bitcoin-backed lending in 4 steps</p>
+            </div>
+          </ScrollAnimation>
           
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* For Borrowers */}
-            <div>
+            <SlideInLeft>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <Bitcoin className="h-8 w-8 text-primary mr-3" />
                 For Borrowers
@@ -156,10 +199,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </SlideInLeft>
 
             {/* For Lenders */}
-            <div>
+            <SlideInRight>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <span className="text-blue-600 mr-3 text-2xl">💸</span>
                 For Lenders
@@ -202,7 +245,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </SlideInRight>
           </div>
         </div>
       </section>
@@ -400,22 +443,36 @@ export default function Home() {
       <section className="py-16 bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-              <div className="text-3xl font-bold text-primary mb-2">$50M+</div>
-              <div className="text-gray-600 dark:text-gray-300">Total Volume</div>
-            </div>
-            <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-              <div className="text-3xl font-bold text-primary mb-2">500+</div>
-              <div className="text-gray-600 dark:text-gray-300">BTC Collateralized</div>
-            </div>
-            <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-              <div className="text-3xl font-bold text-primary mb-2">99.9%</div>
-              <div className="text-gray-600 dark:text-gray-300">Uptime</div>
-            </div>
-            <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-              <div className="text-3xl font-bold text-primary mb-2">1,000+</div>
-              <div className="text-gray-600 dark:text-gray-300">Active Users</div>
-            </div>
+            <ScrollAnimation delay={0}>
+              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
+                <div className="text-3xl font-bold text-primary mb-2">
+                  <AnimatedCounter end={50} prefix="$" suffix="M+" duration={2000} />
+                </div>
+                <div className="text-gray-600 dark:text-gray-300">Total Volume</div>
+              </div>
+            </ScrollAnimation>
+            <ScrollAnimation delay={0.1}>
+              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
+                <div className="text-3xl font-bold text-primary mb-2">
+                  <AnimatedCounter end={500} suffix="+" duration={2000} />
+                </div>
+                <div className="text-gray-600 dark:text-gray-300">BTC Collateralized</div>
+              </div>
+            </ScrollAnimation>
+            <ScrollAnimation delay={0.2}>
+              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
+                <div className="text-3xl font-bold text-primary mb-2">99.9%</div>
+                <div className="text-gray-600 dark:text-gray-300">Uptime</div>
+              </div>
+            </ScrollAnimation>
+            <ScrollAnimation delay={0.3}>
+              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
+                <div className="text-3xl font-bold text-primary mb-2">
+                  <AnimatedCounter end={1000} suffix="+" duration={2000} />
+                </div>
+                <div className="text-gray-600 dark:text-gray-300">Active Users</div>
+              </div>
+            </ScrollAnimation>
           </div>
         </div>
       </section>
