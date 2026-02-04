@@ -28,11 +28,11 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6"
+            className="text-3xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6"
           >
             <div className="mb-2">The Global Marketplace for</div>
             <div className="flex items-center justify-center gap-0.5">
-              <img src={bitcoinIcon} alt="Bitcoin" className="w-16 h-16 rounded-full object-cover floating" />
+              <img src={bitcoinIcon} alt="Bitcoin" className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover floating" />
               <span className="text-gradient-gold">itcoin-Backed Loans</span>
             </div>
           </motion.h1>
@@ -49,15 +49,15 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex gap-4 justify-center mt-12"
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12 px-4 sm:px-0"
           >
-            <Link href={isAuthenticated ? "/borrower" : "/login"}>
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
+            <Link href={isAuthenticated ? "/borrower" : "/login"} className="w-full sm:w-auto max-w-sm">
+              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-8 py-4 min-h-[48px] text-lg shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out">
                 Start Borrowing
               </Button>
             </Link>
-            <Link href={isAuthenticated ? "/lender" : "/login"}>
-              <Button size="lg" variant="outline" className="bg-gray-900 border-2 border-primary text-primary hover:bg-gray-800 hover:border-primary hover:text-primary px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
+            <Link href={isAuthenticated ? "/lender" : "/login"} className="w-full sm:w-auto max-w-sm">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary px-8 py-4 min-h-[48px] text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
                 Start Lending
               </Button>
             </Link>
@@ -482,14 +482,14 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to Get Started?</h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">Join thousands of users leveraging Bitcoin for financial freedom</p>
-          <div className="flex gap-4 justify-center">
-            <Link href="/login">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-black px-8 py-4 text-lg font-semibold">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4 sm:px-0">
+            <Link href="/login" className="w-full sm:w-auto max-w-sm">
+              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-8 py-4 min-h-[48px] text-lg shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out">
                 Start Borrowing
               </Button>
             </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="bg-gray-900 border-2 border-primary text-primary hover:bg-gray-800 hover:border-primary hover:text-primary px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
+            <Link href="/login" className="w-full sm:w-auto max-w-sm">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary px-8 py-4 min-h-[48px] text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
                 Start Lending
               </Button>
             </Link>

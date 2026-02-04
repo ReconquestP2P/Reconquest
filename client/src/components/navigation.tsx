@@ -241,22 +241,29 @@ export default function Navigation() {
                   </button>
                 </>
               ) : (
-                <>
+                <div className="flex flex-col gap-3 px-3 py-4 border-t border-gray-200 dark:border-gray-700 mt-2">
                   <Link
                     href="/login"
-                    className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    LOG IN
+                    <Button 
+                      variant="ghost"
+                      className="w-full bg-gray-900 dark:bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary/80 px-5 py-3 min-h-[48px] text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out"
+                    >
+                      LOG IN
+                    </Button>
                   </Link>
                   <Link
                     href="/signup"
-                    className="block px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    SIGN UP
+                    <Button 
+                      className="w-full bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-6 py-3 min-h-[48px] text-base shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] transition-all duration-300 ease-in-out"
+                    >
+                      SIGN UP
+                    </Button>
                   </Link>
-                </>
+                </div>
               )}
 
               {/* Mobile Bitcoin price */}
