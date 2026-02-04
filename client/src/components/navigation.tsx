@@ -113,16 +113,18 @@ export default function Navigation() {
                 <>
                     <Link href="/login">
                       <Button 
+                        variant="outline"
                         size="sm" 
-                        className="bg-gradient-to-r from-blue-700 to-yellow-400 hover:from-blue-800 hover:to-yellow-500 text-white font-medium shadow-md"
+                        className="border-2 border-primary text-primary hover:bg-primary/10 hover:border-primary px-6 py-2 font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 ease-in-out"
                       >
                         LOG IN
                       </Button>
                     </Link>
                     <Link href="/signup">
                       <Button 
+                        variant="default"
                         size="sm" 
-                        className="bg-gradient-to-r from-black to-yellow-400 hover:from-gray-800 hover:to-yellow-500 text-white font-medium shadow-md"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out"
                       >
                         SIGN UP
                       </Button>
