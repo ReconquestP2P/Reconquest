@@ -113,18 +113,17 @@ export default function Navigation() {
                 <>
                     <Link href="/login">
                       <Button 
-                        variant="outline"
+                        variant="ghost"
                         size="sm" 
-                        className="border-2 border-primary text-primary hover:bg-primary/10 hover:border-primary px-6 py-2 font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 ease-in-out"
+                        className="backdrop-blur-md bg-white/5 dark:bg-white/5 border border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 px-5 py-2 text-sm font-medium shadow-md hover:shadow-lg transition-all duration-300 ease-in-out hover:scale-105"
                       >
                         LOG IN
                       </Button>
                     </Link>
                     <Link href="/signup">
                       <Button 
-                        variant="default"
-                        size="sm" 
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out"
+                        size="default" 
+                        className="bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-6 py-2.5 shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out"
                       >
                         SIGN UP
                       </Button>
