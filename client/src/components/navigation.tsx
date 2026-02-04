@@ -115,7 +115,7 @@ export default function Navigation() {
                       <Button 
                         variant="ghost"
                         size="sm" 
-                        className="bg-gray-900 dark:bg-gray-900 border-2 border-primary text-primary hover:bg-gray-800 hover:border-primary/80 px-5 py-2 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out hover:scale-105"
+                        className="bg-gray-900 dark:bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary/80 px-5 py-2 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out hover:scale-105"
                       >
                         LOG IN
                       </Button>
