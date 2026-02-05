@@ -22,7 +22,7 @@ function validatePlatformKey(): string {
   
   try {
     const key = ECPair.fromPrivateKey(Buffer.from(privkey, 'hex'));
-    const pubkey = key.publicKey.toString('hex');
+    const pubkey = Buffer.from(key.publicKey).toString('hex');
     
     // Test signing works
     const testMsg = Buffer.alloc(32, 0x01); // 32-byte test message

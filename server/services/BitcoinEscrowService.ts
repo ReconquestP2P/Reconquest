@@ -3,8 +3,11 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFileSync, unlinkSync } from 'fs';
 import { getCurrentNetwork } from './bitcoin-network-selector.js';
+import { ECPairFactory } from 'ecpair';
+import * as ecc from 'tiny-secp256k1';
 
 const execAsync = promisify(exec);
+const ECPair = ECPairFactory(ecc);
 
 export interface MultisigEscrowResult {
   address: string;
@@ -54,10 +57,6 @@ export interface IBitcoinEscrowService {
  * - Lender rights are enforced via fiat transfer confirmations
  */
 export class BitcoinEscrowService implements IBitcoinEscrowService {
-  // Platform's public key for multisig escrow (MAINNET-READY)
-  // Generated via: npx tsx server/scripts/generate-mainnet-key.ts
-  public static readonly PLATFORM_PUBLIC_KEY = "03b017b2eabe5408228080931b2aab9f5d683c80d82768a05a361d6b0c41fbb782";
-  
   // In-memory storage for lender keys (in production, use HSM or secure enclave)
   private lenderKeys: Map<number, LenderKeyPair> = new Map();
   
@@ -70,7 +69,22 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
     return key;
   }
   
-  private readonly platformPubkey = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
+  // Derive platform public key dynamically from the environment variable
+  // This ensures we ALWAYS use the key that matches PLATFORM_SIGNING_KEY
+  public static getPlatformPublicKey(): string {
+    const privkey = this.getPlatformPrivateKey();
+    const key = ECPair.fromPrivateKey(Buffer.from(privkey, 'hex'));
+    return Buffer.from(key.publicKey).toString('hex');
+  }
+  
+  // Legacy constant for backwards compatibility (may not match current env key!)
+  // Use getPlatformPublicKey() for new escrows
+  public static readonly PLATFORM_PUBLIC_KEY = "03b017b2eabe5408228080931b2aab9f5d683c80d82768a05a361d6b0c41fbb782";
+  
+  // Dynamic platform pubkey derived from environment
+  private get platformPubkey(): string {
+    return BitcoinEscrowService.getPlatformPublicKey();
+  }
 
   /**
    * Generates a key pair for the lender's position in the escrow

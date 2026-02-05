@@ -286,6 +286,31 @@ export async function releaseCollateral(
       return { success: false, error: 'No escrow address found' };
     }
     
+    // ================================================================
+    // PLATFORM KEY MATCH VERIFICATION
+    // Ensures we can actually sign with the current platform key
+    // ================================================================
+    const currentPlatformPubkey = BitcoinEscrowService.getPlatformPublicKey();
+    
+    if (!loan.platformPubkey) {
+      console.warn(`⚠️ [COLLATERAL-RELEASE] Loan #${loanId} has no recorded platform key (old loan)`);
+      console.warn(`   Current platform key: ${currentPlatformPubkey}`);
+      console.warn(`   Proceeding anyway for backwards compatibility...`);
+    } else if (loan.platformPubkey !== currentPlatformPubkey) {
+      // KEY MISMATCH DETECTED - Cannot sign!
+      console.error(`❌ [COLLATERAL-RELEASE] Platform key mismatch for loan #${loanId}`);
+      console.error(`   Loan created with: ${loan.platformPubkey}`);
+      console.error(`   Current key is:    ${currentPlatformPubkey}`);
+      return {
+        success: false,
+        error: `Platform key mismatch. Loan created with key ${loan.platformPubkey.substring(0, 16)}..., ` +
+               `but current key is ${currentPlatformPubkey.substring(0, 16)}.... ` +
+               `Cannot sign. Borrower should use RECOVERY PSBT.`
+      };
+    } else {
+      console.log(`✅ [COLLATERAL-RELEASE] Platform key match verified for loan #${loanId}`);
+    }
+    
     // Get borrower's BTC return address from user record
     const borrower = await storage.getUser(loan.borrowerId);
     if (!borrower || !borrower.btcAddress) {
@@ -505,6 +530,31 @@ export async function releaseCollateralToAddress(
     
     if (!loan.escrowAddress) {
       return { success: false, error: 'No escrow address found' };
+    }
+    
+    // ================================================================
+    // PLATFORM KEY MATCH VERIFICATION
+    // Ensures we can actually sign with the current platform key
+    // ================================================================
+    const currentPlatformPubkey = BitcoinEscrowService.getPlatformPublicKey();
+    
+    if (!loan.platformPubkey) {
+      console.warn(`⚠️ [LIQUIDATION] Loan #${loanId} has no recorded platform key (old loan)`);
+      console.warn(`   Current platform key: ${currentPlatformPubkey}`);
+      console.warn(`   Proceeding anyway for backwards compatibility...`);
+    } else if (loan.platformPubkey !== currentPlatformPubkey) {
+      // KEY MISMATCH DETECTED - Cannot sign!
+      console.error(`❌ [LIQUIDATION] Platform key mismatch for loan #${loanId}`);
+      console.error(`   Loan created with: ${loan.platformPubkey}`);
+      console.error(`   Current key is:    ${currentPlatformPubkey}`);
+      return {
+        success: false,
+        error: `Platform key mismatch. Loan created with key ${loan.platformPubkey.substring(0, 16)}..., ` +
+               `but current key is ${currentPlatformPubkey.substring(0, 16)}.... ` +
+               `Cannot sign for liquidation.`
+      };
+    } else {
+      console.log(`✅ [LIQUIDATION] Platform key match verified for loan #${loanId}`);
     }
     
     const escrowAddress = loan.escrowAddress;
