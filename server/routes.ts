@@ -1930,6 +1930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               termMonths: loan.termMonths,
               collateralBtc: String(loan.collateralBtc),
               dashboardUrl: `${baseUrl}/lender`,
+              escrowAddress: loan.escrowAddress || undefined,
             });
             
             if (emailSent) {
@@ -4907,6 +4908,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
               termMonths: loan.termMonths,
               collateralBtc: String(loan.collateralBtc),
               dashboardUrl: `${baseUrl}/lender`,
+              escrowAddress: loan.escrowAddress || undefined,
             });
             console.log(`📧 Sent key generation notification to lender: ${lender.email}`);
           }

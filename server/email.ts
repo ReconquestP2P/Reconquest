@@ -325,10 +325,12 @@ export async function sendLenderKeyGenerationNotification(params: {
   termMonths: number;
   collateralBtc: string;
   dashboardUrl: string;
+  escrowAddress?: string;
 }): Promise<boolean> {
-  const { to, lenderName, borrowerName, loanId, loanAmount, currency, interestRate, termMonths, collateralBtc, dashboardUrl } = params;
+  const { to, lenderName, borrowerName, loanId, loanAmount, currency, interestRate, termMonths, collateralBtc, dashboardUrl, escrowAddress } = params;
 
   const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
+  const mempoolUrl = escrowAddress ? getExplorerUrl('address', escrowAddress) : '';
   const formattedAmount = parseFloat(loanAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formattedInterestRate = parseFloat(interestRate).toFixed(2);
 
@@ -366,6 +368,7 @@ export async function sendLenderKeyGenerationNotification(params: {
           <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${formattedInterestRate}% p.a.</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Term:</strong> ${termMonths} months</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Collateral:</strong> ${collateralBtc} BTC</p>
+          ${mempoolUrl ? `<p style="margin: 8px 0; font-size: 15px;"><strong>Verify Collateral:</strong> <a href="${mempoolUrl}" style="color: #D4AF37; text-decoration: none; font-weight: 600;">View on Mempool.space</a></p>` : ''}
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
