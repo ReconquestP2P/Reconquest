@@ -1,0 +1,109 @@
+STRUCTURAL CHANGE #2: Record Which Key Created Each Loan
+
+File: shared/schema.ts
+
+Add column:
+
+typescript
+export const loans = sqliteTable("loans", {
+  // ... existing columns ...
+  platformPubkey: text("platform_pubkey").notNull(), // NEW
+});
+Migration:
+
+sql
+ALTER TABLE loans ADD COLUMN platform_pubkey VARCHAR(66);
+File: server/services/TransactionTemplateService.ts
+
+In generatePreSignedTransactions(), after getting platform key:
+
+typescript
+const platformKey = ECPair.fromPrivateKey(
+  Buffer.from(process.env.PLATFORM_SIGNING_KEY, 'hex')
+);
+const platformPubkey = platformKey.publicKey.toString('hex');
+
+// Store which platform key was used for this loan
+await storage.db.query(
+  'UPDATE loans SET platform_pubkey = ? WHERE id = ?',
+  [platformPubkey, loanId]
+);
+
+console.log(`[TransactionTemplates] Loan ${loanId} created with platform key: ${platformPubkey}`);
+WHY: Creates permanent record of which key created each escrow.
+
+═══════════════════════════════════════════════════════════
+
+STRUCTURAL CHANGE #3: Verify Key Matches Before Signing
+
+File: server/services/CollateralReleaseService.ts
+
+In tryPreSignedRelease(), add at the start:
+
+typescript
+private static async tryPreSignedRelease(loanId: number): Promise<string> {
+  const loan = await storage.getLoan(loanId);
+  
+  // Get current platform key
+  const currentKey = ECPair.fromPrivateKey(
+    Buffer.from(process.env.PLATFORM_SIGNING_KEY, 'hex')
+  );
+  const currentPubkey = currentKey.publicKey.toString('hex');
+  
+  // Check if loan has recorded platform key
+  if (!loan.platformPubkey) {
+    console.warn(`[PRE-SIGNED] ⚠️ Loan ${loanId} has no recorded platform key (old loan)`);
+    // Continue anyway for backwards compatibility
+  } else if (loan.platformPubkey !== currentPubkey) {
+    // KEY MISMATCH DETECTED
+    throw new Error(
+      `Platform key mismatch for loan ${loanId}. ` +
+      `Loan created with key ${loan.platformPubkey}, ` +
+      `but current key is ${currentPubkey}. ` +
+      `Cannot sign. Borrower should use RECOVERY PSBT.`
+    );
+  } else {
+    console.log(`[PRE-SIGNED] ✅ Platform key match verified for loan ${loanId}`);
+  }
+  
+  // Continue with normal signing...
+}
+WHY: Prevents attempting to sign with wrong key. Fails fast with clear error.
+
+═══════════════════════════════════════════════════════════
+
+STRUCTURAL CHANGE #4: Generate Platform Key (If Missing)
+
+Only needed if PLATFORM_SIGNING_KEY doesn't exist yet.
+
+Run once:
+
+typescript
+import { ECPairFactory } from 'ecpair';
+import * as ecc from 'tiny-secp256k1';
+
+const ECPair = ECPairFactory(ecc);
+const key = ECPair.makeRandom();
+
+console.log('Private Key (add to Replit Secrets as PLATFORM_SIGNING_KEY):');
+console.log(key.privateKey.toString('hex'));
+console.log();
+console.log('Public Key (for reference):');
+console.log(key.publicKey.toString('hex'));
+Then add the private key to Replit Secrets.
+
+WHY: Ensures you have a valid platform key. One-time setup.
+
+═══════════════════════════════════════════════════════════
+
+WHAT THIS ACHIEVES:
+
+After these changes:
+
+✅ App won't start with invalid/missing platform key (Change #1)
+✅ Every loan records which key created it (Change #2)
+✅ Collateral release verifies key match (Change #3)
+✅ Clear error messages if keys don't match (Change #3)
+✅ Platform key is consistent and validated (Change #4)
+
+This problem CANNOT happen again.
