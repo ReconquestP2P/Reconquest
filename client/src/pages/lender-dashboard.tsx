@@ -106,9 +106,11 @@ export default function LenderDashboard() {
   
   // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
   const activeInvestments = lenderLoans.filter(loan => 
-    loan.status === "active" && 
+    (loan.status === "active" && 
     loan.fiatTransferConfirmed === true && 
-    loan.borrowerConfirmedReceipt === true
+    loan.borrowerConfirmedReceipt === true) ||
+    loan.status === "repayment_pending" ||
+    loan.status === "repaid"
   );
 
   // Mutation for confirming fiat transfer sent
@@ -748,7 +750,7 @@ export default function LenderDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {lenderLoans.filter(loan => loan.status === 'active' || loan.status === 'repayment_pending').length > 0 ? (
+              {activeInvestments.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -763,9 +765,7 @@ export default function LenderDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lenderLoans
-                      .filter(loan => loan.status === 'active' || loan.status === 'repayment_pending')
-                      .map((loan) => {
+                    {activeInvestments.map((loan) => {
                         const startDate = loan.activatedAt ? new Date(loan.activatedAt) : new Date();
                         const maturityDate = new Date(startDate.getTime() + loan.termMonths * 30 * 24 * 60 * 60 * 1000);
                         const isExpanded = expandedCollateralLoanId === loan.id;
