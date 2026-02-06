@@ -4956,32 +4956,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
 
       await storage.updateLoan(loanId, updateData);
 
-      // Send email notification to lender when borrower completes signing
-      if (role === 'borrower' && loan.lenderId) {
-        try {
-          const lender = await storage.getUser(loan.lenderId);
-          const borrower = await storage.getUser(userId);
-          if (lender && lender.email && borrower) {
-            const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-            await sendLenderKeyGenerationNotification({
-              to: lender.email,
-              lenderName: lender.firstName || lender.username,
-              borrowerName: borrower.firstName || borrower.username,
-              loanId: loan.id,
-              loanAmount: String(loan.amount),
-              currency: loan.currency,
-              interestRate: String(loan.interestRate),
-              termMonths: loan.termMonths,
-              collateralBtc: String(loan.collateralBtc),
-              dashboardUrl: `${baseUrl}/lender`,
-              escrowAddress: loan.escrowAddress || undefined,
-            });
-            console.log(`📧 Sent key generation notification to lender: ${lender.email}`);
-          }
-        } catch (emailError) {
-          console.error('Failed to send lender notification:', emailError);
-        }
-      }
+      // NOTE: No lender email sent here. The lender only receives a notification
+      // when the BTC deposit is confirmed on-chain (handled by BlockchainMonitoring.handleDepositConfirmed).
 
       // After signing, the loan stays in escrow_created state
       // Loan will ONLY become active after BTC deposit is confirmed
