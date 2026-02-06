@@ -388,6 +388,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
 
   if (loan.escrowAddress && !loan.borrowerSigningComplete && !recoveryBundle) {
     return (
+      <>
       <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
@@ -431,6 +432,25 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           </Button>
         </CardContent>
       </Card>
+      {showSigningModal && signingLoanData && (
+        <SigningCeremonyModal
+          isOpen={showSigningModal}
+          onClose={() => {
+            setShowSigningModal(false);
+          }}
+          loan={{
+            id: signingLoanData.id,
+            amount: signingLoanData.amount,
+            currency: signingLoanData.currency,
+            collateralBtc: signingLoanData.collateralBtc,
+            termMonths: signingLoanData.termMonths,
+            escrowAddress: signingLoanData.escrowAddress,
+          }}
+          role="borrower"
+          userId={userId}
+        />
+      )}
+      </>
     );
   }
 
