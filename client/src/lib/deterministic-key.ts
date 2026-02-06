@@ -91,9 +91,8 @@ export async function signWithDerivedKey(
   const { privateKey } = deriveKeyFromPin(loanId, userId, role, pin);
   
   try {
-    const signature = await secp256k1.sign(messageHash, privateKey);
-    // @ts-ignore - toCompactHex exists at runtime
-    return signature.toCompactHex ? signature.toCompactHex() : bytesToHex(signature.toCompactRawBytes());
+    const signature = await secp256k1.sign(messageHash, privateKey, { prehash: false });
+    return bytesToHex(signature as Uint8Array);
   } finally {
     // CRITICAL: Wipe private key
     privateKey.fill(0);

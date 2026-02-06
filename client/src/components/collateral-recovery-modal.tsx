@@ -142,7 +142,7 @@ export function CollateralRecoveryModal({ isOpen, onClose, loan, userId }: Colla
       const signatures: string[] = [];
       for (const sighashHex of sighashData.sighashes) {
         const sighashBytes = hexToBytes(sighashHex);
-        const sig = await secp256k1.sign(sighashBytes, privateKey, { lowS: true });
+        const sig = await secp256k1.sign(sighashBytes, privateKey, { lowS: true, prehash: false });
         const derSig = serializeSignatureDER(sig);
         signatures.push(derSig);
       }

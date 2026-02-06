@@ -238,7 +238,7 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
           if (psbtData) {
             // Sign the PSBT content
             const messageHash = sha256(new TextEncoder().encode(psbtData.psbtBase64));
-            const signature = await secp256k1.sign(messageHash, privateKey);
+            const signature = await secp256k1.sign(messageHash, privateKey, { prehash: false });
             
             // Convert to DER format for the new API
             const derSig = serializeSignatureDER(signature);

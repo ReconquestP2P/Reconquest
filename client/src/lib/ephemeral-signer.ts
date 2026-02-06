@@ -195,11 +195,10 @@ async function signTransaction(messageHash: string, privateKey: string): Promise
   const privateKeyBytes = hexToBytes(privateKey);
   
   // secp256k1.sign returns a Signature object
-  const signature = await secp256k1.sign(messageBytes, privateKeyBytes);
+  const signature = await secp256k1.sign(messageBytes, privateKeyBytes, { prehash: false });
   
-  // Signature object has toCompactHex() method
-  // @ts-ignore - Runtime has this method even if types don't show it
-  return signature.toCompactHex ? signature.toCompactHex() : String(signature);
+  // v3 returns Uint8Array(64) compact signature directly
+  return Array.from(signature as Uint8Array).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
