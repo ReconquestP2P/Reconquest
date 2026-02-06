@@ -1,0 +1,212 @@
+URGENT: Complete the Recovery System That Should Have Been Built
+
+The structural fix prevents future issues, but doesn't help existing loans
+with platform key mismatches. We need the FULL recovery system NOW.
+
+═══════════════════════════════════════════════════════════
+
+CRITICAL MISSING PIECES:
+
+1. SERVER ENDPOINTS (Should have been included):
+
+File: server/routes.ts
+
+// Prepare recovery PSBT (server signs with lender key)
+app.post('/api/loans/:id/recovery/prepare', async (req, res) => {
+  try {
+    const loanId = parseInt(req.params.id);
+    const loan = await storage.getLoan(loanId);
+    
+    // Build PSBT with real UTXO
+    const psbt = await buildRecoveryPSBT(loan);
+    
+    // Sign with lender key
+    const lenderKey = await decryptLenderKey(loan.lenderEncryptedKey);
+    psbt.signInput(0, lenderKey);
+    
+    // Return partially-signed PSBT to client
+    res.json({
+      psbt: psbt.toBase64(),
+      requiresBorrowerSignature: true
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Finalize recovery (receive borrower signature, broadcast)
+app.post('/api/loans/:id/recovery/finalize', async (req, res) => {
+  try {
+    const { psbt: psbtBase64 } = req.body;
+    const loanId = parseInt(req.params.id);
+    
+    // Decode PSBT with both signatures
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
+    
+    // Finalize and broadcast
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txid = await broadcastTransaction(tx.toHex());
+    
+    // Update database
+    await storage.db.query(
+      'UPDATE loans SET collateral_released = true, collateral_release_txid = ? WHERE id = ?',
+      [txid, loanId]
+    );
+    
+    res.json({ success: true, txid });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+2. CLIENT RECOVERY COMPONENT (Should have been included):
+
+File: client/src/components/RecoveryModal.tsx
+
+export function RecoveryModal({ loan, open, onClose }) {
+  const [passphrase, setPassphrase] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const handleRecover = async () => {
+    setLoading(true);
+    
+    try {
+      // 1. Get partially-signed PSBT from server
+      const prepareRes = await fetch(`/api/loans/${loan.id}/recovery/prepare`, {
+        method: 'POST'
+      });
+      const { psbt: psbtBase64 } = await prepareRes.json();
+      
+      // 2. Derive borrower key from passphrase
+      const borrowerKey = await deriveBorrowerKey(passphrase, loan.id, loan.borrowerId);
+      
+      // 3. Sign PSBT with borrower key (client-side)
+      const psbt = bitcoin.Psbt.fromBase64(psbtBase64);
+      psbt.signInput(0, borrowerKey);
+      
+      // 4. Send back to server for broadcast
+      const finalizeRes = await fetch(`/api/loans/${loan.id}/recovery/finalize`, {
+        method: 'POST',
+        body: JSON.stringify({ psbt: psbt.toBase64() })
+      });
+      const { txid } = await finalizeRes.json();
+      
+      toast.success(`Collateral recovered! Txid: ${txid}`);
+      onClose();
+      
+    } catch (error) {
+      toast.error(`Recovery failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Recover Collateral</DialogTitle>
+          <DialogDescription>
+            Enter your passphrase to recover collateral using borrower + lender signatures
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <Input
+            type="password"
+            placeholder="Enter your passphrase"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+          />
+          
+          <Button 
+            onClick={handleRecover} 
+            disabled={!passphrase || loading}
+            className="w-full"
+          >
+            {loading ? 'Recovering...' : 'Sign and Recover'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+3. AUTO-FALLBACK LOGIC (Should have been included):
+
+File: server/services/CollateralReleaseService.ts
+
+In tryPreSignedRelease(), add fallback:
+
+private static async tryPreSignedRelease(loanId: number): Promise<string> {
+  const loan = await storage.getLoan(loanId);
+  
+  // Check for platform key mismatch
+  const currentPubkey = getCurrentPlatformPubkey();
+  
+  if (loan.platformPubkey && loan.platformPubkey !== currentPubkey) {
+    console.log(`[RECOVERY] Platform key mismatch detected for loan ${loanId}`);
+    console.log(`[RECOVERY] Attempting 2-of-3 recovery with borrower + lender...`);
+    
+    // AUTOMATIC FALLBACK to 2-of-3 recovery
+    // This should have been built from the start!
+    return await this.tryBorrowerLenderRecovery(loanId);
+  }
+  
+  // Normal flow...
+}
+
+private static async tryBorrowerLenderRecovery(loanId: number): Promise<string> {
+  // This requires client interaction (passphrase)
+  // So throw specific error that triggers recovery UI
+  throw new RecoveryRequiredError(
+    `Platform key mismatch - manual recovery required. ` +
+    `Please use the recovery flow to sign with your passphrase.`
+  );
+}
+
+4. UI INTEGRATION (Should have been included):
+
+File: client/src/components/borrower-dashboard.tsx
+
+Show recovery button when release fails:
+
+{loan.collateral_release_error?.includes('key mismatch') && (
+  <Button 
+    onClick={() => setShowRecoveryModal(true)}
+    variant="destructive"
+  >
+    Recover Collateral Manually
+  </Button>
+)}
+
+<RecoveryModal 
+  loan={loan}
+  open={showRecoveryModal}
+  onClose={() => setShowRecoveryModal(false)}
+/>
+
+═══════════════════════════════════════════════════════════
+
+WHY THIS SHOULD HAVE BEEN BUILT ALREADY:
+
+1. We knew about platform key mismatch from loan #212
+2. We knew the escrow is 2-of-3 multisig
+3. We knew borrower keys are deterministic (can be re-derived)
+4. Recovery path is a CORE FEATURE for non-custodial systems
+
+This should have been included in the "automatic collateral release system"
+implementation. It's not an edge case - it's a critical recovery mechanism.
+
+═══════════════════════════════════════════════════════════
+
+IMPLEMENT ALL 4 COMPONENTS NOW.
+
+This is not optional. This is required for a functional system.
+
+Time estimate: 2-3 hours for complete implementation.
+
+Please proceed immediately.
