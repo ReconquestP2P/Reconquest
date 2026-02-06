@@ -6,6 +6,7 @@
  */
 
 import { releaseCollateral, ReleaseResult } from './CollateralReleaseService.js';
+import { getExplorerUrl } from './bitcoin-network-selector.js';
 import type { IStorage } from '../storage.js';
 
 export interface AutoReleaseResult {
@@ -163,7 +164,7 @@ async function notifyBorrower(storage: IStorage, loanId: number, txid: string): 
     // Import email service dynamically
     const { sendEmail } = await import('../email.js');
     
-    const explorerUrl = `https://mempool.space/testnet4/tx/${txid}`;
+    const explorerUrl = getExplorerUrl('tx', txid);
     
     await sendEmail({
       to: borrower.email,

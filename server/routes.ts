@@ -5365,7 +5365,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           });
           console.log(`📧 Collateral release email sent to borrower ${borrower.email}`);
         } else {
-          // Manual processing needed
+          const escrowExplorerUrl = loan.escrowAddress ? getExplorerUrl('address', loan.escrowAddress) : '';
           const manualHtml = createBrandedEmailHtml({
             title: '🎉 Loan Completed!',
             greeting: `Hi ${borrower.username},`,
@@ -5376,6 +5376,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
                 <p style="margin: 5px 0; font-size: 16px;"><strong>Collateral Release</strong></p>
                 <p style="margin: 5px 0;"><strong>Amount:</strong> ${loan.collateralBtc} BTC</p>
                 <p style="margin: 5px 0;">Your collateral release is being processed. Our team will ensure your Bitcoin is returned promptly.</p>
+                ${escrowExplorerUrl ? `<p style="margin: 5px 0;"><a href="${escrowExplorerUrl}" target="_blank">View Escrow Address on Mempool.space</a></p>` : ''}
               </div>
               
               <p style="color: #666; font-size: 14px;">Thank you for using Reconquest!</p>
