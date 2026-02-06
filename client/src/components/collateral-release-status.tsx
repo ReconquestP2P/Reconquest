@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ExternalLink, CheckCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, CheckCircle, Loader2, AlertCircle, RefreshCw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { CollateralRecoveryModal } from "@/components/collateral-recovery-modal";
 
 interface ReleaseStatusProps {
   loanId: number;
@@ -11,6 +13,14 @@ interface ReleaseStatusProps {
   collateralReleaseTxid?: string | null;
   collateralReleasedAt?: string | null;
   collateralReleaseError?: string | null;
+  loan?: {
+    id: number;
+    borrowerId: number;
+    borrowerPubkey?: string | null;
+    escrowAddress?: string | null;
+    collateralBtc?: string | null;
+  };
+  userId?: number;
 }
 
 export function CollateralReleaseStatus({
@@ -19,13 +29,20 @@ export function CollateralReleaseStatus({
   collateralReleased,
   collateralReleaseTxid,
   collateralReleasedAt,
-  collateralReleaseError
+  collateralReleaseError,
+  loan,
+  userId
 }: ReleaseStatusProps) {
   const { toast } = useToast();
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   
-  const { data: releaseStatus } = useQuery({
+  const { data: releaseStatus } = useQuery<{
+    collateralReleased?: boolean;
+    collateralReleaseTxid?: string | null;
+    collateralReleaseError?: string | null;
+  }>({
     queryKey: [`/api/loans/${loanId}/release-status`],
-    enabled: status === 'repaid',
+    enabled: status === 'repaid' || status === 'completed',
     refetchInterval: collateralReleased ? false : 30000
   });
   
@@ -63,7 +80,9 @@ export function CollateralReleaseStatus({
   const txid = releaseStatus?.collateralReleaseTxid || collateralReleaseTxid;
   const error = releaseStatus?.collateralReleaseError || collateralReleaseError;
   
-  if (status !== 'repaid') {
+  const canUseRecovery = loan && userId && loan.borrowerPubkey && loan.escrowAddress;
+  
+  if (status !== 'repaid' && status !== 'completed') {
     return null;
   }
   
@@ -100,73 +119,121 @@ export function CollateralReleaseStatus({
   
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-red-800 dark:text-red-200">
-              Collateral Release Failed
-            </p>
-            <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-              {error}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => triggerRelease.mutate()}
-              disabled={triggerRelease.isPending}
-              className="mt-3"
-            >
-              {triggerRelease.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Retry Release
-                </>
+      <>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                Collateral Release Failed
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                {error}
+              </p>
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => triggerRelease.mutate()}
+                  disabled={triggerRelease.isPending}
+                >
+                  {triggerRelease.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry Release
+                    </>
+                  )}
+                </Button>
+                {canUseRecovery && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setRecoveryOpen(true)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Recover with Passphrase
+                  </Button>
+                )}
+              </div>
+              {canUseRecovery && (
+                <p className="text-xs text-gray-500 mt-2">
+                  If automatic release keeps failing, use your escrow passphrase to manually recover your collateral.
+                </p>
               )}
-            </Button>
+            </div>
           </div>
         </div>
-      </div>
+        {canUseRecovery && (
+          <CollateralRecoveryModal
+            isOpen={recoveryOpen}
+            onClose={() => setRecoveryOpen(false)}
+            loan={loan}
+            userId={userId}
+          />
+        )}
+      </>
     );
   }
   
   return (
-    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg">
-      <div className="flex items-start gap-3">
-        <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-spin mt-0.5" />
-        <div className="flex-1">
-          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-            Collateral Release Pending
-          </p>
-          <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-            Your Bitcoin collateral will be automatically returned within 5 minutes.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => triggerRelease.mutate()}
-            disabled={triggerRelease.isPending}
-            className="mt-3"
-          >
-            {triggerRelease.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Release Now
-              </>
-            )}
-          </Button>
+    <>
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg">
+        <div className="flex items-start gap-3">
+          <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-spin mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+              Collateral Release Pending
+            </p>
+            <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+              Your Bitcoin collateral will be automatically returned within 5 minutes.
+            </p>
+            <div className="mt-3 flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => triggerRelease.mutate()}
+                disabled={triggerRelease.isPending}
+              >
+                {triggerRelease.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Release Now
+                  </>
+                )}
+              </Button>
+              {canUseRecovery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRecoveryOpen(true)}
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Recover with Passphrase
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+      {canUseRecovery && (
+        <CollateralRecoveryModal
+          isOpen={recoveryOpen}
+          onClose={() => setRecoveryOpen(false)}
+          loan={loan}
+          userId={userId}
+        />
+      )}
+    </>
   );
 }

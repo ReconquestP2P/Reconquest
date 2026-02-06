@@ -554,8 +554,8 @@ export default function BorrowerDashboard() {
                                 </TableCell>
                               </TableRow>
                               
-                              {/* Collateral Release Status for repaid loans */}
-                              {loan.status === 'repaid' && (
+                              {/* Collateral Release Status for repaid/completed loans */}
+                              {(loan.status === 'repaid' || (loan.status === 'completed' && !loan.collateralReleased)) && (
                                 <TableRow className="bg-gray-50 dark:bg-gray-900/50">
                                   <TableCell colSpan={8} className="p-4">
                                     <CollateralReleaseStatus
@@ -565,6 +565,8 @@ export default function BorrowerDashboard() {
                                       collateralReleaseTxid={loan.collateralReleaseTxid}
                                       collateralReleasedAt={loan.collateralReleasedAt}
                                       collateralReleaseError={loan.collateralReleaseError}
+                                      loan={loan}
+                                      userId={userId}
                                     />
                                   </TableCell>
                                 </TableRow>

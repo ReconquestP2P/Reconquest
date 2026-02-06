@@ -3411,6 +3411,99 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
 
+  /**
+   * Prepare recovery sighashes for borrower-assisted collateral release
+   * Server creates unsigned transaction, computes BIP 143 sighashes, returns to client
+   * Client signs sighashes with borrower key (never leaves browser) and submits
+   */
+  app.post("/api/loans/:id/recovery-sighash", authenticateToken, requireNonAdmin, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only borrower can initiate collateral recovery" });
+      }
+
+      const { prepareRecoverySighashes } = await import('./services/CollateralReleaseService.js');
+      const result = await prepareRecoverySighashes(storage, loanId);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          sighashes: result.sighashes,
+          txDetails: result.txDetails,
+          borrowerPubkey: loan.borrowerPubkey,
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error("Error preparing recovery sighashes:", error);
+      res.status(500).json({ message: error.message || "Failed to prepare recovery sighashes" });
+    }
+  });
+
+  /**
+   * Complete recovery: accept borrower DER signatures, add lender sig, broadcast
+   * Client has signed the sighashes with borrower key, server completes the transaction
+   */
+  app.post("/api/loans/:id/recovery-broadcast", authenticateToken, requireNonAdmin, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { signatures } = req.body;
+
+      if (!signatures || !Array.isArray(signatures) || signatures.length === 0) {
+        return res.status(400).json({ message: "Missing signatures array in request body" });
+      }
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      if (loan.borrowerId !== userId) {
+        return res.status(403).json({ message: "Only borrower can broadcast recovery transaction" });
+      }
+
+      const { completeRecoveryWithSignatures } = await import('./services/CollateralReleaseService.js');
+      const result = await completeRecoveryWithSignatures(storage, loanId, signatures);
+
+      if (result.success) {
+        await storage.updateLoan(loanId, {
+          collateralReleased: true,
+          collateralReleaseTxid: result.txid,
+          collateralReleasedAt: new Date().toISOString(),
+          collateralReleaseError: null,
+        });
+
+        res.json({
+          success: true,
+          txid: result.txid,
+          broadcastUrl: result.broadcastUrl,
+          message: "Collateral recovery transaction broadcast successfully!"
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error: any) {
+      console.error("Error broadcasting recovery:", error);
+      res.status(500).json({ message: error.message || "Failed to broadcast recovery transaction" });
+    }
+  });
+
   // ============================================================
   // END PRE-SIGNED TRANSACTION SYSTEM
   // ============================================================

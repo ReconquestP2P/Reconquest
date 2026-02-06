@@ -16,6 +16,22 @@ import type { IStorage } from '../storage.js';
 
 bitcoin.initEccLib(ecc);
 
+/**
+ * Convert a raw DER-encoded signature to 64-byte compact format (r || s)
+ * Uses bitcoinjs-lib's built-in script.signature.decode for robust parsing.
+ * Input: raw DER bytes (without sighash type byte)
+ * Output: 64-byte compact signature suitable for ecc.verify
+ */
+function derToCompact(der: Buffer): Buffer | null {
+  try {
+    const derWithHashType = Buffer.concat([der, Buffer.from([bitcoin.Transaction.SIGHASH_ALL])]);
+    const decoded = bitcoin.script.signature.decode(derWithHashType);
+    return Buffer.from(decoded.signature);
+  } catch {
+    return null;
+  }
+}
+
 // Get network params dynamically from network selector
 function getNetwork(): bitcoin.Network {
   const params = getNetworkParams();
@@ -257,6 +273,116 @@ async function addPlatformSignaturesAndBroadcast(
 }
 
 /**
+ * Add ONLY the lender signature to a pre-signed PSBT and broadcast.
+ * Used for legacy loans with platform key mismatch where escrow is 2-of-3.
+ * Borrower's signature is already present, so borrower+lender = 2 sigs = valid.
+ */
+async function addLenderOnlySignatureAndBroadcast(
+  storage: any,
+  loan: any,
+  psbtBase64: string,
+  EncryptionService: any,
+  preSignedTxId?: number
+): Promise<ReleaseResult> {
+  try {
+    const network = getNetwork();
+    const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
+    
+    const input = psbt.data.inputs[0];
+    if (!input.partialSig || input.partialSig.length === 0) {
+      return { success: false, error: 'SECURITY: Pre-signed PSBT has no borrower signature' };
+    }
+    
+    if (!input.witnessScript) {
+      return { success: false, error: 'SECURITY: PSBT missing witnessScript' };
+    }
+    
+    if (loan.escrowWitnessScript) {
+      const psbtWitnessHex = input.witnessScript.toString('hex').toLowerCase();
+      const expectedWitnessHex = loan.escrowWitnessScript.toLowerCase();
+      if (psbtWitnessHex !== expectedWitnessHex) {
+        return { success: false, error: 'SECURITY: PSBT witness script does not match escrow' };
+      }
+    }
+    
+    const scriptBytes = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const mRequired = scriptBytes[0] - 0x50;
+    console.log(`   Escrow multisig requires ${mRequired}-of-3 signatures`);
+    
+    if (mRequired > 2) {
+      return { success: false, error: `Escrow requires ${mRequired}-of-3 - need platform key which has changed` };
+    }
+    
+    if (loan.borrowerPubkey) {
+      const isValidSig = PsbtCreatorService.verifySignature(psbtBase64, loan.borrowerPubkey, 0);
+      if (!isValidSig) {
+        return { success: false, error: 'SECURITY: Borrower signature verification failed' };
+      }
+    }
+    
+    if (!loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'No encrypted lender key found' };
+    }
+    
+    const lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+    
+    const inputCount = psbt.inputCount;
+    for (let i = 0; i < inputCount; i++) {
+      try {
+        const lenderKeyBuffer = Buffer.from(lenderPrivateKey, 'hex');
+        const lenderKeyPair = {
+          publicKey: Buffer.from(ecc.pointFromScalar(lenderKeyBuffer, true)!),
+          privateKey: lenderKeyBuffer,
+          sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, lenderKeyBuffer)),
+        };
+        psbt.signInput(i, lenderKeyPair);
+      } catch (e: any) {
+        console.warn(`   Lender signing input ${i} failed: ${e.message}`);
+      }
+    }
+    
+    const sigCountAfter = psbt.data.inputs[0]?.partialSig?.length || 0;
+    console.log(`   Signatures after lender signing: ${sigCountAfter}/${mRequired} required`);
+    
+    if (sigCountAfter < mRequired) {
+      return { success: false, error: `Only ${sigCountAfter} signatures, need ${mRequired}` };
+    }
+    
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`✅ [LEGACY] Transaction finalized with borrower+lender keys: ${txid}`);
+    
+    const broadcastTxid = await broadcastToTestnet4(txHex);
+    
+    if (preSignedTxId && storage.updateTransactionBroadcastStatus) {
+      try {
+        await storage.updateTransactionBroadcastStatus(preSignedTxId, {
+          broadcastStatus: 'broadcast',
+          broadcastTxid: broadcastTxid,
+          broadcastedAt: new Date()
+        });
+      } catch (updateError: any) {
+        console.warn(`⚠️ Failed to update broadcast status: ${updateError.message}`);
+      }
+    }
+    
+    return {
+      success: true,
+      txid: broadcastTxid,
+      broadcastUrl: getExplorerUrl('tx', broadcastTxid),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `Legacy release error: ${error.message}`
+    };
+  }
+}
+
+/**
  * Create and broadcast a cooperative close transaction
  * This releases the borrower's collateral after successful loan repayment
  * 
@@ -292,21 +418,17 @@ export async function releaseCollateral(
     // ================================================================
     const currentPlatformPubkey = BitcoinEscrowService.getPlatformPublicKey();
     
+    let platformKeyMismatch = false;
     if (!loan.platformPubkey) {
       console.warn(`⚠️ [COLLATERAL-RELEASE] Loan #${loanId} has no recorded platform key (old loan)`);
       console.warn(`   Current platform key: ${currentPlatformPubkey}`);
       console.warn(`   Proceeding anyway for backwards compatibility...`);
     } else if (loan.platformPubkey !== currentPlatformPubkey) {
-      // KEY MISMATCH DETECTED - Cannot sign!
-      console.error(`❌ [COLLATERAL-RELEASE] Platform key mismatch for loan #${loanId}`);
-      console.error(`   Loan created with: ${loan.platformPubkey}`);
-      console.error(`   Current key is:    ${currentPlatformPubkey}`);
-      return {
-        success: false,
-        error: `Platform key mismatch. Loan created with key ${loan.platformPubkey.substring(0, 16)}..., ` +
-               `but current key is ${currentPlatformPubkey.substring(0, 16)}.... ` +
-               `Cannot sign. Borrower should use RECOVERY PSBT.`
-      };
+      platformKeyMismatch = true;
+      console.warn(`⚠️ [COLLATERAL-RELEASE] Platform key mismatch for loan #${loanId}`);
+      console.warn(`   Loan created with: ${loan.platformPubkey}`);
+      console.warn(`   Current key is:    ${currentPlatformPubkey}`);
+      console.warn(`   Will attempt borrower+lender only signing (2-of-3 multisig)`);
     } else {
       console.log(`✅ [COLLATERAL-RELEASE] Platform key match verified for loan #${loanId}`);
     }
@@ -327,7 +449,6 @@ export async function releaseCollateral(
       console.log(`   Using pre-signed transaction model (Firefish non-custodial)`);
       
       try {
-        // Get pre-signed transactions from storage
         const preSignedTxs = await storage.getPreSignedTransactions(loanId);
         const repaymentTxs = preSignedTxs.filter(tx => 
           tx.txType === 'repayment' || tx.txType === 'cooperative_close' || tx.txType === 'REPAYMENT'
@@ -338,34 +459,71 @@ export async function releaseCollateral(
         
         if (repaymentTxs.length > 0) {
           psbtBase64 = repaymentTxs[0].psbt;
-          preSignedTxId = repaymentTxs[0].id;  // Track ID for broadcast status update
+          preSignedTxId = repaymentTxs[0].id;
           console.log(`   Using PSBT from pre_signed_transactions table (record #${preSignedTxId})`);
         }
         
-        // The pre-signed PSBT should have borrower's signature
-        // We need to add platform + lender signatures
-        const result = await addPlatformSignaturesAndBroadcast(
-          storage,
-          loan,
-          psbtBase64,
-          EncryptionService,
-          preSignedTxId  // Pass ID for broadcast status update
-        );
-        
-        if (result.success) {
-          console.log(`✅ [PRE-SIGNED] Transaction broadcast successful: ${result.txid}`);
-          return result;
+        if (platformKeyMismatch) {
+          console.log(`🔄 [LEGACY-RELEASE] Platform key mismatch - attempting borrower+lender signing (2-of-3)`);
+          const legacyResult = await addLenderOnlySignatureAndBroadcast(
+            storage, loan, psbtBase64, EncryptionService, preSignedTxId
+          );
+          if (legacyResult.success) {
+            console.log(`✅ [LEGACY-RELEASE] Transaction broadcast successful: ${legacyResult.txid}`);
+            return legacyResult;
+          }
+          console.log(`⚠️ Legacy borrower+lender signing failed: ${legacyResult.error}`);
+        } else {
+          const result = await addPlatformSignaturesAndBroadcast(
+            storage, loan, psbtBase64, EncryptionService, preSignedTxId
+          );
+          if (result.success) {
+            console.log(`✅ [PRE-SIGNED] Transaction broadcast successful: ${result.txid}`);
+            return result;
+          }
+          console.log(`⚠️ Pre-signed approach failed: ${result.error}`);
+          console.log(`   Falling back to dynamic transaction creation...`);
         }
-        
-        // If pre-signed approach failed, fall through to dynamic creation
-        console.log(`⚠️ Pre-signed approach failed: ${result.error}`);
-        console.log(`   Falling back to dynamic transaction creation...`);
       } catch (preSignedError: any) {
         console.log(`⚠️ Pre-signed transaction error: ${preSignedError.message}`);
         console.log(`   Falling back to dynamic transaction creation...`);
       }
+    } else if (platformKeyMismatch && loan.borrowerSigningComplete) {
+      console.log(`📋 Borrower signing complete but no txRepaymentHex - checking pre_signed_transactions table`);
+      try {
+        const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+        const repaymentTxs = preSignedTxs.filter(tx => 
+          tx.txType === 'repayment' || tx.txType === 'cooperative_close' || tx.txType === 'REPAYMENT'
+        );
+        if (repaymentTxs.length > 0) {
+          const psbtBase64 = repaymentTxs[0].psbt;
+          const preSignedTxId = repaymentTxs[0].id;
+          console.log(`   Found PSBT in pre_signed_transactions (record #${preSignedTxId})`);
+          const legacyResult = await addLenderOnlySignatureAndBroadcast(
+            storage, loan, psbtBase64, EncryptionService, preSignedTxId
+          );
+          if (legacyResult.success) {
+            console.log(`✅ [LEGACY-RELEASE] Transaction broadcast successful: ${legacyResult.txid}`);
+            return legacyResult;
+          }
+          console.log(`⚠️ Legacy borrower+lender signing failed: ${legacyResult.error}`);
+        } else {
+          console.log(`❌ No pre-signed REPAYMENT PSBTs found for legacy loan #${loanId}`);
+        }
+      } catch (e: any) {
+        console.log(`⚠️ Error checking pre-signed transactions: ${e.message}`);
+      }
     } else {
       console.log(`📋 No pre-signed transaction found - using dynamic creation (legacy model)`);
+    }
+    
+    if (platformKeyMismatch) {
+      return {
+        success: false,
+        error: `Platform key mismatch and no pre-signed PSBT available. ` +
+               `Loan created with key ${loan.platformPubkey?.substring(0, 16)}..., ` +
+               `current key is ${currentPlatformPubkey.substring(0, 16)}.... Cannot sign.`
+      };
     }
     
     // ================================================================
@@ -687,6 +845,310 @@ export async function releaseCollateralToAddress(
     return {
       success: false,
       error: error.message || 'Unknown error during liquidation',
+    };
+  }
+}
+
+/**
+ * Prepare recovery sighashes for borrower-assisted collateral release.
+ * Used when platform key has changed and we need borrower + lender (2-of-3) signatures.
+ * 
+ * NON-CUSTODIAL FLOW (borrower key never leaves the browser):
+ * 1. Server creates unsigned transaction with real funded UTXOs
+ * 2. Server computes BIP 143 sighashes for each input
+ * 3. Returns sighashes + transaction details to client
+ * 4. Client derives borrower key from passphrase and signs sighashes
+ * 5. Client sends DER signatures back to server
+ * 6. Server rebuilds PSBT, adds both borrower + lender signatures, broadcasts
+ */
+export async function prepareRecoverySighashes(
+  storage: IStorage,
+  loanId: number
+): Promise<{
+  success: boolean;
+  sighashes?: string[];
+  error?: string;
+  txDetails?: {
+    utxos: UTXOInfo[];
+    outputValue: number;
+    fee: number;
+    destinationAddress: string;
+    totalInputValue: number;
+    signaturesRequired: number;
+  };
+}> {
+  console.log(`🔐 [RECOVERY] Preparing recovery sighashes for loan #${loanId}`);
+  
+  try {
+    const loan = await storage.getLoan(loanId);
+    if (!loan) {
+      return { success: false, error: 'Loan not found' };
+    }
+    
+    if (!loan.escrowAddress) {
+      return { success: false, error: 'No escrow address found' };
+    }
+    
+    if (!loan.escrowWitnessScript) {
+      return { success: false, error: 'No witness script found for escrow' };
+    }
+    
+    if (!loan.borrowerPubkey) {
+      return { success: false, error: 'No borrower public key found' };
+    }
+    
+    if (loan.collateralReleased) {
+      return { success: false, error: 'Collateral has already been released' };
+    }
+    
+    const scriptBytes = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const mRequired = scriptBytes[0] - 0x50;
+    console.log(`   Escrow requires ${mRequired}-of-3 signatures`);
+    
+    if (mRequired > 2) {
+      return { success: false, error: `Escrow requires ${mRequired}-of-3 signatures. Recovery needs 2-of-3 escrow.` };
+    }
+    
+    const borrower = await storage.getUser(loan.borrowerId);
+    if (!borrower || !borrower.btcAddress) {
+      return { success: false, error: 'No borrower return address found. Please set your BTC address in settings.' };
+    }
+    
+    console.log(`📡 [RECOVERY] Fetching UTXOs from escrow: ${loan.escrowAddress}`);
+    const utxos = await fetchUTXOs(loan.escrowAddress);
+    
+    if (utxos.length === 0) {
+      return { success: false, error: 'No UTXOs found in escrow address - funds may have already been spent' };
+    }
+    
+    let totalInputValue = 0;
+    for (const utxo of utxos) {
+      console.log(`   UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
+      totalInputValue += utxo.value;
+    }
+    
+    const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
+    
+    const estimatedVsizePerInput = 180;
+    const fee = estimatedVsizePerInput * utxos.length;
+    const outputValue = totalInputValue - fee;
+    
+    if (outputValue <= 546) {
+      return { success: false, error: 'UTXO value too small to cover fees (dust limit)' };
+    }
+    
+    console.log(`💰 [RECOVERY] Transaction: ${totalInputValue} - ${fee} = ${outputValue} sats → ${borrower.btcAddress}`);
+    
+    const network = getNetwork();
+    const tx = new bitcoin.Transaction();
+    tx.version = 2;
+    
+    for (const utxo of utxos) {
+      tx.addInput(Buffer.from(utxo.txid, 'hex').reverse(), utxo.vout);
+    }
+    
+    tx.addOutput(
+      bitcoin.address.toOutputScript(borrower.btcAddress, network),
+      BigInt(outputValue)
+    );
+    
+    const sighashes: string[] = [];
+    for (let i = 0; i < utxos.length; i++) {
+      const hash = tx.hashForWitnessV0(
+        i,
+        witnessScript,
+        BigInt(utxos[i].value),
+        bitcoin.Transaction.SIGHASH_ALL
+      );
+      sighashes.push(hash.toString('hex'));
+      console.log(`   Sighash for input ${i}: ${hash.toString('hex').slice(0, 16)}...`);
+    }
+    
+    return {
+      success: true,
+      sighashes,
+      txDetails: {
+        utxos,
+        outputValue,
+        fee,
+        destinationAddress: borrower.btcAddress,
+        totalInputValue,
+        signaturesRequired: mRequired,
+      },
+    };
+  } catch (error: any) {
+    console.error(`[RECOVERY] Error preparing sighashes:`, error);
+    return { success: false, error: `Recovery sighash preparation failed: ${error.message}` };
+  }
+}
+
+/**
+ * Complete the recovery: rebuild PSBT with borrower's DER signatures + lender key, broadcast.
+ * 
+ * Takes the borrower's raw DER signatures (one per input), rebuilds the exact same
+ * transaction, adds both borrower and lender partialSig entries, finalizes, broadcasts.
+ */
+export async function completeRecoveryWithSignatures(
+  storage: IStorage,
+  loanId: number,
+  borrowerSignatures: string[]
+): Promise<ReleaseResult> {
+  console.log(`🔐 [RECOVERY] Completing recovery for loan #${loanId} with ${borrowerSignatures.length} borrower signature(s)`);
+  
+  try {
+    const { EncryptionService } = await import('./EncryptionService.js');
+    
+    const loan = await storage.getLoan(loanId);
+    if (!loan) {
+      return { success: false, error: 'Loan not found' };
+    }
+    
+    if (loan.collateralReleased) {
+      return { success: false, error: 'Collateral has already been released' };
+    }
+    
+    if (!loan.escrowAddress || !loan.escrowWitnessScript || !loan.borrowerPubkey) {
+      return { success: false, error: 'Missing escrow data (address, witness script, or borrower pubkey)' };
+    }
+    
+    if (!loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'No encrypted lender key found' };
+    }
+    
+    const borrower = await storage.getUser(loan.borrowerId);
+    if (!borrower || !borrower.btcAddress) {
+      return { success: false, error: 'No borrower return address found' };
+    }
+    
+    const utxos = await fetchUTXOs(loan.escrowAddress);
+    if (utxos.length === 0) {
+      return { success: false, error: 'No UTXOs found in escrow' };
+    }
+    
+    if (borrowerSignatures.length !== utxos.length) {
+      return { 
+        success: false, 
+        error: `Expected ${utxos.length} signature(s), got ${borrowerSignatures.length}` 
+      };
+    }
+    
+    let totalInputValue = 0;
+    for (const utxo of utxos) {
+      totalInputValue += utxo.value;
+    }
+    
+    const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const estimatedVsizePerInput = 180;
+    const fee = estimatedVsizePerInput * utxos.length;
+    const outputValue = totalInputValue - fee;
+    
+    if (outputValue <= 546) {
+      return { success: false, error: 'UTXO value too small to cover fees' };
+    }
+    
+    const network = getNetwork();
+    
+    const verifyTx = new bitcoin.Transaction();
+    verifyTx.version = 2;
+    for (const utxo of utxos) {
+      verifyTx.addInput(Buffer.from(utxo.txid, 'hex').reverse(), utxo.vout);
+    }
+    verifyTx.addOutput(
+      bitcoin.address.toOutputScript(borrower.btcAddress, network),
+      BigInt(outputValue)
+    );
+    
+    const borrowerPubkeyBuf = Buffer.from(loan.borrowerPubkey, 'hex');
+    
+    for (let i = 0; i < utxos.length; i++) {
+      const sighash = verifyTx.hashForWitnessV0(
+        i,
+        witnessScript,
+        BigInt(utxos[i].value),
+        bitcoin.Transaction.SIGHASH_ALL
+      );
+      
+      const sigDer = Buffer.from(borrowerSignatures[i], 'hex');
+      const sigCompact = derToCompact(sigDer);
+      
+      if (!sigCompact) {
+        return { success: false, error: `Invalid DER signature format for input ${i}` };
+      }
+      
+      const isValid = ecc.verify(sighash, borrowerPubkeyBuf, sigCompact);
+      if (!isValid) {
+        console.error(`   SECURITY: Borrower signature verification FAILED for input ${i}`);
+        return { 
+          success: false, 
+          error: `Borrower signature verification failed for input ${i}. Wrong passphrase or corrupted signature.` 
+        };
+      }
+      console.log(`   Borrower signature for input ${i} verified against BIP143 sighash`);
+    }
+    
+    const psbt = new bitcoin.Psbt({ network });
+    
+    for (const utxo of utxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript, network },
+            network,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+    }
+    
+    psbt.addOutput({
+      address: borrower.btcAddress,
+      value: BigInt(outputValue),
+    });
+    
+    for (let i = 0; i < utxos.length; i++) {
+      const sigDer = Buffer.from(borrowerSignatures[i], 'hex');
+      const sigWithHashType = Buffer.concat([sigDer, Buffer.from([bitcoin.Transaction.SIGHASH_ALL])]);
+      
+      psbt.data.inputs[i].partialSig = psbt.data.inputs[i].partialSig || [];
+      psbt.data.inputs[i].partialSig!.push({
+        pubkey: borrowerPubkeyBuf,
+        signature: sigWithHashType,
+      });
+      console.log(`   Added verified borrower signature for input ${i}`);
+    }
+    
+    const lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+    console.log(`🔑 [RECOVERY] Signing with lender key (platform-controlled)...`);
+    for (let i = 0; i < utxos.length; i++) {
+      signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
+    }
+    
+    const sigCount = psbt.data.inputs[0]?.partialSig?.length || 0;
+    console.log(`   Total signatures: ${sigCount}`);
+    
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`✅ [RECOVERY] Transaction finalized: ${txid}`);
+    
+    const broadcastTxid = await broadcastToTestnet4(txHex);
+    console.log(`📡 [RECOVERY] Broadcast successful: ${broadcastTxid}`);
+    
+    return {
+      success: true,
+      txid: broadcastTxid,
+      broadcastUrl: getExplorerUrl('tx', broadcastTxid),
+    };
+  } catch (error: any) {
+    console.error(`[RECOVERY] Broadcast error:`, error);
+    return {
+      success: false,
+      error: `Recovery broadcast failed: ${error.message}`
     };
   }
 }
