@@ -186,6 +186,9 @@ export const loans = pgTable("loans", {
   collateralReleasedAt: timestamp("collateral_released_at"), // When collateral was released
   collateralReleaseError: text("collateral_release_error"), // Error message if release failed
   
+  // LTV Alert Tracking (persisted to survive server restarts)
+  lastLtvAlertLevel: integer("last_ltv_alert_level"), // Last LTV % at which an alert was sent (e.g., 75, 80, 85)
+
   // Network Type (testnet4, mainnet)
   networkType: text("network_type").default("testnet4"),
 });

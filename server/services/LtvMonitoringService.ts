@@ -30,9 +30,7 @@ interface LtvCheckResult {
   status: 'healthy' | 'early_warning' | 'critical_warning' | 'liquidation';
 }
 
-// Track which loans have already received warning emails to avoid spam
-const earlyWarningsSent = new Set<number>(); // 75% threshold
-const criticalWarningsSent = new Set<number>(); // 85% threshold
+const LTV_ALERT_STEP = 5; // Only send alerts every 5% LTV increase
 
 export class LtvMonitoringService {
   private pollingInterval: NodeJS.Timeout | null = null;
@@ -135,7 +133,16 @@ export class LtvMonitoringService {
   }
 
   /**
-   * Check a single loan's LTV and take action if needed
+   * Round LTV percentage down to nearest 5% step for alert bucketing
+   * e.g., 77.3% -> 75, 83.9% -> 80, 86.1% -> 85
+   */
+  private getLtvAlertBucket(ltvPercent: number): number {
+    return Math.floor(ltvPercent / LTV_ALERT_STEP) * LTV_ALERT_STEP;
+  }
+
+  /**
+   * Check a single loan's LTV and take action if needed.
+   * Alerts are only sent when LTV crosses a new 5% boundary (persisted to DB).
    */
   private async checkLoanLtv(loan: Loan, btcPriceUsd: number): Promise<LtvCheckResult> {
     const collateralBtc = parseFloat(String(loan.collateralBtc));
@@ -148,8 +155,10 @@ export class LtvMonitoringService {
     const collateralValueInLoanCurrency = collateralBtc * btcPriceInLoanCurrency;
     
     // LTV = total loan value (principal + interest) / collateral value
-    // Higher LTV = more risky (both values now in same currency)
     const currentLtv = totalLoanValue / collateralValueInLoanCurrency;
+    const currentLtvPercent = currentLtv * 100;
+    const currentBucket = this.getLtvAlertBucket(currentLtvPercent);
+    const lastAlertLevel = loan.lastLtvAlertLevel ?? 0;
 
     const result: LtvCheckResult = {
       loanId: loan.id,
@@ -160,39 +169,41 @@ export class LtvMonitoringService {
       status: 'healthy'
     };
 
-    // Check if liquidation needed (LTV >= 95%)
+    // Check if liquidation needed (LTV >= 95%) - always triggers regardless of alert history
     if (currentLtv >= LIQUIDATION_LTV_THRESHOLD) {
       result.status = 'liquidation';
-      console.log(`🚨 [LtvMonitor] Loan #${loan.id} LIQUIDATION TRIGGERED! LTV: ${(currentLtv * 100).toFixed(1)}%`);
+      console.log(`🚨 [LtvMonitor] Loan #${loan.id} LIQUIDATION TRIGGERED! LTV: ${currentLtvPercent.toFixed(1)}%`);
       console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
       
       await this.executeLiquidation(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
+      await storage.updateLoan(loan.id, { lastLtvAlertLevel: 95 });
     }
-    // Check if critical warning needed (LTV >= 85%) - borrower asked to top up, lender informed
-    else if (currentLtv >= CRITICAL_WARNING_LTV_THRESHOLD) {
-      result.status = 'critical_warning';
-      console.log(`🔴 [LtvMonitor] Loan #${loan.id} CRITICAL WARNING: ${(currentLtv * 100).toFixed(1)}%`);
-      console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
+    // Check if we've crossed a new 5% warning bucket since last alert
+    else if (currentLtvPercent >= EARLY_WARNING_LTV_THRESHOLD * 100 && currentBucket > lastAlertLevel) {
+      const isInCriticalZone = currentLtv >= CRITICAL_WARNING_LTV_THRESHOLD;
       
-      if (!criticalWarningsSent.has(loan.id)) {
+      if (isInCriticalZone) {
+        result.status = 'critical_warning';
+        console.log(`🔴 [LtvMonitor] Loan #${loan.id} CRITICAL WARNING at ${currentLtvPercent.toFixed(1)}% (bucket ${currentBucket}%, last alert at ${lastAlertLevel}%)`);
+        console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
+        
         await this.sendCriticalWarning(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
-        criticalWarningsSent.add(loan.id);
-      }
-    }
-    // Check if early warning needed (LTV >= 75%) - borrower warned only
-    else if (currentLtv >= EARLY_WARNING_LTV_THRESHOLD) {
-      result.status = 'early_warning';
-      console.log(`⚠️ [LtvMonitor] Loan #${loan.id} EARLY WARNING: ${(currentLtv * 100).toFixed(1)}%`);
-      console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
-      
-      if (!earlyWarningsSent.has(loan.id)) {
+      } else {
+        result.status = 'early_warning';
+        console.log(`⚠️ [LtvMonitor] Loan #${loan.id} EARLY WARNING at ${currentLtvPercent.toFixed(1)}% (bucket ${currentBucket}%, last alert at ${lastAlertLevel}%)`);
+        console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
+        
         await this.sendEarlyWarning(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
-        earlyWarningsSent.add(loan.id);
       }
-    } else {
-      // Healthy - clear warning flags if they were set
-      earlyWarningsSent.delete(loan.id);
-      criticalWarningsSent.delete(loan.id);
+
+      // Persist the new alert level to DB so it survives restarts
+      await storage.updateLoan(loan.id, { lastLtvAlertLevel: currentBucket });
+      console.log(`   📝 Updated lastLtvAlertLevel for loan #${loan.id} to ${currentBucket}%`);
+    }
+    // LTV dropped back below 75% - reset alert level so alerts can fire again if it climbs back
+    else if (currentLtvPercent < EARLY_WARNING_LTV_THRESHOLD * 100 && lastAlertLevel > 0) {
+      await storage.updateLoan(loan.id, { lastLtvAlertLevel: 0 });
+      console.log(`✅ [LtvMonitor] Loan #${loan.id} LTV healthy at ${currentLtvPercent.toFixed(1)}%, reset alert level`);
     }
 
     return result;
