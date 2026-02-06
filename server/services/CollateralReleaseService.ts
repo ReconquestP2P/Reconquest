@@ -960,8 +960,9 @@ export async function prepareRecoverySighashes(
         BigInt(utxos[i].value),
         bitcoin.Transaction.SIGHASH_ALL
       );
-      sighashes.push(hash.toString('hex'));
-      console.log(`   Sighash for input ${i}: ${hash.toString('hex').slice(0, 16)}...`);
+      const hashHex = Buffer.from(hash).toString('hex');
+      sighashes.push(hashHex);
+      console.log(`   Sighash for input ${i}: ${hashHex.slice(0, 16)}...`);
     }
     
     return {
@@ -1061,12 +1062,13 @@ export async function completeRecoveryWithSignatures(
     const borrowerPubkeyBuf = Buffer.from(loan.borrowerPubkey, 'hex');
     
     for (let i = 0; i < utxos.length; i++) {
-      const sighash = verifyTx.hashForWitnessV0(
+      const sighashRaw = verifyTx.hashForWitnessV0(
         i,
         witnessScript,
         BigInt(utxos[i].value),
         bitcoin.Transaction.SIGHASH_ALL
       );
+      const sighash = Buffer.from(sighashRaw);
       
       const sigDer = Buffer.from(borrowerSignatures[i], 'hex');
       const sigCompact = derToCompact(sigDer);
@@ -1075,6 +1077,7 @@ export async function completeRecoveryWithSignatures(
         return { success: false, error: `Invalid DER signature format for input ${i}` };
       }
       
+      console.log(`   Verifying input ${i}: sighash=${sighash.toString('hex').slice(0, 16)}... pubkey=${loan.borrowerPubkey!.slice(0, 16)}... derSigLen=${sigDer.length}`);
       const isValid = ecc.verify(sighash, borrowerPubkeyBuf, sigCompact);
       if (!isValid) {
         console.error(`   SECURITY: Borrower signature verification FAILED for input ${i}`);
