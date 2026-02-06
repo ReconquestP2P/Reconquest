@@ -3479,12 +3479,16 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const result = await completeRecoveryWithSignatures(storage, loanId, signatures);
 
       if (result.success) {
-        await storage.updateLoan(loanId, {
-          collateralReleased: true,
-          collateralReleaseTxid: result.txid,
-          collateralReleasedAt: new Date(),
-          collateralReleaseError: null,
-        });
+        try {
+          await storage.updateLoan(loanId, {
+            collateralReleased: true,
+            collateralReleaseTxid: result.txid,
+            collateralReleasedAt: new Date(),
+            collateralReleaseError: null,
+          });
+        } catch (dbError: any) {
+          console.error(`[RECOVERY] DB update failed for loan #${loanId} after successful broadcast (txid: ${result.txid}):`, dbError.message);
+        }
 
         res.json({
           success: true,
