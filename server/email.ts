@@ -347,18 +347,18 @@ export async function sendLenderKeyGenerationNotification(params: {
           ${getEmailHeader()}
         </div>
         
-        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">✅ Collateral Secured!</h2>
+        <h2 style="color: #1a1a1a; margin-top: 20px; font-size: 24px; font-weight: 600;">🔐 Escrow Setup In Progress</h2>
         
-        <p style="font-size: 16px; color: #333; margin-top: 20px;">Good news, ${lenderName}!</p>
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Hi ${lenderName},</p>
         
         <p style="font-size: 15px; color: #555; line-height: 1.7;">
-          The borrower's Bitcoin collateral has been confirmed in escrow. You can now proceed to send the loan funds to the borrower.
+          The borrower has completed their escrow key setup for Loan #${loanId}. The multisig escrow address has been created and the borrower is now preparing to deposit their Bitcoin collateral.
         </p>
         
-        <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 0; font-size: 14px; color: #155724;">
-            <strong>✅ Escrow Funded:</strong> The Bitcoin collateral is now securely locked in a multisig escrow address. 
-            Your investment is protected by the platform's security infrastructure.
+        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #856404;">
+            <strong>⏳ Awaiting Deposit:</strong> The escrow address is ready, but the borrower has not yet deposited their Bitcoin collateral. 
+            You will receive another email once the collateral has been confirmed on the blockchain.
           </p>
         </div>
         
@@ -368,18 +368,18 @@ export async function sendLenderKeyGenerationNotification(params: {
           <p style="margin: 8px 0; font-size: 15px;"><strong>Interest Rate:</strong> ${formattedInterestRate}% p.a.</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Term:</strong> ${termMonths} months</p>
           <p style="margin: 8px 0; font-size: 15px;"><strong>Collateral:</strong> ${collateralBtc} BTC</p>
-          ${mempoolUrl ? `<p style="margin: 8px 0; font-size: 15px;"><strong>Verify Collateral:</strong> <a href="${mempoolUrl}" style="color: #D4AF37; text-decoration: none; font-weight: 600;">View on Mempool.space</a></p>` : ''}
+          ${mempoolUrl ? `<p style="margin: 8px 0; font-size: 15px;"><strong>Escrow Address:</strong> <a href="${mempoolUrl}" style="color: #D4AF37; text-decoration: none; font-weight: 600;">View on Mempool.space</a></p>` : ''}
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
           <a href="${dashboardUrl}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
-            💶 Send Funds to Borrower
+            📊 View Dashboard
           </a>
         </div>
 
         <p style="font-size: 14px; color: #666; line-height: 1.7; margin-top: 25px;">
-          Click the button above to view the borrower's bank details and confirm the transfer. 
-          Once you've sent the funds and confirmed the transfer, the borrower will receive a notification to validate receipt.
+          <strong>No action needed from you right now.</strong> We'll notify you as soon as the borrower's Bitcoin collateral is confirmed on the blockchain. 
+          At that point, you'll be asked to send the loan funds.
         </p>
 
         <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
@@ -393,7 +393,7 @@ export async function sendLenderKeyGenerationNotification(params: {
   return await sendEmail({
     to,
     from: 'Reconquest <noreply@reconquestp2p.com>',
-    subject: `✅ Borrower Collateral Confirmed - Loan #${loanId}`,
+    subject: `🔐 Escrow Setup In Progress - Loan #${loanId}`,
     html,
   });
 }

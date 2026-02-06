@@ -1910,40 +1910,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🔐 Loan #${loanId} updated with borrower pubkey: ${borrowerPubkey.slice(0, 20)}...`);
       
-      // Send email notification to lender that borrower has generated their recovery plan
-      try {
-        if (loan.lenderId) {
-          const lender = await storage.getUser(loan.lenderId);
-          const borrower = await storage.getUser(borrowerId);
-          
-          if (lender && lender.email && borrower) {
-            const baseUrl = process.env.APP_URL || 'https://www.reconquestp2p.com';
-            
-            const emailSent = await sendLenderKeyGenerationNotification({
-              to: lender.email,
-              lenderName: lender.firstName || lender.username,
-              borrowerName: borrower.firstName || borrower.username,
-              loanId: loan.id,
-              loanAmount: String(loan.amount),
-              currency: loan.currency,
-              interestRate: String(loan.interestRate),
-              termMonths: loan.termMonths,
-              collateralBtc: String(loan.collateralBtc),
-              dashboardUrl: `${baseUrl}/lender`,
-              escrowAddress: loan.escrowAddress || undefined,
-            });
-            
-            if (emailSent) {
-              console.log(`📧 Sent key generation notification to lender: ${lender.email}`);
-            } else {
-              console.error(`❌ Failed to send key generation notification to lender: ${lender.email}`);
-            }
-          }
-        }
-      } catch (emailError) {
-        console.error('Failed to send lender notification email:', emailError);
-        // Don't fail the request if email fails
-      }
+      // NOTE: Lender email notification is NOT sent here - it will be sent after 
+      // the borrower completes the signing ceremony (sign-templates endpoint).
+      // This prevents premature "collateral confirmed" emails before deposit.
       
       // SECURITY: Sanitize response to remove lender private key
       res.json(ResponseSanitizer.sanitizeLoan(updatedLoan));
