@@ -86,12 +86,14 @@ export default function BorrowerDashboard() {
 
   const borrowerLoans = userLoans.filter(loan => loan.borrowerId === userId);
   // Show loans as "active" if fully active OR awaiting lender confirmation of repayment
+  // Also include completed loans with unreleased collateral so borrower can trigger recovery
   const activeLoans = borrowerLoans.filter((loan: any) => 
     (loan.status === "active" && 
     loan.fiatTransferConfirmed === true && 
     loan.borrowerConfirmedReceipt === true) ||
     loan.status === "repayment_pending" ||
-    loan.status === "repaid"
+    loan.status === "repaid" ||
+    (loan.status === "completed" && !loan.collateralReleased)
   );
   
   const totalBorrowed = activeLoans.reduce((sum, loan) => sum + parseFloat(loan.amount), 0);
