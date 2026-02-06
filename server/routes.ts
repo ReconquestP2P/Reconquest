@@ -3482,7 +3482,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         await storage.updateLoan(loanId, {
           collateralReleased: true,
           collateralReleaseTxid: result.txid,
-          collateralReleasedAt: new Date().toISOString(),
+          collateralReleasedAt: new Date(),
           collateralReleaseError: null,
         });
 
