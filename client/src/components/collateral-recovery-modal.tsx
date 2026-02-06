@@ -127,7 +127,7 @@ export function CollateralRecoveryModal({ isOpen, onClose, loan, userId }: Colla
         return;
       }
 
-      const sighashRes = await apiRequest('POST', `/api/loans/${loan.id}/recovery-sighash`);
+      const sighashRes = await apiRequest(`/api/loans/${loan.id}/recovery-sighash`, 'POST');
       const sighashData = await sighashRes.json();
 
       if (!sighashData.success) {
@@ -151,7 +151,7 @@ export function CollateralRecoveryModal({ isOpen, onClose, loan, userId }: Colla
 
       setStep('broadcasting');
 
-      const broadcastRes = await apiRequest('POST', `/api/loans/${loan.id}/recovery-broadcast`, {
+      const broadcastRes = await apiRequest(`/api/loans/${loan.id}/recovery-broadcast`, 'POST', {
         signatures,
       });
       const broadcastData = await broadcastRes.json();
