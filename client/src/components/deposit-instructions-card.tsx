@@ -386,6 +386,54 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     return null;
   }
 
+  if (loan.escrowAddress && !loan.borrowerSigningComplete && !recoveryBundle) {
+    return (
+      <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
+            <Shield className="h-5 w-5" />
+            Sign Transaction Templates - Loan #{loan.id}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-sm">
+              <p className="font-semibold">Escrow address created!</p>
+              <p className="mt-1">Before you can deposit BTC, you need to sign the pre-defined transaction templates that protect your collateral.</p>
+            </AlertDescription>
+          </Alert>
+
+          <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm space-y-2">
+              <p className="font-semibold">Why is this needed?</p>
+              <p>These transaction templates define how your collateral can be moved — for repayment, default protection, or emergency recovery. Signing them now ensures your Bitcoin is protected before you deposit it.</p>
+            </AlertDescription>
+          </Alert>
+
+          <Button
+            onClick={() => {
+              setSigningLoanData({
+                id: loan.id,
+                amount: loan.amount,
+                currency: loan.currency,
+                collateralBtc: loan.collateralBtc,
+                termMonths: loan.termMonths,
+                escrowAddress: loan.escrowAddress,
+              });
+              setShowSigningModal(true);
+            }}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Lock className="h-4 w-4 mr-2" />
+            Sign Transaction Templates
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (recoveryBundle && !recoveryDownloaded) {
     return (
       <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/10">
