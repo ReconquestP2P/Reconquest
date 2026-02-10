@@ -1395,7 +1395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lenderPrivateKeyEncrypted = EncryptionService.encrypt(lenderKeyPair.privateKey);
       console.log(`🔒 [Bitcoin-Blind] Lender private key encrypted for secure storage`);
       
-      const PLATFORM_PUBKEY = BitcoinEscrowService.PLATFORM_PUBLIC_KEY;
+      const PLATFORM_PUBKEY = BitcoinEscrowService.getPlatformPublicKey();
       
       // IMPORTANT: Do NOT create escrow yet - wait for borrower to provide their key
       // This prevents the duplicate key bug that locked funds in loan #183
