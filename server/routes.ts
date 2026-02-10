@@ -5813,56 +5813,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       `
     });
     
-    // Send notification to lender if exists
-    if (lender) {
-      await sendEmail({
-        to: lender.email,
-        from: 'Reconquest <noreply@reconquestp2p.com>',
-        subject: `✅ Borrower Collateral Confirmed - Loan #${loan.id}`,
-        html: `
-          <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-            <div style="text-align: center; padding: 20px; background: #fff; border-radius: 8px 8px 0 0;">
-              <img src="${baseUrl}/logo.png" alt="Reconquest" style="max-width: 200px; height: auto;" />
-            </div>
-            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px;">
-              <h1 style="color: white; margin: 0; text-align: center;">Collateral Secured!</h1>
-            </div>
-            
-            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              <h2 style="color: #333; margin-top: 0;">Good news, ${lender.username}!</h2>
-              
-              <p style="color: #666; line-height: 1.6;">
-                The borrower's Bitcoin collateral has been confirmed in escrow. The collateral is now securely locked and you can proceed to transfer the loan amount to the borrower.
-              </p>
-              
-              <div style="background: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #155724; margin-top: 0;">✅ Escrow Funded</h3>
-                <p style="color: #155724; margin: 5px 0;"><strong>Collateral:</strong> ${loan.collateralBtc} BTC</p>
-                <p style="color: #155724; margin: 5px 0;"><strong>Loan Amount:</strong> ${loan.amount} ${loan.currency}</p>
-                <p style="color: #155724; margin: 5px 0;"><strong>Interest Rate:</strong> ${loan.interestRate}% p.a.</p>
-              </div>
-              
-              <p style="color: #666; line-height: 1.6;">
-                <strong>Next Step:</strong> Transfer <strong>${loan.amount} ${loan.currency}</strong> to the borrower using the payment details in your dashboard. Once you've made the transfer, confirm it in your lender dashboard to activate the loan.
-              </p>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${baseUrl}/lender" 
-                   style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #4A90E2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                  Go to Lender Dashboard
-                </a>
-              </div>
-              
-              <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; margin: 0;"><strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a></p>
-              </div>
-            </div>
-          </div>
-        `
-      });
-    }
+    // NOTE: Lender notification is already sent by handleDepositConfirmed (sendLenderFundingNotification)
+    // No duplicate lender email needed here
     
-    console.log(`[DepositConfirmed] Notifications sent for loan ${loan.id}`);
+    console.log(`[DepositConfirmed] Borrower notification sent for loan ${loan.id}`);
   });
   
   // Start automated LTV monitoring for price-based liquidation

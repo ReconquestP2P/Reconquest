@@ -36,6 +36,7 @@ export interface IStorage {
   getAllLoans(): Promise<Loan[]>;
   getAvailableLoans(): Promise<Loan[]>;
   getLoansWithActiveMonitoring(): Promise<Loan[]>;
+  getLoansAwaitingDeposit(): Promise<Loan[]>;
   getLoansWithActiveTopUpMonitoring(): Promise<Loan[]>;
   getActiveLoansForLtvCheck(): Promise<Loan[]>;
 
@@ -367,6 +368,15 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getLoansAwaitingDeposit(): Promise<Loan[]> {
+    return Array.from(this.loans.values()).filter(loan =>
+      loan.escrowAddress &&
+      loan.borrowerSigningComplete === true &&
+      !loan.depositConfirmedAt &&
+      loan.escrowState === 'escrow_created'
+    );
+  }
+
   async getLoansWithActiveTopUpMonitoring(): Promise<Loan[]> {
     return Array.from(this.loans.values()).filter(loan => 
       loan.topUpMonitoringActive === true
@@ -592,6 +602,21 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(loans)
       .where(eq(loans.escrowMonitoringActive, true));
+  }
+
+  async getLoansAwaitingDeposit(): Promise<Loan[]> {
+    const { and, isNotNull, isNull } = await import('drizzle-orm');
+    return await db
+      .select()
+      .from(loans)
+      .where(
+        and(
+          isNotNull(loans.escrowAddress),
+          eq(loans.borrowerSigningComplete, true),
+          isNull(loans.depositConfirmedAt),
+          eq(loans.escrowState, 'escrow_created')
+        )
+      );
   }
 
   async getLoansWithActiveTopUpMonitoring(): Promise<Loan[]> {

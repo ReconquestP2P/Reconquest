@@ -117,9 +117,10 @@ export class BlockchainMonitoringService {
 
   /**
    * Poll all loans with active monitoring (initial deposits + top-ups)
+   * Also proactively checks loans awaiting their first deposit (no borrower click needed)
    */
   private async pollPendingDeposits(): Promise<void> {
-    // Check for initial deposits
+    // Check for deposits on loans with explicit monitoring flag
     const loansToMonitor = await storage.getLoansWithActiveMonitoring();
     
     if (loansToMonitor.length > 0) {
@@ -130,6 +131,24 @@ export class BlockchainMonitoringService {
           await this.checkAndUpdateLoanDeposit(loan);
         } catch (error) {
           console.error(`[BlockchainMonitor] Error checking loan ${loan.id}:`, error);
+        }
+      }
+    }
+
+    // Proactively check loans awaiting first deposit (escrow created, signing done, no deposit yet)
+    // This auto-detects deposits without the borrower needing to click "I've Deposited"
+    const loansAwaitingDeposit = await storage.getLoansAwaitingDeposit();
+    const monitoredIds = new Set(loansToMonitor.map(l => l.id));
+    const unmonitoredLoans = loansAwaitingDeposit.filter(l => !monitoredIds.has(l.id));
+
+    if (unmonitoredLoans.length > 0) {
+      console.log(`[BlockchainMonitor] Auto-checking ${unmonitoredLoans.length} loans awaiting first deposit`);
+
+      for (const loan of unmonitoredLoans) {
+        try {
+          await this.checkAndUpdateLoanDeposit(loan);
+        } catch (error) {
+          console.error(`[BlockchainMonitor] Error auto-checking loan ${loan.id}:`, error);
         }
       }
     }
