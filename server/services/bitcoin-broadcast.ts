@@ -16,6 +16,7 @@ import type { PreSignedTransaction } from '@shared/schema';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
 import { getBroadcastUrl, getCurrentNetwork } from './bitcoin-network-selector.js';
+import { BitcoinEscrowService } from './BitcoinEscrowService.js';
 
 // Configure secp256k1 v3 with Node.js crypto hash functions (if not already done)
 if (!secp256k1.hashes.sha256) {
@@ -776,9 +777,8 @@ export async function generatePlatformSignature(
   } catch (error) {
     console.error('Failed to generate platform signature:', error);
 
-    // Fallback: Use hardcoded pubkey with mock signature
-    const platformPubkey =
-      '03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e';
+    // Fallback: Use dynamic platform pubkey with mock signature
+    const platformPubkey = BitcoinEscrowService.getPlatformPublicKey();
     const mockSignature = `platform_sig_${txHash.slice(0, 16)}`;
 
     return {

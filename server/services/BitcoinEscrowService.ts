@@ -77,9 +77,15 @@ export class BitcoinEscrowService implements IBitcoinEscrowService {
     return Buffer.from(key.publicKey).toString('hex');
   }
   
-  // Legacy constant for backwards compatibility (may not match current env key!)
-  // Use getPlatformPublicKey() for new escrows
-  public static readonly PLATFORM_PUBLIC_KEY = "03b017b2eabe5408228080931b2aab9f5d683c80d82768a05a361d6b0c41fbb782";
+  /**
+   * @deprecated DO NOT USE - this was a hardcoded legacy key that caused key mismatches.
+   * Always use getPlatformPublicKey() which derives from PLATFORM_SIGNING_KEY env var.
+   * Kept only to make TypeScript compilation fail loudly if any code still references it.
+   */
+  public static get PLATFORM_PUBLIC_KEY(): string {
+    console.error('❌ CRITICAL: Code is using legacy PLATFORM_PUBLIC_KEY constant! Use getPlatformPublicKey() instead.');
+    return BitcoinEscrowService.getPlatformPublicKey();
+  }
   
   // Dynamic platform pubkey derived from environment
   private get platformPubkey(): string {

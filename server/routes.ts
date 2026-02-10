@@ -1585,7 +1585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const PLATFORM_PUBKEY = loan.platformPubkey || "03b1d168ccdfa27364697797909170da9177db95449f7a8ef5311be8b37717976e";
+      const PLATFORM_PUBKEY = loan.platformPubkey || BitcoinEscrowService.getPlatformPublicKey();
       
       // CRITICAL: Validate all 3 keys are unique BEFORE creating escrow
       const keys = [borrowerPubkey.toLowerCase(), loan.lenderPubkey.toLowerCase(), PLATFORM_PUBKEY.toLowerCase()];
@@ -5366,11 +5366,24 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       const releaseResult = await releaseCollateral(storage, loanId);
       
-      // Update loan status regardless of blockchain result
-      await storage.updateLoan(loanId, {
-        status: 'completed',
-        repaidAt: new Date(),
-      });
+      if (releaseResult.success) {
+        await storage.updateLoan(loanId, {
+          status: 'completed',
+          repaidAt: new Date(),
+          collateralReleased: true,
+          collateralReleaseTxid: releaseResult.txid || null,
+          collateralReleasedAt: new Date(),
+          collateralReleaseError: null,
+        });
+      } else {
+        await storage.updateLoan(loanId, {
+          status: 'repaid',
+          repaidAt: new Date(),
+          collateralReleaseError: releaseResult.error || 'Release failed - will retry automatically',
+        });
+        console.warn(`⚠️ Collateral release failed for loan #${loanId}: ${releaseResult.error}`);
+        console.warn(`   Loan set to 'repaid' status - auto-release cron will retry every 5 minutes`);
+      }
 
       // Send email notification to borrower
       const borrower = await storage.getUser(loan.borrowerId);
