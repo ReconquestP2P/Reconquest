@@ -22,7 +22,6 @@ interface RecoveryBundle {
   ivHex: string;
   saltHex: string;
   createdAt: string;
-  warning: string;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -230,7 +229,24 @@ export async function createRecoveryBundle(
     privateKey
   );
   
-  const bundle: RecoveryBundle = {
+  const bundle = {
+    _FILE_PURPOSE: "KEY BACKUP — This file protects your Bitcoin collateral",
+    _RECOVERY_INSTRUCTIONS: {
+      _1_WHAT_IS_THIS: "This file contains your encrypted private key for the escrow that holds your Bitcoin collateral. It is one of the 3 keys needed to move funds out of escrow.",
+      _2_WHEN_WOULD_I_NEED_THIS: "You would only need this file if the Reconquest platform permanently shut down and you needed to recover your Bitcoin independently. Under normal operation, the platform handles everything for you.",
+      _3_HOW_TO_RECOVER: [
+        "Step 1: You need this file AND the passphrase you chose during the loan setup. Without the passphrase, this file is useless.",
+        "Step 2: Use a Bitcoin recovery tool or ask a Bitcoin-knowledgeable person to help you decrypt the private key using AES-256-GCM decryption with your passphrase, the salt (saltHex below), and the initialization vector (ivHex below).",
+        "Step 3: The decrypted result is your private key in raw hex format. Import it into a Bitcoin wallet that supports testnet4 (e.g., Sparrow Wallet, Electrum, or Bitcoin Core).",
+        "Step 4: Use the presigned transactions file (loan-XX-presigned-transactions.json) — specifically the BORROWER_RECOVERY transaction — and broadcast it to the Bitcoin network to move your collateral back to your address.",
+      ],
+      _4_IMPORTANT_WARNINGS: [
+        "NEVER share this file or your passphrase with anyone.",
+        "Store this file in a safe place (USB drive, encrypted folder, printed on paper).",
+        "If you lose both this file AND your passphrase, you lose the ability to independently recover your Bitcoin.",
+        "The presigned transactions file is also needed for full recovery — keep both files together.",
+      ],
+    },
     version: RECOVERY_VERSION,
     loanId,
     role,
@@ -240,7 +256,6 @@ export async function createRecoveryBundle(
     ivHex: bytesToHex(iv),
     saltHex: bytesToHex(salt),
     createdAt: new Date().toISOString(),
-    warning: 'This file contains your encrypted private key. You need your passphrase to decrypt it.',
   };
   
   return JSON.stringify(bundle, null, 2);

@@ -358,13 +358,34 @@ export function createSignedTransactionBackup(
   result: EphemeralSigningResult
 ): Blob {
   const backup = {
+    _FILE_PURPOSE: "PRESIGNED TRANSACTIONS — Ready-to-broadcast Bitcoin transactions for your escrow",
+    _RECOVERY_INSTRUCTIONS: {
+      _1_WHAT_IS_THIS: "This file contains Bitcoin transactions that were already signed with your private key. Your private key was securely deleted from memory right after signing — these presigned transactions are the only record of your signatures.",
+      _2_WHAT_ARE_THESE_TRANSACTIONS: {
+        REPAYMENT: "Used when you repay the loan normally. This transaction sends your collateral back to your Bitcoin address.",
+        DEFAULT_LIQUIDATION: "Used if you fail to repay. This transaction sends the owed amount to the lender and any remainder back to you.",
+        BORROWER_RECOVERY: "Emergency backup. If the platform disappears, you can broadcast this transaction after a time delay to recover your Bitcoin without needing anyone else's help.",
+      },
+      _3_WHEN_WOULD_I_NEED_THIS: "Under normal operation, the platform handles everything automatically. You would only need this file if the platform permanently shut down and you needed to recover your Bitcoin independently.",
+      _4_HOW_TO_USE_FOR_RECOVERY: [
+        "Step 1: Find the BORROWER_RECOVERY transaction in the 'signedTransactions' section below. It has a 'psbt' field containing the transaction data.",
+        "Step 2: The PSBT (Partially Signed Bitcoin Transaction) still needs the platform's signatures to be broadcast immediately. However, the BORROWER_RECOVERY transaction includes a timelock — after the timelock expires, it can be broadcast with only your signature.",
+        "Step 3: To broadcast, use any Bitcoin tool that supports PSBTs (e.g., Sparrow Wallet, Electrum, or the command line tool bitcoin-cli). Paste the PSBT data and finalize/broadcast it.",
+        "Step 4: If the PSBT needs additional signing (because the timelock hasn't expired), you will need your key backup file (loan-XX-key-backup.json) and your passphrase to re-derive your private key and complete the signing.",
+      ],
+      _5_IMPORTANT_WARNINGS: [
+        "NEVER share this file with anyone — it contains your signed transactions.",
+        "Store this file in a safe place alongside your key backup file.",
+        "Both files together (key backup + presigned transactions) give you full independent recovery ability.",
+        "Without this file, you would need to re-derive your key and create new transactions, which may not be possible if the platform is offline.",
+      ],
+    },
     loanId,
     role,
     publicKey: result.publicKey,
     signedTransactions: result.signedTransactions,
     createdAt: new Date().toISOString(),
     version: '1.0',
-    notice: 'This file contains pre-signed Bitcoin transactions. Your private key was discarded after signing for security.',
   };
   
   const json = JSON.stringify(backup, null, 2);
