@@ -181,7 +181,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reconquest-borrower-recovery-loan-${loan.id}.json`;
+    a.download = `loan-${loan.id}-key-backup.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
