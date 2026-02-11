@@ -387,7 +387,6 @@ export default function BorrowerDashboard() {
                           <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-300 dark:border-yellow-800">
                             <p className="text-sm text-yellow-800 dark:text-yellow-200">
                               ⚠️ <strong>Important:</strong> Only confirm if you have received the funds in your bank account.
-                              Once confirmed, your loan will become active and the repayment countdown begins.
                             </p>
                           </div>
 
