@@ -12,7 +12,7 @@
 import { storage } from '../storage';
 import { getBtcPrice } from './price-service';
 import { broadcastTransaction } from './bitcoin-broadcast';
-import { sendEmail, createBrandedEmailHtml } from '../email';
+import { sendEmail, createBrandedEmailHtml, getBaseUrl } from '../email';
 import { getExplorerUrl } from './bitcoin-network-selector.js';
 import type { Loan } from '@shared/schema';
 
@@ -393,15 +393,23 @@ export class LtvMonitoringService {
       const requiredCollateralValue50 = loanValueWithInterest / targetLtv50;
       const additionalBtcFor50 = Math.max(0, (requiredCollateralValue50 - collateralValueEur) / btcPriceEur);
 
+      const baseUrl = getBaseUrl();
       const borrowerHtml = createBrandedEmailHtml({
         title: '⚠️ LTV Rising - Monitor Your Loan',
         greeting: `Dear ${borrower.firstName || borrower.username},`,
         content: `
           <p>This is an early notice that the LTV on your loan #${loan.id} is rising due to a drop in Bitcoin price.</p>
+
+          <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+            <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
+            <div style="text-align: center; margin-top: 15px;">
+              <a href="${baseUrl}/borrower" style="display: inline-block; background: #DC2626; color: #ffffff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to Borrower Dashboard</a>
+            </div>
+          </div>
           
-          <div style="background: #FEF9C3; border-left: 4px solid #FACC15; padding: 15px; margin: 20px 0;">
-            <p style="margin: 0; color: #713F12;"><strong>Current Status:</strong></p>
-            <ul style="color: #713F12;">
+          <div style="border-left: 4px solid #6B7280; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Current Status:</strong></p>
+            <ul>
               <li>Current LTV: ${(currentLtv * 100).toFixed(1)}%</li>
               <li>Collateral Value: €${collateralValueEur.toFixed(2)}</li>
               <li>Loan Value (incl. interest): €${loanValueWithInterest.toFixed(2)}</li>
@@ -426,12 +434,8 @@ export class LtvMonitoringService {
             <p style="font-family: monospace; word-break: break-all; color: #1E40AF; margin-top: 10px;">${escrowAddress}</p>
             <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">This is the same escrow address used for your initial collateral deposit.</p>
           </div>
-
-          <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
-            <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
-          </div>
           
-          <p style="color: #B45309;">
+          <p>
             💡 No action is required now, but please monitor your loan and be prepared to add collateral or repay if the price continues to fall.
           </p>
         `
@@ -484,15 +488,23 @@ export class LtvMonitoringService {
 
       // Send warning to borrower
       if (borrower?.email) {
+        const criticalBaseUrl = getBaseUrl();
         const borrowerHtml = createBrandedEmailHtml({
           title: '🔴 URGENT: Top Up Collateral Required',
           greeting: `Dear ${borrower.firstName || borrower.username},`,
           content: `
             <p>Your loan #${loan.id} has reached a critical LTV level. <strong>Immediate action is required.</strong></p>
+
+            <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
+              <div style="text-align: center; margin-top: 15px;">
+                <a href="${criticalBaseUrl}/borrower" style="display: inline-block; background: #DC2626; color: #ffffff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to Borrower Dashboard</a>
+              </div>
+            </div>
             
-            <div style="background: #FEE2E2; border-left: 4px solid #DC2626; padding: 15px; margin: 20px 0;">
-              <p style="margin: 0; color: #991B1B;"><strong>Critical Status:</strong></p>
-              <ul style="color: #991B1B;">
+            <div style="border-left: 4px solid #6B7280; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Critical Status:</strong></p>
+              <ul>
                 <li>Current LTV: <strong>${(currentLtv * 100).toFixed(1)}%</strong></li>
                 <li>Collateral Value: €${collateralValueEur.toFixed(2)}</li>
                 <li>Loan Value (incl. interest): €${loanValueWithInterest.toFixed(2)}</li>
@@ -518,10 +530,6 @@ export class LtvMonitoringService {
               <p style="margin: 0; color: #1E40AF; font-weight: bold;">📍 Deposit Address for Top-Up:</p>
               <p style="font-family: monospace; word-break: break-all; color: #1E40AF; background: #EFF6FF; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 14px;">${escrowAddress}</p>
               <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">Send additional BTC to this address. This is the same escrow address used for your initial collateral deposit.</p>
-            </div>
-
-            <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
-              <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
             </div>
             
             <p style="color: #DC2626; font-weight: bold; font-size: 16px;">
