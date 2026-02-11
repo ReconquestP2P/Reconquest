@@ -426,6 +426,10 @@ export class LtvMonitoringService {
             <p style="font-family: monospace; word-break: break-all; color: #1E40AF; margin-top: 10px;">${escrowAddress}</p>
             <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">This is the same escrow address used for your initial collateral deposit.</p>
           </div>
+
+          <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+            <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
+          </div>
           
           <p style="color: #B45309;">
             💡 No action is required now, but please monitor your loan and be prepared to add collateral or repay if the price continues to fall.
@@ -514,6 +518,10 @@ export class LtvMonitoringService {
               <p style="margin: 0; color: #1E40AF; font-weight: bold;">📍 Deposit Address for Top-Up:</p>
               <p style="font-family: monospace; word-break: break-all; color: #1E40AF; background: #EFF6FF; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 14px;">${escrowAddress}</p>
               <p style="color: #1E40AF; font-size: 12px; margin-top: 5px;">Send additional BTC to this address. This is the same escrow address used for your initial collateral deposit.</p>
+            </div>
+
+            <div style="background: #FEF2F2; border: 2px solid #DC2626; padding: 15px; margin: 20px 0; border-radius: 8px;">
+              <p style="margin: 0; color: #991B1B; font-weight: bold;">⚠️ IMPORTANT: After sending your top-up, you MUST log in to your Borrower Dashboard and confirm the top-up amount. If you do not confirm it on the dashboard, the system will not detect the additional collateral, and your loan may still be liquidated even though the funds are in escrow.</p>
             </div>
             
             <p style="color: #DC2626; font-weight: bold; font-size: 16px;">
