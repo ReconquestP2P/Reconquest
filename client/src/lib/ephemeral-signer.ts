@@ -383,7 +383,7 @@ export function downloadSignedTransactions(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `loan-${loanId}-signed-transactions.json`;
+  link.download = `loan-${loanId}-presigned-transactions.json`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
