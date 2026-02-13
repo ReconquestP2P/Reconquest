@@ -890,6 +890,11 @@ export default function AdminDashboard() {
                       <p className="text-xs text-muted-foreground mt-1">
                         To: {splitPreview.lenderAddress?.substring(0, 20)}...
                       </p>
+                      {splitPreview.lenderDefaultPreference && (
+                        <p className={`text-xs font-medium mt-1 ${splitPreview.lenderDefaultPreference === 'eur' ? 'text-blue-600' : 'text-orange-600'}`}>
+                          {splitPreview.lenderDefaultPreference === 'eur' ? '💱 EUR preference → Platform address' : '₿ BTC preference → Lender address'}
+                        </p>
+                      )}
                     </div>
                     <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg border-2 border-green-300 dark:border-green-700">
                       <p className="text-sm font-medium text-green-800 dark:text-green-200">✅ Borrower Receives</p>

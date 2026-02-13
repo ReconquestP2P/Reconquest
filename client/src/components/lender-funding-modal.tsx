@@ -1,13 +1,15 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Shield, CheckCircle } from "lucide-react";
+import { Loader2, Shield, CheckCircle, Bitcoin, Euro, AlertTriangle, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Loan } from "@shared/schema";
 
@@ -18,23 +20,6 @@ interface LenderFundingModalProps {
   userId: number;
 }
 
-/**
- * LenderFundingModal - Bitcoin-Blind Lender Design
- * 
- * CRITICAL: Lenders NEVER handle Bitcoin keys.
- * - No passphrase creation
- * - No key ceremony
- * - No transaction signing
- * 
- * Lenders only:
- * 1. Review loan terms
- * 2. Confirm fiat commitment
- * 3. Transfer fiat to borrower (off-chain)
- * 4. Confirm fiat transfer in dashboard
- * 
- * The platform generates and controls the "lender key" in the 3-of-3 multisig.
- * Platform signs with this key after verifying fiat confirmations.
- */
 export default function LenderFundingModal({ 
   isOpen, 
   onClose, 
@@ -44,8 +29,26 @@ export default function LenderFundingModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [step, setStep] = useState<'confirm' | 'processing' | 'funded'>('confirm');
+  const [step, setStep] = useState<'confirm' | 'preference' | 'processing' | 'funded'>('confirm');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [defaultPreference, setDefaultPreference] = useState<'eur' | 'btc'>('eur');
+  const [confirmedBtcAddress, setConfirmedBtcAddress] = useState(false);
+
+  const { data: userProfile } = useQuery<any>({
+    queryKey: ['/api/auth/profile'],
+    enabled: isOpen,
+  });
+
+  const userBtcAddress = userProfile?.btcAddress || '';
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep('confirm');
+      setTermsAccepted(false);
+      setDefaultPreference('eur');
+      setConfirmedBtcAddress(false);
+    }
+  }, [isOpen]);
 
   const fundLoan = useMutation({
     mutationFn: async () => {
@@ -54,7 +57,8 @@ export default function LenderFundingModal({
       
       const response = await apiRequest(`/api/loans/${loan.id}/fund`, "POST", {
         plannedStartDate: startDate.toISOString(),
-        plannedEndDate: endDate.toISOString()
+        plannedEndDate: endDate.toISOString(),
+        lenderDefaultPreference: defaultPreference,
       });
       return await response.json();
     },
@@ -67,7 +71,7 @@ export default function LenderFundingModal({
       });
     },
     onError: (error: any) => {
-      setStep('confirm');
+      setStep('preference');
       toast({
         title: "Cannot Fund Loan",
         description: error.message || "Failed to fund loan. Please try again.",
@@ -76,11 +80,31 @@ export default function LenderFundingModal({
     },
   });
 
-  const handleCommitFunding = async () => {
+  const handleContinueToPreference = () => {
     if (!termsAccepted) {
       toast({
         title: "Please Accept Terms",
         description: "You must accept the terms to proceed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setStep('preference');
+  };
+
+  const handleCommitFunding = async () => {
+    if (defaultPreference === 'btc' && !userBtcAddress) {
+      toast({
+        title: "BTC Address Required",
+        description: "Please add a Bitcoin address to your profile first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (defaultPreference === 'btc' && !confirmedBtcAddress) {
+      toast({
+        title: "Please Confirm Address",
+        description: "You must confirm your Bitcoin address is correct.",
         variant: "destructive",
       });
       return;
@@ -93,12 +117,14 @@ export default function LenderFundingModal({
   const handleClose = () => {
     setStep('confirm');
     setTermsAccepted(false);
+    setDefaultPreference('eur');
+    setConfirmedBtcAddress(false);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         {step === 'confirm' && (
           <>
             <DialogHeader>
@@ -177,12 +203,128 @@ export default function LenderFundingModal({
                 Cancel
               </Button>
               <Button 
-                onClick={handleCommitFunding}
+                onClick={handleContinueToPreference}
                 className="flex-1"
                 disabled={!termsAccepted}
-                data-testid="button-commit-funding"
+                data-testid="button-continue-to-preference"
               >
                 Continue
+              </Button>
+            </div>
+          </>
+        )}
+
+        {step === 'preference' && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Default Repayment Preference</DialogTitle>
+              <DialogDescription>
+                If the borrower defaults and we need to liquidate or split the collateral, how would you like to receive your share?
+              </DialogDescription>
+            </DialogHeader>
+
+            <RadioGroup
+              value={defaultPreference}
+              onValueChange={(val) => {
+                setDefaultPreference(val as 'eur' | 'btc');
+                setConfirmedBtcAddress(false);
+              }}
+              className="space-y-4"
+              data-testid="radio-default-preference"
+            >
+              <div className={`flex items-start space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                defaultPreference === 'eur' 
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+                onClick={() => { setDefaultPreference('eur'); setConfirmedBtcAddress(false); }}
+              >
+                <RadioGroupItem value="eur" id="pref-eur" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="pref-eur" className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                    <Euro className="h-5 w-5 text-blue-600" />
+                    Receive in Euros (Recommended)
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    The platform will sell the BTC on the market and transfer the euro equivalent to your bank account. 
+                    This protects you from Bitcoin price volatility during the conversion process.
+                  </p>
+                </div>
+              </div>
+
+              <div className={`flex items-start space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                defaultPreference === 'btc' 
+                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' 
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+              }`}
+                onClick={() => { setDefaultPreference('btc'); setConfirmedBtcAddress(false); }}
+              >
+                <RadioGroupItem value="btc" id="pref-btc" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="pref-btc" className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                    <Bitcoin className="h-5 w-5 text-orange-500" />
+                    Receive in Bitcoin
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    The BTC will be sent directly to your Bitcoin address. You are responsible for managing the received Bitcoin.
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+
+            {defaultPreference === 'btc' && (
+              <div className="space-y-3">
+                {userBtcAddress ? (
+                  <>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Your Bitcoin address on file:</p>
+                      <p className="font-mono text-sm break-all font-medium" data-testid="text-btc-address">
+                        {userBtcAddress}
+                      </p>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="confirmBtcAddress"
+                        checked={confirmedBtcAddress}
+                        onCheckedChange={(checked) => setConfirmedBtcAddress(checked === true)}
+                        data-testid="checkbox-confirm-btc-address"
+                      />
+                      <Label htmlFor="confirmBtcAddress" className="text-sm cursor-pointer leading-snug">
+                        I confirm this is the correct Bitcoin address where I want to receive my share in case of default
+                      </Label>
+                    </div>
+                  </>
+                ) : (
+                  <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-sm">
+                      <p className="font-semibold">No Bitcoin address found in your profile</p>
+                      <p className="mt-1">
+                        Please go to your <a href="/profile" className="text-blue-600 underline inline-flex items-center gap-1">
+                          Profile Settings <ExternalLink className="h-3 w-3" />
+                        </a> and add a Bitcoin address first, then come back to fund this loan.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => setStep('confirm')} 
+                variant="outline"
+                data-testid="button-back-to-terms"
+              >
+                Back
+              </Button>
+              <Button 
+                onClick={handleCommitFunding}
+                className="flex-1"
+                disabled={defaultPreference === 'btc' && (!userBtcAddress || !confirmedBtcAddress)}
+                data-testid="button-commit-funding"
+              >
+                Confirm & Fund Loan
               </Button>
             </div>
           </>
@@ -227,6 +369,7 @@ export default function LenderFundingModal({
                   <li>Your investment of {loan.currency} {formatCurrency(parseFloat(loan.amount)).replace('€', '').replace('$', '')} is registered</li>
                   <li>The platform has secured your position in the escrow</li>
                   <li>No Bitcoin handling required on your part</li>
+                  <li>Default repayment preference: <strong>{defaultPreference === 'eur' ? 'Euros (bank transfer)' : 'Bitcoin (direct)'}</strong></li>
                 </ul>
               </AlertDescription>
             </Alert>

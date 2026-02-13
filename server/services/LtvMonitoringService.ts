@@ -248,12 +248,27 @@ export class LtvMonitoringService {
         // Send notifications
         await this.sendLiquidationNotifications(loan, lender, currentLtv, collateralValueEur, btcPriceUsd, txid);
       } else {
-        // No pre-signed tx - use CollateralReleaseService to create and broadcast
-        console.log(`[LtvMonitor] Creating liquidation tx for loan #${loan.id} -> ${lender.btcAddress}`);
+        // Determine target address based on lender's default preference
+        const lenderPreference = loan.lenderDefaultPreference || 'eur';
+        let liquidationTargetAddress: string;
         
-        // Import and use the release function (but to lender's address)
+        if (lenderPreference === 'eur') {
+          const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
+          if (!platformBtcAddress) {
+            console.error(`[LtvMonitor] Cannot liquidate loan #${loan.id}: PLATFORM_BTC_ADDRESS not configured`);
+            return;
+          }
+          liquidationTargetAddress = platformBtcAddress;
+          console.log(`[LtvMonitor] Lender prefers EUR - routing liquidation to platform address for fiat conversion`);
+        } else {
+          liquidationTargetAddress = lender.btcAddress;
+          console.log(`[LtvMonitor] Lender prefers BTC - routing liquidation directly to lender`);
+        }
+        
+        console.log(`[LtvMonitor] Creating liquidation tx for loan #${loan.id} -> ${liquidationTargetAddress}`);
+        
         const { releaseCollateralToAddress } = await import('./CollateralReleaseService');
-        const result = await releaseCollateralToAddress(loan.id, lender.btcAddress);
+        const result = await releaseCollateralToAddress(loan.id, liquidationTargetAddress);
         
         if (result.success) {
           console.log(`✅ [LtvMonitor] Liquidation successful: ${result.txid}`);
