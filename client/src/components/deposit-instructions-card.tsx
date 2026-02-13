@@ -492,13 +492,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     );
   }
 
+  const depositDetected = loan.escrowMonitoringActive && !!loan.fundingTxid;
+
   return (
     <>
-    <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10">
+    <Card className={depositDetected 
+      ? "border-green-300 bg-green-50 dark:bg-green-900/10" 
+      : "border-orange-200 bg-orange-50 dark:bg-orange-900/10"
+    }>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
-          <Bitcoin className="h-5 w-5" />
-          Deposit Your Bitcoin Collateral - Loan #{loan.id}
+        <CardTitle className={`flex items-center gap-2 ${depositDetected ? 'text-green-800 dark:text-green-300' : 'text-orange-800 dark:text-orange-300'}`}>
+          {depositDetected ? <CheckCircle className="h-5 w-5" /> : <Bitcoin className="h-5 w-5" />}
+          {depositDetected 
+            ? `Deposit Sent — Awaiting Confirmation - Loan #${loan.id}`
+            : `Deposit Your Bitcoin Collateral - Loan #${loan.id}`
+          }
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -564,39 +572,58 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
 
         {loan.escrowMonitoringActive ? (
           <div className="space-y-3">
-            <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <div className="text-center">
-                <p className="font-semibold text-blue-800 dark:text-blue-300">Monitoring Blockchain...</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  The lender will be notified once your transfer is confirmed
-                </p>
-              </div>
-            </div>
-
-            <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-sm">
-                <p className="font-medium text-amber-800 dark:text-amber-300">Haven't sent Bitcoin yet?</p>
-                <p className="mt-1 text-amber-700 dark:text-amber-400">No problem — the escrow address is still shown above. Copy it and send your deposit when you're ready.</p>
-              </AlertDescription>
-            </Alert>
-
-            <div className="text-center space-y-2">
-              <a 
-                href={escrowExplorerUrl || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                data-testid="link-mempool-monitor"
-              >
-                <Bitcoin className="h-4 w-4" />
-                View transaction status on Mempool →
-              </a>
-              <p className="text-xs text-muted-foreground">
-                Confirmation times vary by network. You can safely close this page.
-              </p>
-            </div>
+            {loan.fundingTxid ? (
+              <>
+                <div className="flex items-center justify-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="text-center">
+                    <p className="font-semibold text-green-800 dark:text-green-300">Deposit Detected</p>
+                    <p className="text-sm text-green-600 dark:text-green-400">
+                      Your BTC has been sent and is awaiting blockchain confirmation
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center space-y-2">
+                  <a 
+                    href={escrowExplorerUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    data-testid="link-mempool-monitor"
+                  >
+                    <Bitcoin className="h-4 w-4" />
+                    View transaction on Mempool →
+                  </a>
+                  <p className="text-xs text-muted-foreground">
+                    Confirmation times vary by network. You can safely close this page.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 rounded-lg">
+                  <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+                  <div className="text-center">
+                    <p className="font-semibold text-amber-800 dark:text-amber-300">Waiting for Your Deposit...</p>
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      No transaction detected yet — send your BTC to the escrow address above
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center space-y-2">
+                  <a 
+                    href={escrowExplorerUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    data-testid="link-mempool-monitor"
+                  >
+                    <Bitcoin className="h-4 w-4" />
+                    View escrow address on Mempool →
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <Button
