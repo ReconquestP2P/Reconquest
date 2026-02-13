@@ -31,7 +31,7 @@ export default function LoanRequestForm() {
     resolver: zodResolver(loanRequestSchema),
     defaultValues: {
       amount: "",
-      currency: "USDC",
+      currency: "EUR",
       interestRate: 8.5,
       termMonths: 6,
       purpose: "",
@@ -108,7 +108,6 @@ export default function LoanRequestForm() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="USDC">USDC</SelectItem>
                               <SelectItem value="EUR">EUR</SelectItem>
                             </SelectContent>
                           </Select>

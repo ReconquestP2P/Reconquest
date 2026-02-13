@@ -111,7 +111,6 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USDC">USDC</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
                 </SelectContent>
               </Select>
