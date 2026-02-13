@@ -243,7 +243,7 @@ export default function LenderFundingModal({
                 <div className="flex-1">
                   <Label htmlFor="pref-eur" className="text-base font-semibold flex items-center gap-2 cursor-pointer">
                     <Euro className="h-5 w-5 text-blue-600" />
-                    Receive in Euros (Recommended)
+                    Receive in Euros
                   </Label>
                   <p className="text-sm text-muted-foreground mt-1">
                     The platform will sell the BTC on the market and transfer the euro equivalent to your bank account. 
