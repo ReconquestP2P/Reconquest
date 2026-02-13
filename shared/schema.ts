@@ -192,6 +192,7 @@ export const loans = pgTable("loans", {
   // Lender Default Preference: how lender wants to receive BTC in case of default/liquidation
   // 'btc' = send directly to lender's BTC address, 'eur' = send to platform address for fiat conversion
   lenderDefaultPreference: text("lender_default_preference").default("eur"), // 'btc' or 'eur'
+  lenderBtcAddress: text("lender_btc_address"), // BTC address locked at funding time for this specific loan
 
   // Network Type (testnet4, mainnet)
   networkType: text("network_type").default("testnet4"),
