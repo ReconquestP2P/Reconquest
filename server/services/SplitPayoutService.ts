@@ -35,11 +35,15 @@ export interface SplitCalculation {
   lenderPayoutSats: number;
   borrowerPayoutSats: number;
   networkFeeSats: number;
+  feeRateSatVb: number;
+  feeSource: 'api' | 'fallback';
+  feePriority: string;
+  estimatedVbytes: number;
   btcPriceEur: number;
   btcPriceUsd: number;
-  debtEur: number; // principal + interest
+  debtEur: number;
   collateralValueEur: number;
-  isUnderwaterLoan: boolean; // collateral < debt
+  isUnderwaterLoan: boolean;
   lenderReceivesFullCollateral: boolean;
   priceTimestamp: string;
 }
@@ -125,6 +129,8 @@ function signPsbtInput(
  * Calculate fair split between lender and borrower
  */
 export async function calculateSplit(loan: Loan): Promise<SplitCalculation> {
+  const { estimateMultisigFee } = await import('./fee-estimator.js');
+  
   // Get current BTC price
   const priceData = await getBtcPrice();
   const btcPriceEur = priceData.eur;
@@ -144,9 +150,10 @@ export async function calculateSplit(loan: Loan): Promise<SplitCalculation> {
   // Calculate collateral value in EUR
   const collateralValueEur = collateralBtc * btcPriceEur;
   
-  // Calculate network fee (estimate: 200 vbytes for 2-of-3 multisig with 2 outputs)
-  const estimatedVbytes = 200;
-  const networkFeeSats = estimatedVbytes * DEFAULT_FEE_RATE;
+  // Dynamic fee estimation from mempool.space
+  const feeEstimate = await estimateMultisigFee('medium');
+  const estimatedVbytes = feeEstimate.estimatedVbytes;
+  const networkFeeSats = feeEstimate.feeSats;
   
   // Convert debt to satoshis at current price
   // debtEur / btcPriceEur = BTC amount
@@ -158,9 +165,13 @@ export async function calculateSplit(loan: Loan): Promise<SplitCalculation> {
   if (totalCollateralSats <= networkFeeSats) {
     return {
       totalCollateralSats,
-      lenderPayoutSats: Math.max(0, totalCollateralSats - 100), // Minimal fee
+      lenderPayoutSats: Math.max(0, totalCollateralSats - 100),
       borrowerPayoutSats: 0,
       networkFeeSats: Math.min(networkFeeSats, 100),
+      feeRateSatVb: feeEstimate.feeRate,
+      feeSource: feeEstimate.source,
+      feePriority: feeEstimate.priority,
+      estimatedVbytes,
       btcPriceEur,
       btcPriceUsd,
       debtEur,
@@ -214,6 +225,10 @@ export async function calculateSplit(loan: Loan): Promise<SplitCalculation> {
     lenderPayoutSats,
     borrowerPayoutSats,
     networkFeeSats,
+    feeRateSatVb: feeEstimate.feeRate,
+    feeSource: feeEstimate.source,
+    feePriority: feeEstimate.priority,
+    estimatedVbytes,
     btcPriceEur,
     btcPriceUsd,
     debtEur,
@@ -301,28 +316,36 @@ export async function executeSplitPayout(
     
     console.log(`📥 Added ${utxos.length} UTXOs totaling ${totalInputSats} sats`);
     
-    // Recalculate with actual UTXO total
-    const actualFeeSats = calculation.networkFeeSats;
-    let actualLenderSats = calculation.lenderPayoutSats;
-    let actualBorrowerSats = calculation.borrowerPayoutSats;
-    
-    // Adjust if actual UTXO total differs from loan.collateralBtc
     if (totalInputSats !== calculation.totalCollateralSats) {
       console.log(`⚠️ UTXO total (${totalInputSats}) differs from recorded collateral (${calculation.totalCollateralSats})`);
-      
-      // Recalculate based on actual UTXOs
-      if (totalInputSats < actualLenderSats + actualFeeSats) {
-        // Underwater based on actual UTXOs
-        actualLenderSats = totalInputSats - actualFeeSats;
-        actualBorrowerSats = 0;
-      } else {
-        actualBorrowerSats = totalInputSats - actualLenderSats - actualFeeSats;
-        if (actualBorrowerSats < DUST_THRESHOLD) {
-          actualLenderSats = totalInputSats - actualFeeSats;
-          actualBorrowerSats = 0;
-        }
-      }
     }
+    
+    // Iterative fee computation: start with 2 outputs, recompute if borrower output eliminated
+    const { estimateMultisigFee: estimateMultisigFeeExec } = await import('./fee-estimator.js');
+    const debtSats = Math.floor((calculation.debtEur / calculation.btcPriceEur) * 100_000_000);
+    
+    // First pass: assume 2 outputs (lender + borrower)
+    let execFeeEstimate = await estimateMultisigFeeExec('medium', utxos.length, 2);
+    let actualFeeSats = execFeeEstimate.feeSats;
+    let actualLenderSats = debtSats;
+    let actualBorrowerSats = 0;
+    
+    if (totalInputSats < actualLenderSats + actualFeeSats) {
+      actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
+      actualBorrowerSats = 0;
+    } else {
+      actualBorrowerSats = totalInputSats - actualLenderSats - actualFeeSats;
+    }
+    
+    // Second pass: if borrower output eliminated, recompute fee with 1 output
+    if (actualBorrowerSats < DUST_THRESHOLD) {
+      execFeeEstimate = await estimateMultisigFeeExec('medium', utxos.length, 1);
+      actualFeeSats = execFeeEstimate.feeSats;
+      actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
+      actualBorrowerSats = 0;
+    }
+    
+    console.log(`📊 Execution fee: ${actualFeeSats} sats (${execFeeEstimate.feeRate} sat/vB × ${execFeeEstimate.estimatedVbytes} vB, source: ${execFeeEstimate.source})`);
     
     // Add outputs
     // Output 1: Lender payout
@@ -492,22 +515,29 @@ export async function createPlatformSignedPsbt(
       totalInputSats += utxo.value;
     }
     
-    // Calculate actual payouts based on real UTXO total
-    const actualFeeSats = calculation.networkFeeSats;
-    let actualLenderSats = calculation.lenderPayoutSats;
-    let actualBorrowerSats = calculation.borrowerPayoutSats;
+    // Iterative fee computation: start with 2 outputs, recompute if borrower output eliminated
+    const { estimateMultisigFee: estimateMultisigFeePsbt } = await import('./fee-estimator.js');
+    const debtSatsPsbt = Math.floor((calculation.debtEur / calculation.btcPriceEur) * 100_000_000);
     
-    if (totalInputSats !== calculation.totalCollateralSats) {
-      if (totalInputSats < actualLenderSats + actualFeeSats) {
-        actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
-        actualBorrowerSats = 0;
-      } else {
-        actualBorrowerSats = totalInputSats - actualLenderSats - actualFeeSats;
-        if (actualBorrowerSats < DUST_THRESHOLD) {
-          actualLenderSats = totalInputSats - actualFeeSats;
-          actualBorrowerSats = 0;
-        }
-      }
+    // First pass: assume 2 outputs
+    let psbtFeeEstimate = await estimateMultisigFeePsbt('medium', utxos.length, 2);
+    let actualFeeSats = psbtFeeEstimate.feeSats;
+    let actualLenderSats = debtSatsPsbt;
+    let actualBorrowerSats = 0;
+    
+    if (totalInputSats < actualLenderSats + actualFeeSats) {
+      actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
+      actualBorrowerSats = 0;
+    } else {
+      actualBorrowerSats = totalInputSats - actualLenderSats - actualFeeSats;
+    }
+    
+    // Second pass: if borrower output eliminated, recompute fee with 1 output
+    if (actualBorrowerSats < DUST_THRESHOLD) {
+      psbtFeeEstimate = await estimateMultisigFeePsbt('medium', utxos.length, 1);
+      actualFeeSats = psbtFeeEstimate.feeSats;
+      actualLenderSats = Math.max(0, totalInputSats - actualFeeSats);
+      actualBorrowerSats = 0;
     }
     
     // Add outputs

@@ -574,16 +574,17 @@ export async function releaseCollateral(
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
-    // Calculate fee (1 sat/vB for testnet, ~180 vB per input for 2-of-3 multisig)
-    const estimatedVsizePerInput = 180;
-    const fee = estimatedVsizePerInput * utxos.length;
+    // Dynamic fee estimation from mempool.space (scales with input count)
+    const { estimateMultisigFee } = await import('./fee-estimator.js');
+    const feeEstimate = await estimateMultisigFee('medium', utxos.length, 1);
+    const fee = feeEstimate.feeSats;
     const outputValue = totalInputValue - fee;
     
     if (outputValue <= 0) {
       return { success: false, error: 'Total UTXO value too small to cover fee' };
     }
     
-    console.log(`💰 Creating transaction: ${totalInputValue} - ${fee} = ${outputValue} sats`);
+    console.log(`💰 Creating transaction: ${totalInputValue} - ${fee} = ${outputValue} sats (${feeEstimate.feeRate} sat/vB × ${feeEstimate.estimatedVbytes} vB, source: ${feeEstimate.source})`);
     console.log(`   Destination: ${borrowerReturnAddress}`);
     
     // Create PSBT
@@ -759,16 +760,17 @@ export async function releaseCollateralToAddress(
     
     const witnessScript = Buffer.from(witnessScriptHex, 'hex');
     
-    // Calculate fee (1 sat/vB for testnet, ~180 vB per input for 2-of-3 multisig)
-    const estimatedVsizePerInput = 180;
-    const fee = estimatedVsizePerInput * utxos.length;
+    // Dynamic fee estimation - high priority for liquidations
+    const { estimateMultisigFee: estimateMultisigFeeLiq } = await import('./fee-estimator.js');
+    const feeEstimateLiq = await estimateMultisigFeeLiq('high', utxos.length, 1);
+    const fee = feeEstimateLiq.feeSats;
     const outputValue = totalInputValue - fee;
     
     if (outputValue <= 0) {
       return { success: false, error: 'Total UTXO value too small to cover fee' };
     }
     
-    console.log(`💰 Creating liquidation transaction: ${totalInputValue} - ${fee} = ${outputValue} sats`);
+    console.log(`💰 Creating liquidation transaction: ${totalInputValue} - ${fee} = ${outputValue} sats (${feeEstimateLiq.feeRate} sat/vB × ${feeEstimateLiq.estimatedVbytes} vB, source: ${feeEstimateLiq.source})`);
     console.log(`   Destination (lender): ${destinationAddress}`);
     
     // Create PSBT
@@ -929,15 +931,16 @@ export async function prepareRecoverySighashes(
     
     const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
     
-    const estimatedVsizePerInput = 180;
-    const fee = estimatedVsizePerInput * utxos.length;
+    const { estimateMultisigFee: estimateMultisigFeeRecovery } = await import('./fee-estimator.js');
+    const feeEstimateRecovery = await estimateMultisigFeeRecovery('medium', utxos.length, 1);
+    const fee = feeEstimateRecovery.feeSats;
     const outputValue = totalInputValue - fee;
     
     if (outputValue <= 546) {
       return { success: false, error: 'UTXO value too small to cover fees (dust limit)' };
     }
     
-    console.log(`💰 [RECOVERY] Transaction: ${totalInputValue} - ${fee} = ${outputValue} sats → ${borrower.btcAddress}`);
+    console.log(`💰 [RECOVERY] Transaction: ${totalInputValue} - ${fee} = ${outputValue} sats → ${borrower.btcAddress} (${feeEstimateRecovery.feeRate} sat/vB × ${feeEstimateRecovery.estimatedVbytes} vB, source: ${feeEstimateRecovery.source})`);
     
     const network = getNetwork();
     const tx = new bitcoin.Transaction();
@@ -1039,8 +1042,9 @@ export async function completeRecoveryWithSignatures(
     }
     
     const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
-    const estimatedVsizePerInput = 180;
-    const fee = estimatedVsizePerInput * utxos.length;
+    const { estimateMultisigFee: estimateMultisigFeeVerify } = await import('./fee-estimator.js');
+    const feeEstimateVerify = await estimateMultisigFeeVerify('medium', utxos.length, 1);
+    const fee = feeEstimateVerify.feeSats;
     const outputValue = totalInputValue - fee;
     
     if (outputValue <= 546) {

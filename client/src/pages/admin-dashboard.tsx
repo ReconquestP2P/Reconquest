@@ -47,6 +47,10 @@ interface SplitCalculation {
   lenderPayoutSats: number;
   borrowerPayoutSats: number;
   networkFeeSats: number;
+  feeRateSatVb: number;
+  feeSource: 'api' | 'fallback';
+  feePriority: string;
+  estimatedVbytes: number;
   btcPriceEur: number;
   btcPriceUsd: number;
   debtEur: number;
@@ -849,9 +853,17 @@ export default function AdminDashboard() {
                       <p className="text-sm text-muted-foreground">= {(splitPreview.calculation.debtEur / splitPreview.calculation.btcPriceEur).toFixed(8)} BTC</p>
                     </div>
                     <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Network Fee</p>
+                      <p className="text-sm text-muted-foreground">Network Fee (to miners, est.)</p>
                       <p className="text-xl font-bold">{splitPreview.calculation.networkFeeSats.toLocaleString()} sats</p>
                       <p className="text-sm text-muted-foreground">≈ €{(splitPreview.calculation.networkFeeSats / 100_000_000 * splitPreview.calculation.btcPriceEur).toFixed(2)} EUR</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {splitPreview.calculation.feeRateSatVb} sat/vB × {splitPreview.calculation.estimatedVbytes} vB
+                        {splitPreview.calculation.feeSource === 'api' ? (
+                          <span className="ml-1 text-green-600 dark:text-green-400">(live from mempool.space)</span>
+                        ) : (
+                          <span className="ml-1 text-amber-600 dark:text-amber-400">(fallback estimate)</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   
