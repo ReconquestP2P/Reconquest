@@ -3875,6 +3875,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         disputeStatus: 'resolved',
         disputeResolvedAt: new Date(),
         status: finalStatus,
+        collateralReleased: true,
+        escrowState: 'collateral_released',
+        collateralReleasedAt: new Date(),
+        collateralReleaseError: null,
         pendingResolutionDecision: decision,
         pendingResolutionLenderSats: psbtResult.lenderPayoutSats,
         pendingResolutionBorrowerSats: psbtResult.borrowerPayoutSats,
@@ -4139,6 +4143,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         disputeStatus: 'resolved',
         disputeResolvedAt: new Date(),
         status: finalStatus,
+        collateralReleased: true,
+        escrowState: 'collateral_released',
+        collateralReleasedAt: new Date(),
+        collateralReleaseError: null,
         lenderSignatureHex: 'platform-controlled-signature', // Bitcoin-blind: platform signed
         lenderSignedAt: new Date(),
         pendingResolutionPsbt: null as any,
@@ -5235,6 +5243,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         disputeStatus: "resolved",
         disputeResolvedAt: new Date(),
         status: finalLoanStatus,
+        collateralReleased: true,
+        escrowState: 'collateral_released',
+        collateralReleasedAt: new Date(),
+        collateralReleaseError: null,
       });
 
       // Create audit log
