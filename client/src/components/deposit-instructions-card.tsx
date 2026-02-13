@@ -573,6 +573,15 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                 </p>
               </div>
             </div>
+
+            <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-300">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-sm">
+                <p className="font-medium text-amber-800 dark:text-amber-300">Haven't sent Bitcoin yet?</p>
+                <p className="mt-1 text-amber-700 dark:text-amber-400">No problem — the escrow address is still shown above. Copy it and send your deposit when you're ready.</p>
+              </AlertDescription>
+            </Alert>
+
             <div className="text-center space-y-2">
               <a 
                 href={escrowExplorerUrl || '#'}
