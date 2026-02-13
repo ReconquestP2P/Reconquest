@@ -1666,6 +1666,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { txType: 'recovery', psbtBase64: psbtResult.psbts.recovery }
           ];
           requiresSigning = true;
+
+          const existingTemplates = await storage.getPreSignedTransactions(loanId);
+          if (existingTemplates.length === 0) {
+            for (const tmpl of psbtTemplates) {
+              await storage.storePreSignedTransaction({
+                loanId,
+                partyRole: 'unsigned_template',
+                partyPubkey: borrowerPubkey,
+                txType: tmpl.txType,
+                psbt: tmpl.psbtBase64,
+                signature: '',
+                txHash: crypto.createHash('sha256').update(tmpl.psbtBase64).digest('hex').slice(0, 64),
+              });
+            }
+            console.log(`💾 Persisted ${psbtTemplates.length} unsigned PSBT templates to DB for loan #${loanId}`);
+          } else {
+            console.log(`⚠️ Templates already exist for loan #${loanId}, skipping duplicate persistence`);
+          }
         } else {
           console.warn(`⚠️ PSBT generation returned empty result`);
         }
@@ -3067,13 +3085,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         const psbtRecord = existingPsbts.find(p => p.txType === txType);
         
         if (psbtRecord) {
-          // Update the transaction with the signature
-          await storage.updateTransactionBroadcastStatus(psbtRecord.id, {
+          await storage.updatePreSignedTransaction(psbtRecord.id, {
+            signature,
             broadcastStatus: 'signed'
           });
-          
-          // Store signature in a separate update (via raw query since we need to update signature field)
-          // For now, log it - the actual signature storage may need schema update
           console.log(`[SubmitSignatures] Stored ${txType} signature for loan #${loanId}: ${signature.slice(0, 20)}...`);
         }
       }

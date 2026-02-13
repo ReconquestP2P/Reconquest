@@ -77,6 +77,14 @@ export interface IStorage {
     broadcastedAt?: Date;
     confirmedAt?: Date;
   }): Promise<PreSignedTransaction | undefined>;
+  updatePreSignedTransaction(id: number, updates: Partial<{
+    signature: string;
+    psbt: string;
+    broadcastStatus: string;
+    broadcastTxid: string;
+    broadcastedAt: Date;
+    confirmedAt: Date;
+  }>): Promise<PreSignedTransaction | undefined>;
 
   // Dispute operations
   createDispute(dispute: InsertDispute): Promise<Dispute>;
@@ -485,6 +493,22 @@ export class MemStorage implements IStorage {
   async getPsbtTemplate(loanId: number, txType: string): Promise<PsbtTemplate | undefined> {
     return undefined;
   }
+
+  async storePreSignedTransaction(tx: InsertPreSignedTransaction): Promise<PreSignedTransaction> {
+    throw new Error('Pre-signed transactions not supported in MemStorage');
+  }
+
+  async getPreSignedTransactions(loanId: number, txType?: string): Promise<PreSignedTransaction[]> {
+    return [];
+  }
+
+  async updateTransactionBroadcastStatus(id: number, updates: { broadcastStatus: string; broadcastTxid?: string; broadcastedAt?: Date; confirmedAt?: Date; }): Promise<PreSignedTransaction | undefined> {
+    return undefined;
+  }
+
+  async updatePreSignedTransaction(id: number, updates: Partial<{ signature: string; psbt: string; broadcastStatus: string; broadcastTxid: string; broadcastedAt: Date; confirmedAt: Date; }>): Promise<PreSignedTransaction | undefined> {
+    return undefined;
+  }
 }
 
 // Database storage implementation
@@ -804,6 +828,25 @@ export class DatabaseStorage implements IStorage {
       broadcastedAt?: Date;
       confirmedAt?: Date;
     }
+  ): Promise<PreSignedTransaction | undefined> {
+    const [transaction] = await db
+      .update(preSignedTransactions)
+      .set(updates)
+      .where(eq(preSignedTransactions.id, id))
+      .returning();
+    return transaction || undefined;
+  }
+
+  async updatePreSignedTransaction(
+    id: number,
+    updates: Partial<{
+      signature: string;
+      psbt: string;
+      broadcastStatus: string;
+      broadcastTxid: string;
+      broadcastedAt: Date;
+      confirmedAt: Date;
+    }>
   ): Promise<PreSignedTransaction | undefined> {
     const [transaction] = await db
       .update(preSignedTransactions)
