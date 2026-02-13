@@ -3356,7 +3356,11 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         if (result.success) {
           await storage.updateLoan(loanId, {
             status: 'recovered',
-            collateralReleaseTxid: result.txid
+            collateralReleased: true,
+            escrowState: 'collateral_released',
+            collateralReleaseTxid: result.txid,
+            collateralReleasedAt: new Date(),
+            collateralReleaseError: null,
           });
 
           res.json({
@@ -3456,6 +3460,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         try {
           await storage.updateLoan(loanId, {
             collateralReleased: true,
+            escrowState: 'collateral_released',
             collateralReleaseTxid: result.txid,
             collateralReleasedAt: new Date(),
             collateralReleaseError: null,

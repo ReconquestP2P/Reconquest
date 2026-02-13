@@ -241,6 +241,9 @@ export class LtvMonitoringService {
         await storage.updateLoan(loan.id, {
           status: 'defaulted',
           escrowState: 'liquidated',
+          collateralReleased: true,
+          collateralReleasedAt: new Date(),
+          collateralReleaseError: null,
           disputeStatus: 'resolved',
           disputeResolvedAt: new Date(),
         });
@@ -288,6 +291,9 @@ export class LtvMonitoringService {
           await storage.updateLoan(loan.id, {
             status: 'defaulted',
             escrowState: 'liquidated',
+            collateralReleased: true,
+            collateralReleasedAt: new Date(),
+            collateralReleaseError: null,
             disputeStatus: 'resolved',
             disputeResolvedAt: new Date(),
           });

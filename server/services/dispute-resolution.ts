@@ -301,6 +301,10 @@ export async function resolveDispute(
     const loanUpdates: Partial<Loan> = {
       disputeStatus: 'resolved',
       disputeResolvedAt: new Date(),
+      collateralReleased: true,
+      escrowState: 'collateral_released',
+      collateralReleasedAt: new Date(),
+      collateralReleaseError: null,
     };
     
     // Set loan status based on decision

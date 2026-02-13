@@ -271,11 +271,12 @@ export default function BorrowerDashboard() {
         )}
 
         <Tabs defaultValue="request" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="request">Request Loan</TabsTrigger>
           <TabsTrigger value="escrow">Escrow Pending</TabsTrigger>
           <TabsTrigger value="confirm-funds">Confirm Funds</TabsTrigger>
           <TabsTrigger value="loans">Active Loans</TabsTrigger>
+          <TabsTrigger value="history">Loan History</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -770,6 +771,80 @@ export default function BorrowerDashboard() {
                     ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Loan History</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Your completed, defaulted, and recovered loans.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const closedLoans = borrowerLoans.filter((loan: any) => 
+                  (loan.status === 'completed' && loan.collateralReleased) ||
+                  loan.status === 'defaulted' ||
+                  loan.status === 'recovered' ||
+                  loan.status === 'cancelled'
+                );
+                if (closedLoans.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400">No past loans yet.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Collateral</TableHead>
+                        <TableHead>Interest Rate</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Collateral Status</TableHead>
+                        <TableHead>Resolved</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {closedLoans.map((loan: any) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">#{loan.id}</TableCell>
+                          <TableCell>{loan.currency === 'EUR' ? '€' : '$'}{parseFloat(loan.amount).toLocaleString()}</TableCell>
+                          <TableCell>
+                            {loan.collateralBtc ? `${parseFloat(loan.collateralBtc).toFixed(8)} BTC` : '—'}
+                          </TableCell>
+                          <TableCell>{loan.interestRate}%</TableCell>
+                          <TableCell>{getStatusBadge(loan.status)}</TableCell>
+                          <TableCell>
+                            {loan.collateralReleased ? (
+                              <Badge className="bg-green-100 text-green-800">Released</Badge>
+                            ) : loan.escrowState === 'liquidated' ? (
+                              <Badge className="bg-red-100 text-red-800">Liquidated</Badge>
+                            ) : (
+                              <Badge variant="secondary">N/A</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {loan.disputeResolvedAt
+                              ? new Date(loan.disputeResolvedAt).toLocaleDateString()
+                              : loan.collateralReleasedAt
+                              ? new Date(loan.collateralReleasedAt).toLocaleDateString()
+                              : loan.repaidAt
+                              ? new Date(loan.repaidAt).toLocaleDateString()
+                              : '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

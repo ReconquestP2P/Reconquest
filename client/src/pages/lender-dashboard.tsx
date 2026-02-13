@@ -301,11 +301,12 @@ export default function LenderDashboard() {
         )}
 
         <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="loans">Available Loans</TabsTrigger>
           <TabsTrigger value="pending-transfers">Pending Transfers</TabsTrigger>
           <TabsTrigger value="active">Active Loans</TabsTrigger>
+          <TabsTrigger value="history">Loan History</TabsTrigger>
           <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
 
@@ -979,6 +980,88 @@ export default function LenderDashboard() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Investment History</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Your completed, defaulted, and resolved investments.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const closedInvestments = lenderLoans.filter((loan: any) => 
+                  (loan.status === 'completed' && loan.collateralReleased) ||
+                  loan.status === 'defaulted' ||
+                  loan.status === 'recovered' ||
+                  loan.status === 'cancelled'
+                );
+                if (closedInvestments.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400">No past investments yet.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Interest Rate</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Outcome</TableHead>
+                        <TableHead>Resolved</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {closedInvestments.map((loan: any) => (
+                        <TableRow key={loan.id}>
+                          <TableCell className="font-medium">#{loan.id}</TableCell>
+                          <TableCell>{loan.currency === 'EUR' ? '€' : '$'}{parseFloat(loan.amount).toLocaleString()}</TableCell>
+                          <TableCell>{loan.interestRate}%</TableCell>
+                          <TableCell>
+                            {loan.status === 'completed' ? (
+                              <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                            ) : loan.status === 'defaulted' ? (
+                              <Badge className="bg-red-100 text-red-800">Defaulted</Badge>
+                            ) : loan.status === 'recovered' ? (
+                              <Badge className="bg-amber-100 text-amber-800">Recovered</Badge>
+                            ) : (
+                              <Badge variant="secondary">{loan.status}</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {loan.status === 'completed' ? (
+                              <span className="text-green-700 text-sm">Repaid with interest</span>
+                            ) : loan.status === 'defaulted' && loan.escrowState === 'liquidated' ? (
+                              <span className="text-red-600 text-sm">Liquidated</span>
+                            ) : loan.status === 'defaulted' ? (
+                              <span className="text-orange-600 text-sm">Fair split applied</span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {loan.disputeResolvedAt
+                              ? new Date(loan.disputeResolvedAt).toLocaleDateString()
+                              : loan.collateralReleasedAt
+                              ? new Date(loan.collateralReleasedAt).toLocaleDateString()
+                              : loan.repaidAt
+                              ? new Date(loan.repaidAt).toLocaleDateString()
+                              : '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
