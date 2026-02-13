@@ -496,17 +496,21 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
 
   return (
     <>
-    <Card className={depositDetected 
-      ? "border-green-300 bg-green-50 dark:bg-green-900/10" 
-      : "border-orange-200 bg-orange-50 dark:bg-orange-900/10"
-    }>
+    <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/10">
       <CardHeader>
-        <CardTitle className={`flex items-center gap-2 ${depositDetected ? 'text-green-800 dark:text-green-300' : 'text-orange-800 dark:text-orange-300'}`}>
-          {depositDetected ? <CheckCircle className="h-5 w-5" /> : <Bitcoin className="h-5 w-5" />}
-          {depositDetected 
-            ? `Deposit Sent — Awaiting Confirmation - Loan #${loan.id}`
-            : `Deposit Your Bitcoin Collateral - Loan #${loan.id}`
-          }
+        <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
+          <Bitcoin className="h-5 w-5" />
+          Deposit Your Bitcoin Collateral - Loan #{loan.id}
+          {depositDetected && (
+            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-300 dark:border-green-700">
+              BTC Sent
+            </span>
+          )}
+          {!depositDetected && loan.escrowMonitoringActive && (
+            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
+              Awaiting Deposit
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -573,17 +577,12 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         {loan.escrowMonitoringActive ? (
           <div className="space-y-3">
             {loan.fundingTxid ? (
-              <>
-                <div className="flex items-center justify-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div className="text-center">
-                    <p className="font-semibold text-green-800 dark:text-green-300">Deposit Detected</p>
-                    <p className="text-sm text-green-600 dark:text-green-400">
-                      Your BTC has been sent and is awaiting blockchain confirmation
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>Deposit detected — awaiting blockchain confirmation</span>
                 </div>
-                <div className="text-center space-y-2">
+                <div className="text-center">
                   <a 
                     href={escrowExplorerUrl || '#'}
                     target="_blank"
@@ -594,23 +593,15 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                     <Bitcoin className="h-4 w-4" />
                     View transaction on Mempool →
                   </a>
-                  <p className="text-xs text-muted-foreground">
-                    Confirmation times vary by network. You can safely close this page.
-                  </p>
                 </div>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="flex items-center justify-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 rounded-lg">
-                  <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
-                  <div className="text-center">
-                    <p className="font-semibold text-amber-800 dark:text-amber-300">Waiting for Your Deposit...</p>
-                    <p className="text-sm text-amber-600 dark:text-amber-400">
-                      No transaction detected yet — send your BTC to the escrow address above
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
+                  <span>No transaction detected yet — send your BTC to the escrow address above</span>
                 </div>
-                <div className="text-center space-y-2">
+                <div className="text-center">
                   <a 
                     href={escrowExplorerUrl || '#'}
                     target="_blank"
@@ -622,7 +613,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
                     View escrow address on Mempool →
                   </a>
                 </div>
-              </>
+              </div>
             )}
           </div>
         ) : (
