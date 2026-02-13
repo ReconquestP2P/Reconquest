@@ -828,6 +828,8 @@ export default function BorrowerDashboard() {
                               <Badge className="bg-green-100 text-green-800">Released</Badge>
                             ) : loan.status === 'cancelled' ? (
                               <Badge variant="outline">No Escrow</Badge>
+                            ) : loan.status === 'defaulted' && loan.disputeStatus === 'resolved' ? (
+                              <Badge className="bg-blue-100 text-blue-800">Dispute Resolved</Badge>
                             ) : loan.status === 'defaulted' ? (
                               <Badge className="bg-orange-100 text-orange-800">In Dispute</Badge>
                             ) : (
