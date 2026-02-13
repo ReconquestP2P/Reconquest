@@ -189,6 +189,10 @@ export const loans = pgTable("loans", {
   // LTV Alert Tracking (persisted to survive server restarts)
   lastLtvAlertLevel: integer("last_ltv_alert_level"), // Last LTV % at which an alert was sent (e.g., 75, 80, 85)
 
+  // Lender Default Preference: how lender wants to receive BTC in case of default/liquidation
+  // 'btc' = send directly to lender's BTC address, 'eur' = send to platform address for fiat conversion
+  lenderDefaultPreference: text("lender_default_preference").default("eur"), // 'btc' or 'eur'
+
   // Network Type (testnet4, mainnet)
   networkType: text("network_type").default("testnet4"),
 });
