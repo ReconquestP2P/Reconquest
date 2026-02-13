@@ -821,22 +821,37 @@ export default function AdminDashboard() {
               {/* Split Preview Panel */}
               {splitPreview && (
                 <div className="mt-6 p-4 border rounded-lg bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950">
-                  <h3 className="font-semibold text-lg mb-4">Fair Split Preview - Loan #{splitPreview.loanId}</h3>
+                  <h3 className="font-semibold text-lg mb-2">Fair Split Preview - Loan #{splitPreview.loanId}</h3>
                   
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-300 dark:border-amber-700">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wide">Price Oracle (CoinGecko)</p>
+                        <p className="text-lg font-bold text-amber-900 dark:text-amber-100">
+                          1 BTC = €{splitPreview.calculation.btcPriceEur.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR / ${splitPreview.calculation.btcPriceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                        </p>
+                      </div>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        {splitPreview.calculation.priceTimestamp ? new Date(splitPreview.calculation.priceTimestamp).toLocaleString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Collateral</p>
                       <p className="text-xl font-bold">{(splitPreview.calculation.totalCollateralSats / 100_000_000).toFixed(8)} BTC</p>
-                      <p className="text-sm text-muted-foreground">{formatCurrency(splitPreview.calculation.collateralValueEur)} EUR</p>
+                      <p className="text-sm text-muted-foreground">≈ €{splitPreview.calculation.collateralValueEur.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</p>
                     </div>
                     <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
                       <p className="text-sm text-muted-foreground">Debt Owed (P+I)</p>
                       <p className="text-xl font-bold">{formatCurrency(splitPreview.calculation.debtEur)} EUR</p>
-                      <p className="text-sm text-muted-foreground">@ {formatCurrency(splitPreview.calculation.btcPriceEur)} EUR/BTC</p>
+                      <p className="text-sm text-muted-foreground">= {(splitPreview.calculation.debtEur / splitPreview.calculation.btcPriceEur).toFixed(8)} BTC</p>
                     </div>
                     <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
                       <p className="text-sm text-muted-foreground">Network Fee</p>
-                      <p className="text-xl font-bold">{splitPreview.calculation.networkFeeSats} sats</p>
+                      <p className="text-xl font-bold">{splitPreview.calculation.networkFeeSats.toLocaleString()} sats</p>
+                      <p className="text-sm text-muted-foreground">≈ €{(splitPreview.calculation.networkFeeSats / 100_000_000 * splitPreview.calculation.btcPriceEur).toFixed(2)} EUR</p>
                     </div>
                   </div>
                   
@@ -857,6 +872,9 @@ export default function AdminDashboard() {
                       <p className="text-sm text-blue-700 dark:text-blue-300">
                         ({splitPreview.calculation.lenderPayoutSats.toLocaleString()} sats)
                       </p>
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mt-1">
+                        ≈ €{(splitPreview.calculation.lenderPayoutSats / 100_000_000 * splitPreview.calculation.btcPriceEur).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         To: {splitPreview.lenderAddress?.substring(0, 20)}...
                       </p>
@@ -868,6 +886,9 @@ export default function AdminDashboard() {
                       </p>
                       <p className="text-sm text-green-700 dark:text-green-300">
                         ({splitPreview.calculation.borrowerPayoutSats.toLocaleString()} sats)
+                      </p>
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200 mt-1">
+                        ≈ €{(splitPreview.calculation.borrowerPayoutSats / 100_000_000 * splitPreview.calculation.btcPriceEur).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         To: {splitPreview.borrowerAddress?.substring(0, 20)}...
