@@ -52,8 +52,8 @@ export async function getBtcPrice(): Promise<BtcPriceData> {
     const data = await response.json();
     
     cachedPrice = {
-      usd: data.bitcoin?.usd || 97000,
-      eur: data.bitcoin?.eur || 90000,
+      usd: data.bitcoin?.usd || 66000,
+      eur: data.bitcoin?.eur || 56000,
       usd24hChange: data.bitcoin?.usd_24h_change || 0,
       lastUpdatedAt: data.bitcoin?.last_updated_at || Math.floor(now / 1000),
     };
@@ -65,8 +65,8 @@ export async function getBtcPrice(): Promise<BtcPriceData> {
     
     // Return fallback price if API fails
     return {
-      usd: 97000,
-      eur: 90000,
+      usd: 66000,
+      eur: 56000,
       usd24hChange: 0,
       lastUpdatedAt: Math.floor(now / 1000),
     };
