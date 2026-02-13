@@ -56,6 +56,7 @@ export async function processLoanRelease(
     // Update loan record
     await storage.updateLoan(loanId, {
       collateralReleased: true,
+      escrowState: 'collateral_released',
       collateralReleaseTxid: result.txid,
       collateralReleasedAt: new Date(),
       collateralReleaseError: null

@@ -4471,9 +4471,12 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const result = await releaseCollateral(storage, loanId);
       
       if (result.success) {
-        // Update loan with release txid
         await storage.updateLoan(loanId, {
+          collateralReleased: true,
+          escrowState: 'collateral_released',
           collateralReleaseTxid: result.txid,
+          collateralReleasedAt: new Date(),
+          collateralReleaseError: null,
         });
         
         res.json({
@@ -5417,6 +5420,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           status: 'completed',
           repaidAt: new Date(),
           collateralReleased: true,
+          escrowState: 'collateral_released',
           collateralReleaseTxid: releaseResult.txid || null,
           collateralReleasedAt: new Date(),
           collateralReleaseError: null,
