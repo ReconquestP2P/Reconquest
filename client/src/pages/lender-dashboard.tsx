@@ -1043,8 +1043,6 @@ export default function LenderDashboard() {
                               <span className="text-red-600 text-sm">Liquidated</span>
                             ) : loan.status === 'defaulted' && loan.collateralReleased ? (
                               <span className="text-orange-600 text-sm">Fair split applied</span>
-                            ) : loan.status === 'defaulted' && loan.disputeStatus === 'resolved' ? (
-                              <span className="text-amber-600 text-sm">Pending release</span>
                             ) : loan.status === 'defaulted' ? (
                               <span className="text-orange-600 text-sm">In dispute</span>
                             ) : loan.status === 'cancelled' ? (

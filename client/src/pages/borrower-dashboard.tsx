@@ -822,14 +822,12 @@ export default function BorrowerDashboard() {
                           <TableCell>{loan.interestRate}%</TableCell>
                           <TableCell>{getStatusBadge(loan.status)}</TableCell>
                           <TableCell>
-                            {loan.collateralReleased ? (
-                              <Badge className="bg-green-100 text-green-800">Released</Badge>
-                            ) : loan.escrowState === 'liquidated' ? (
+                            {loan.collateralReleased && loan.escrowState === 'liquidated' ? (
                               <Badge className="bg-red-100 text-red-800">Liquidated</Badge>
+                            ) : loan.collateralReleased ? (
+                              <Badge className="bg-green-100 text-green-800">Released</Badge>
                             ) : loan.status === 'cancelled' ? (
                               <Badge variant="outline">No Escrow</Badge>
-                            ) : loan.status === 'defaulted' && loan.disputeStatus === 'resolved' ? (
-                              <Badge className="bg-amber-100 text-amber-800">Pending Release</Badge>
                             ) : loan.status === 'defaulted' ? (
                               <Badge className="bg-orange-100 text-orange-800">In Dispute</Badge>
                             ) : (
