@@ -33,13 +33,7 @@ export default function LenderFundingModal({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [defaultPreference, setDefaultPreference] = useState<'eur' | 'btc'>('eur');
   const [confirmedBtcAddress, setConfirmedBtcAddress] = useState(false);
-
-  const { data: userProfile } = useQuery<any>({
-    queryKey: ['/api/auth/profile'],
-    enabled: isOpen,
-  });
-
-  const userBtcAddress = userProfile?.btcAddress || '';
+  const [btcAddressInput, setBtcAddressInput] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -47,6 +41,7 @@ export default function LenderFundingModal({
       setTermsAccepted(false);
       setDefaultPreference('eur');
       setConfirmedBtcAddress(false);
+      setBtcAddressInput('');
     }
   }, [isOpen]);
 
@@ -59,6 +54,7 @@ export default function LenderFundingModal({
         plannedStartDate: startDate.toISOString(),
         plannedEndDate: endDate.toISOString(),
         lenderDefaultPreference: defaultPreference,
+        lenderBtcAddress: defaultPreference === 'btc' ? btcAddressInput.trim() : undefined,
       });
       return await response.json();
     },
@@ -93,10 +89,10 @@ export default function LenderFundingModal({
   };
 
   const handleCommitFunding = async () => {
-    if (defaultPreference === 'btc' && !userBtcAddress) {
+    if (defaultPreference === 'btc' && !btcAddressInput.trim()) {
       toast({
         title: "BTC Address Required",
-        description: "Please add a Bitcoin address to your profile first.",
+        description: "Please enter the Bitcoin address where you want to receive funds.",
         variant: "destructive",
       });
       return;
@@ -274,38 +270,34 @@ export default function LenderFundingModal({
 
             {defaultPreference === 'btc' && (
               <div className="space-y-3">
-                {userBtcAddress ? (
-                  <>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Your Bitcoin address on file:</p>
-                      <p className="font-mono text-sm break-all font-medium" data-testid="text-btc-address">
-                        {userBtcAddress}
-                      </p>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <Checkbox
-                        id="confirmBtcAddress"
-                        checked={confirmedBtcAddress}
-                        onCheckedChange={(checked) => setConfirmedBtcAddress(checked === true)}
-                        data-testid="checkbox-confirm-btc-address"
-                      />
-                      <Label htmlFor="confirmBtcAddress" className="text-sm cursor-pointer leading-snug">
-                        I confirm this is the correct Bitcoin address where I want to receive my share in case of default
-                      </Label>
-                    </div>
-                  </>
-                ) : (
-                  <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-sm">
-                      <p className="font-semibold">No Bitcoin address found in your profile</p>
-                      <p className="mt-1">
-                        Please go to your <a href="/profile" className="text-blue-600 underline inline-flex items-center gap-1">
-                          Profile Settings <ExternalLink className="h-3 w-3" />
-                        </a> and add a Bitcoin address first, then come back to fund this loan.
-                      </p>
-                    </AlertDescription>
-                  </Alert>
+                <div className="space-y-2">
+                  <Label htmlFor="btcAddressInput" className="text-sm font-medium">
+                    Bitcoin address for this loan
+                  </Label>
+                  <Input
+                    id="btcAddressInput"
+                    placeholder="Enter your Bitcoin address"
+                    value={btcAddressInput}
+                    onChange={(e) => { setBtcAddressInput(e.target.value); setConfirmedBtcAddress(false); }}
+                    className="font-mono text-sm"
+                    data-testid="input-btc-address"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This address will be permanently locked to this loan for security. It cannot be changed later.
+                  </p>
+                </div>
+                {btcAddressInput.trim() && (
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="confirmBtcAddress"
+                      checked={confirmedBtcAddress}
+                      onCheckedChange={(checked) => setConfirmedBtcAddress(checked === true)}
+                      data-testid="checkbox-confirm-btc-address"
+                    />
+                    <Label htmlFor="confirmBtcAddress" className="text-sm cursor-pointer leading-snug">
+                      I confirm this is the correct Bitcoin address where I want to receive my share in case of default
+                    </Label>
+                  </div>
                 )}
               </div>
             )}
@@ -321,7 +313,7 @@ export default function LenderFundingModal({
               <Button 
                 onClick={handleCommitFunding}
                 className="flex-1"
-                disabled={defaultPreference === 'btc' && (!userBtcAddress || !confirmedBtcAddress)}
+                disabled={defaultPreference === 'btc' && (!btcAddressInput.trim() || !confirmedBtcAddress)}
                 data-testid="button-commit-funding"
               >
                 Confirm & Fund Loan

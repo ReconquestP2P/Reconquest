@@ -219,9 +219,10 @@ export class LtvMonitoringService {
     btcPriceUsd: number
   ): Promise<void> {
     try {
-      // Get lender's BTC address
+      // Get lender's BTC address (per-loan, with legacy fallback to profile)
       const lender = await storage.getUser(loan.lenderId!);
-      if (!lender || !lender.btcAddress) {
+      const effectiveLenderBtcAddress = loan.lenderBtcAddress || lender?.btcAddress;
+      if (!effectiveLenderBtcAddress) {
         console.error(`[LtvMonitor] Cannot liquidate loan #${loan.id}: Lender has no BTC address`);
         return;
       }
@@ -275,7 +276,7 @@ export class LtvMonitoringService {
           liquidationTargetAddress = platformBtcAddress;
           console.log(`[LtvMonitor] Lender prefers EUR - routing liquidation to platform address for fiat conversion`);
         } else {
-          liquidationTargetAddress = lender.btcAddress;
+          liquidationTargetAddress = effectiveLenderBtcAddress;
           console.log(`[LtvMonitor] Lender prefers BTC - routing liquidation directly to lender`);
         }
         
@@ -375,7 +376,7 @@ export class LtvMonitoringService {
               <p style="margin: 0; color: #065F46;"><strong>Collateral Received:</strong></p>
               <ul style="color: #065F46;">
                 <li>Amount: ${collateralBtc.toFixed(8)} BTC</li>
-                <li>Your Address: ${lender.btcAddress}</li>
+                <li>Your Address: ${loan.lenderBtcAddress || lender?.btcAddress || 'Platform address (EUR conversion)'}</li>
                 <li>BTC Price at Liquidation: €${btcPriceEur.toLocaleString()}</li>
               </ul>
             </div>

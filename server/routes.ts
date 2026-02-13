@@ -1377,7 +1377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Extract dates and default preference - NO lenderPubkey from client (Bitcoin-blind lender)
-      const { plannedStartDate, plannedEndDate, lenderDefaultPreference } = req.body;
+      const { plannedStartDate, plannedEndDate, lenderDefaultPreference, lenderBtcAddress } = req.body;
       
       // BITCOIN-BLIND LENDER: Generate lender key server-side
       // The lender never sees or handles Bitcoin keys - platform operates this key
@@ -1410,6 +1410,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validPreference = lenderDefaultPreference === 'btc' ? 'btc' : 'eur';
       console.log(`💱 Lender default preference: ${validPreference} (${validPreference === 'eur' ? 'platform sells BTC, transfers EUR' : 'direct BTC to lender address'})`);
       
+      if (validPreference === 'btc' && !lenderBtcAddress) {
+        return res.status(400).json({ message: "Bitcoin address is required when choosing to receive in BTC" });
+      }
+      
       const updatedLoan = await storage.updateLoan(loanId, {
         lenderId,
         lenderPubkey,  // Platform-generated pubkey (lender never sees this)
@@ -1421,6 +1425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "funded", // Lender has committed
         fundedAt: new Date(),
         lenderDefaultPreference: validPreference,
+        lenderBtcAddress: validPreference === 'btc' ? lenderBtcAddress.trim() : null,
         plannedStartDate: plannedStartDate ? new Date(plannedStartDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         plannedEndDate: plannedEndDate ? new Date(plannedEndDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + loan.termMonths * 30 * 24 * 60 * 60 * 1000),
       });
@@ -1633,7 +1638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Get lender for their BTC address (for liquidation/default outputs)
         const lender = await storage.getUser(loan.lenderId!);
-        const lenderBtcAddress = lender?.btcAddress || '';
+        const lenderBtcAddress = loan.lenderBtcAddress || '';
         
         // Calculate collateral in satoshis
         const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100000000);
@@ -2701,7 +2706,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
 
       // 2. DEFAULT_LIQUIDATION PSBT - lender gets owed amount
-      if (lender?.btcAddress) {
+      if (loan.lenderBtcAddress) {
         try {
           const interestRate = parseFloat(loan.interestRate) / 100;
           const loanAmount = parseFloat(loan.amount);
@@ -2711,7 +2716,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
             witnessScriptHex: loan.escrowWitnessScript,
             escrowUtxo,
-            lenderAddress: lender.btcAddress,
+            lenderAddress: loan.lenderBtcAddress,
             borrowerAddress: borrowerAddress,
             amountOwedSats
           });
@@ -3721,7 +3726,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       if (loan.lenderId) {
         const lender = await storage.getUser(loan.lenderId);
-        lenderBtcAddress = lender?.btcAddress || '';
+        lenderBtcAddress = loan.lenderBtcAddress || '';
       }
       
       // Determine effective lender payout address based on preference
@@ -3802,7 +3807,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
       if (loan.lenderId) {
         const lender = await storage.getUser(loan.lenderId);
-        lenderBtcAddress = lender?.btcAddress || '';
+        lenderBtcAddress = loan.lenderBtcAddress || '';
       }
       
       // Determine effective lender payout address based on preference
@@ -4066,7 +4071,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           createdAt: loan.pendingResolutionCreatedAt,
           lenderPubkey: loan.lenderPubkey,
           escrowAddress: loan.escrowAddress,
-          lenderAddress: lender?.btcAddress || loan.lenderAddress || 'Not set',
+          lenderAddress: loan.lenderBtcAddress || 'Not set',
           borrowerAddress: borrower?.btcAddress || loan.borrowerAddress || 'Not set',
         };
       }));
@@ -4198,7 +4203,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       if (loan.lenderId) {
         const lender = await storage.getUser(loan.lenderId);
-        lenderAddress = lender?.btcAddress || '';
+        lenderAddress = loan.lenderBtcAddress || '';
         if (lender?.email) {
           await sendEmail({
             to: lender.email,
@@ -4531,7 +4536,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       let targetAddress = destinationAddress;
       if (!targetAddress && loan.lenderId) {
         const lender = await storage.getUser(loan.lenderId);
-        targetAddress = lender?.btcAddress;
+        targetAddress = loan.lenderBtcAddress;
       }
       
       if (!targetAddress) {
@@ -4856,10 +4861,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           console.log(`💱 Default tx: Lender prefers EUR - routing to platform address for fiat conversion`);
         } else {
           const lender = await storage.getUser(loan.lenderId);
-          if (!lender || !lender.btcAddress) {
+          if (!loan.lenderBtcAddress) {
             return res.status(400).json({ message: "Lender has no Bitcoin return address configured. Please add your BTC address in My Account." });
           }
-          outputAddress = lender.btcAddress;
+          outputAddress = loan.lenderBtcAddress;
           console.log(`₿ Default tx: Lender prefers BTC - routing directly to lender address`);
         }
       } else {

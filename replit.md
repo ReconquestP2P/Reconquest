@@ -121,11 +121,13 @@ Preferred communication style: Simple, everyday language.
 - `platformPubkey`: Platform's own public key
 - `borrowerPubkey`: Borrower-generated public key
 - `lenderDefaultPreference`: `'btc'` or `'eur'` - how lender wants to receive BTC in case of default/liquidation
+- `lenderBtcAddress`: BTC address locked per-loan at funding time (not from profile, for security)
 
 ### Lender Default Repayment Preference
 - When a lender funds a loan, they choose how to receive their share if the borrower defaults:
   - **EUR (default)**: BTC is sent to the platform address (`PLATFORM_BTC_ADDRESS` env var), platform sells on market and transfers EUR to lender's bank
-  - **BTC**: BTC is sent directly to the lender's profile BTC address (must be confirmed during funding)
+  - **BTC**: BTC is sent directly to the lender's BTC address entered at funding time (locked per-loan for security)
+- **Per-Loan Address Security**: The BTC address is entered fresh when funding each loan and permanently locked to that loan. Even if a lender's profile is compromised, existing loan addresses cannot be changed. Legacy fallback: if `loan.lenderBtcAddress` is null, falls back to `lender.btcAddress` from profile.
 - This preference affects: fair split resolution, auto-liquidation, and default transaction execution
 - The admin split preview shows which address will receive the lender's share and why
 - `PLATFORM_BTC_ADDRESS` environment variable must be set for EUR preference to work
