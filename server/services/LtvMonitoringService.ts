@@ -255,7 +255,18 @@ export class LtvMonitoringService {
         if (lenderPreference === 'eur') {
           const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
           if (!platformBtcAddress) {
-            console.error(`[LtvMonitor] Cannot liquidate loan #${loan.id}: PLATFORM_BTC_ADDRESS not configured`);
+            console.error(`🚨 [LtvMonitor] CRITICAL: Cannot liquidate loan #${loan.id}: PLATFORM_BTC_ADDRESS not configured! Lender prefers EUR but no platform address set. Set PLATFORM_BTC_ADDRESS env var immediately.`);
+            try {
+              const { sendEmail } = await import('../email');
+              await sendEmail({
+                to: 'admin@reconquestp2p.com',
+                from: 'Reconquest <noreply@reconquestp2p.com>',
+                subject: `🚨 CRITICAL: Liquidation blocked - Loan #${loan.id} - Missing PLATFORM_BTC_ADDRESS`,
+                html: `<p>Loan #${loan.id} has reached critical LTV and requires liquidation, but <strong>PLATFORM_BTC_ADDRESS</strong> environment variable is not set. The lender chose EUR preference, so BTC must be routed to the platform address for fiat conversion. Please set this environment variable immediately and trigger manual liquidation.</p>`,
+              });
+            } catch (emailErr) {
+              console.error(`[LtvMonitor] Failed to send admin alert about missing PLATFORM_BTC_ADDRESS:`, emailErr);
+            }
             return;
           }
           liquidationTargetAddress = platformBtcAddress;

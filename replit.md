@@ -120,6 +120,15 @@ Preferred communication style: Simple, everyday language.
 - `lenderPrivateKeyEncrypted`: AES-256-GCM encrypted private key for platform signing
 - `platformPubkey`: Platform's own public key
 - `borrowerPubkey`: Borrower-generated public key
+- `lenderDefaultPreference`: `'btc'` or `'eur'` - how lender wants to receive BTC in case of default/liquidation
+
+### Lender Default Repayment Preference
+- When a lender funds a loan, they choose how to receive their share if the borrower defaults:
+  - **EUR (default)**: BTC is sent to the platform address (`PLATFORM_BTC_ADDRESS` env var), platform sells on market and transfers EUR to lender's bank
+  - **BTC**: BTC is sent directly to the lender's profile BTC address (must be confirmed during funding)
+- This preference affects: fair split resolution, auto-liquidation, and default transaction execution
+- The admin split preview shows which address will receive the lender's share and why
+- `PLATFORM_BTC_ADDRESS` environment variable must be set for EUR preference to work
 
 ### Security Constraints
 

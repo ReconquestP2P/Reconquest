@@ -65,6 +65,9 @@ interface SplitPreview {
   loanId: number;
   borrowerAddress: string;
   lenderAddress: string;
+  lenderBtcAddress?: string;
+  lenderDefaultPreference?: 'btc' | 'eur';
+  platformBtcAddress?: string;
   calculation: SplitCalculation;
   summary: string;
 }
