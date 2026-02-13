@@ -282,9 +282,12 @@ export default function LenderFundingModal({
                     className="font-mono text-sm"
                     data-testid="input-btc-address"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    This address will be permanently locked to this loan for security. It cannot be changed later.
-                  </p>
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-md">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                      This address will be permanently embedded in the loan contract and cannot be changed after confirmation. Double-check it carefully before proceeding.
+                    </p>
+                  </div>
                 </div>
                 {btcAddressInput.trim() && (
                   <div className="flex items-start space-x-2">
