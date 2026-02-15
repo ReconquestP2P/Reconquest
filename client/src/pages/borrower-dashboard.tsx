@@ -329,8 +329,8 @@ export default function BorrowerDashboard() {
         </TabsContent>
 
         <TabsContent value="confirm-funds" className="space-y-6">
-          <Card className="border-green-200 dark:border-green-800">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
+          <Card>
+            <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Euro className="h-6 w-6 text-green-600" />
@@ -355,7 +355,7 @@ export default function BorrowerDashboard() {
               {pendingReceiptLoans.length > 0 ? (
                 <div className="space-y-4">
                   {pendingReceiptLoans.map((loan: any) => (
-                    <Card key={loan.id} className="border-2 border-green-200 dark:border-green-800">
+                    <Card key={loan.id}>
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start">
@@ -375,7 +375,7 @@ export default function BorrowerDashboard() {
                             </div>
                           </div>
 
-                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-green-600 dark:text-green-400 font-semibold">✓ Lender Sent Funds</span>
                             </div>
@@ -935,7 +935,7 @@ export default function BorrowerDashboard() {
               </div>
 
               {topUpAmount && parseFloat(topUpAmount) > 0 && (
-                <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg">
                   <p className="text-sm text-green-700 dark:text-green-300">
                     <strong>After confirmation:</strong>
                   </p>
