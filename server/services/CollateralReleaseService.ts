@@ -13,6 +13,7 @@ import { broadcastTransaction } from './bitcoin-broadcast.js';
 import { getUtxoUrl, getExplorerUrl, getNetworkParams } from './bitcoin-network-selector.js';
 import { PsbtCreatorService } from './PsbtCreatorService.js';
 import type { IStorage } from '../storage.js';
+import { STORAGE_TX_TYPES } from '@shared/txTypes';
 
 bitcoin.initEccLib(ecc);
 
@@ -450,9 +451,7 @@ export async function releaseCollateral(
       
       try {
         const preSignedTxs = await storage.getPreSignedTransactions(loanId);
-        const repaymentTxs = preSignedTxs.filter(tx => 
-          tx.txType === 'repayment' || tx.txType === 'cooperative_close' || tx.txType === 'REPAYMENT'
-        );
+        const repaymentTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.REPAYMENT);
         
         let psbtBase64 = loan.txRepaymentHex;
         let preSignedTxId: number | undefined;
@@ -492,9 +491,7 @@ export async function releaseCollateral(
       console.log(`📋 Borrower signing complete but no txRepaymentHex - checking pre_signed_transactions table`);
       try {
         const preSignedTxs = await storage.getPreSignedTransactions(loanId);
-        const repaymentTxs = preSignedTxs.filter(tx => 
-          tx.txType === 'repayment' || tx.txType === 'cooperative_close' || tx.txType === 'REPAYMENT'
-        );
+        const repaymentTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.REPAYMENT);
         if (repaymentTxs.length > 0) {
           const psbtBase64 = repaymentTxs[0].psbt;
           const preSignedTxId = repaymentTxs[0].id;

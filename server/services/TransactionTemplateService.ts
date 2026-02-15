@@ -5,6 +5,7 @@ import path from 'path';
 import { EncryptionService } from './EncryptionService';
 import { storage } from '../storage';
 import type { PreSignedTransaction, InsertPreSignedTransaction } from '@shared/schema';
+import { STORAGE_TX_TYPES, normalizeToStorageType } from '@shared/txTypes';
 
 const execAsync = promisify(exec);
 
@@ -466,12 +467,11 @@ export class TransactionTemplateService {
       console.log(`[TransactionTemplates] Generated escrow address: ${result.escrow_address}`);
       console.log(`[TransactionTemplates] Recovery timelock: ${result.recovery_blocks} blocks (~${result.recovery_days} days)`);
 
-      // Store PSBTs in database
       const txTypeMap: Record<string, string> = {
-        'psbt_repayment': 'repayment',
-        'psbt_default': 'default',
-        'psbt_liquidation': 'liquidation',
-        'psbt_recovery': 'recovery'
+        'psbt_repayment': STORAGE_TX_TYPES.REPAYMENT,
+        'psbt_default': STORAGE_TX_TYPES.DEFAULT,
+        'psbt_liquidation': STORAGE_TX_TYPES.LIQUIDATION,
+        'psbt_recovery': STORAGE_TX_TYPES.RECOVERY,
       };
 
       for (const [psbtField, txType] of Object.entries(txTypeMap)) {

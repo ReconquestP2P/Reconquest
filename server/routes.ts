@@ -12,6 +12,7 @@ import { TransactionTemplateService } from "./services/TransactionTemplateServic
 import { EscrowSigningService } from "./services/EscrowSigningService";
 import { PsbtCreatorService } from "./services/PsbtCreatorService";
 import { releaseCollateral } from "./services/CollateralReleaseService";
+import { normalizeToStorageType, decisionToStorageType, STORAGE_TX_TYPES } from "@shared/txTypes";
 import { LtvValidationService } from "./services/LtvValidationService";
 import { sendEmail, sendLenderKeyGenerationNotification, sendDetailsChangeConfirmation, createBrandedEmailHtml, getBaseUrl } from "./email";
 import crypto from "crypto";
@@ -1679,10 +1680,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ Generated 4 PSBT templates for loan #${loanId}`);
           // Convert to array format for response
           psbtTemplates = [
-            { txType: 'repayment', psbtBase64: psbtResult.psbts.repayment },
-            { txType: 'default', psbtBase64: psbtResult.psbts.default },
-            { txType: 'liquidation', psbtBase64: psbtResult.psbts.liquidation },
-            { txType: 'recovery', psbtBase64: psbtResult.psbts.recovery }
+            { txType: STORAGE_TX_TYPES.REPAYMENT, psbtBase64: psbtResult.psbts.repayment },
+            { txType: STORAGE_TX_TYPES.DEFAULT, psbtBase64: psbtResult.psbts.default },
+            { txType: STORAGE_TX_TYPES.LIQUIDATION, psbtBase64: psbtResult.psbts.liquidation },
+            { txType: STORAGE_TX_TYPES.RECOVERY, psbtBase64: psbtResult.psbts.recovery }
           ];
           requiresSigning = true;
 
@@ -1744,10 +1745,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // NEW: Include PSBTs for borrower signing ceremony
         requiresSigning,
         psbts: psbtTemplates.length > 0 ? {
-          repayment: psbtTemplates.find(t => t.txType === 'repayment')?.psbtBase64,
-          default: psbtTemplates.find(t => t.txType === 'default')?.psbtBase64,
-          liquidation: psbtTemplates.find(t => t.txType === 'liquidation')?.psbtBase64,
-          recovery: psbtTemplates.find(t => t.txType === 'recovery')?.psbtBase64
+          repayment: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.REPAYMENT)?.psbtBase64,
+          default: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.DEFAULT)?.psbtBase64,
+          liquidation: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.LIQUIDATION)?.psbtBase64,
+          recovery: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.RECOVERY)?.psbtBase64
         } : undefined
       });
     } catch (error) {
@@ -2907,13 +2908,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           continue;
         }
 
-        const typeMapping: Record<string, string> = {
-          'REPAYMENT': 'repayment',
-          'DEFAULT_LIQUIDATION': 'default',
-          'BORROWER_RECOVERY': 'recovery',
-          'LIQUIDATION': 'liquidation',
-        };
-        const normalizedType = typeMapping[type.toUpperCase()] || type.toLowerCase();
+        const normalizedType = normalizeToStorageType(type);
 
         const existingTemplates = await storage.getPreSignedTransactions(loanId, normalizedType);
         let tx;
@@ -3035,7 +3030,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         });
       }
 
-      const requiredTypes = ['repayment', 'default', 'liquidation', 'recovery'];
+      const requiredTypes = [STORAGE_TX_TYPES.REPAYMENT, STORAGE_TX_TYPES.DEFAULT, STORAGE_TX_TYPES.LIQUIDATION, STORAGE_TX_TYPES.RECOVERY];
       const missingTypes = requiredTypes.filter(t => !signatures[t]);
       if (missingTypes.length > 0) {
         return res.status(400).json({
@@ -3212,9 +3207,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       // Step 2: Get pre-signed recovery transaction
       const preSignedTxs = await storage.getPreSignedTransactions(loanId);
-      const recoveryTxs = preSignedTxs.filter(tx => 
-        tx.txType === 'recovery' || tx.txType === 'RECOVERY' || tx.txType === 'borrower_recovery'
-      );
+      const recoveryTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.RECOVERY);
       
       if (recoveryTxs.length === 0) {
         return res.status(404).json({ 
@@ -3307,9 +3300,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // Get all pre-signed transactions for this loan
       const preSignedTxs = await storage.getPreSignedTransactions(loanId);
 
-      const repaymentTxs = preSignedTxs.filter(tx => tx.txType.includes('repayment') || tx.txType === 'cooperative_close');
-      const defaultTxs = preSignedTxs.filter(tx => tx.txType.includes('default') || tx.txType.includes('liquidation'));
-      const recoveryTxs = preSignedTxs.filter(tx => tx.txType.includes('recovery'));
+      const repaymentTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.REPAYMENT);
+      const defaultTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.DEFAULT || tx.txType === STORAGE_TX_TYPES.LIQUIDATION);
+      const recoveryTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.RECOVERY);
 
       const hasRepayment = repaymentTxs.length > 0 || !!loan.txRepaymentHex;
       const hasDefault = defaultTxs.length > 0 || !!loan.txDefaultHex;
@@ -3952,13 +3945,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       // to complete the 3-of-3 multisig.
       // ================================================================
       
-      // Map decision to the correct pre-signed PSBT tx_type
-      const decisionToTxType: Record<string, string> = {
-        'BORROWER_NOT_DEFAULTED': 'repayment',
-        'BORROWER_DEFAULTED': 'default',
-        'TIMEOUT_DEFAULT': 'liquidation',
-      };
-      const txType = decisionToTxType[decision];
+      const txType = decisionToStorageType(decision);
       
       // Get pre-signed templates from database
       // Select the LATEST PSBT with a cryptographically verified borrower signature

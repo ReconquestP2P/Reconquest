@@ -13,6 +13,7 @@
 import * as secp256k1 from '@noble/secp256k1';
 import { createHash, createHmac } from 'crypto';
 import type { PreSignedTransaction } from '@shared/schema';
+import { STORAGE_TX_TYPES } from '@shared/txTypes';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
 import { getBroadcastUrl, getCurrentNetwork } from './bitcoin-network-selector.js';
@@ -159,12 +160,12 @@ async function validatePsbtIntegrity(
     // txType determines who should receive the funds
     // cooperative_close/recovery -> borrower
     // default -> lender
-    if (loanContext.txType === 'cooperative_close' || loanContext.txType === 'recovery') {
+    if (loanContext.txType === 'cooperative_close' || loanContext.txType === STORAGE_TX_TYPES.RECOVERY || loanContext.txType === STORAGE_TX_TYPES.REPAYMENT) {
       primaryRecipient = loanContext.borrowerAddress;
       if (loanContext.borrowerAddress) {
         allowedAddresses.add(loanContext.borrowerAddress);
       }
-    } else if (loanContext.txType === 'default') {
+    } else if (loanContext.txType === STORAGE_TX_TYPES.DEFAULT) {
       primaryRecipient = loanContext.lenderAddress;
       if (loanContext.lenderAddress) {
         allowedAddresses.add(loanContext.lenderAddress);
@@ -518,9 +519,9 @@ export async function aggregateSignatures(
             
             // Determine expected recipient based on txType
             let expectedRecipient: string | undefined;
-            if (loanContext.txType === 'cooperative_close' || loanContext.txType === 'recovery') {
+            if (loanContext.txType === 'cooperative_close' || loanContext.txType === STORAGE_TX_TYPES.RECOVERY || loanContext.txType === STORAGE_TX_TYPES.REPAYMENT) {
               expectedRecipient = loanContext.borrowerAddress;
-            } else if (loanContext.txType === 'default') {
+            } else if (loanContext.txType === STORAGE_TX_TYPES.DEFAULT) {
               expectedRecipient = loanContext.lenderAddress;
             } else {
               expectedRecipient = loanContext.expectedOutputAddress;
