@@ -4645,6 +4645,164 @@ async function sendFundingNotification(loan: any, lenderId: number) {
     }
   });
   
+  /**
+   * Admin endpoint: Regenerate PSBT templates for legacy loans
+   * 
+   * For loans where the signing ceremony bug left broken unsigned templates,
+   * this recreates proper PSBT templates with the real funding UTXO.
+   * After this, the borrower just needs to re-sign via the signing ceremony UI.
+   */
+  app.post("/api/admin/loans/:loanId/regenerate-templates", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+      
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      if (!loan.fundingTxid) {
+        return res.status(400).json({ message: "Loan has no funding txid - cannot create templates without a confirmed deposit" });
+      }
+      
+      if (!loan.escrowWitnessScript || !loan.borrowerPubkey) {
+        return res.status(400).json({ message: "Loan missing escrow witness script or borrower pubkey" });
+      }
+      
+      const borrower = await storage.getUser(loan.borrowerId);
+      const borrowerAddress = loan.borrowerAddress || borrower?.btcAddress;
+      if (!borrowerAddress) {
+        return res.status(400).json({ message: "Borrower BTC return address not set" });
+      }
+      
+      const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100_000_000);
+      const fundingVout = loan.fundingVout ?? 0;
+      
+      const escrowUtxo = {
+        txid: loan.fundingTxid,
+        vout: fundingVout,
+        amount: collateralSats
+      };
+      
+      console.log(`🔄 [Admin] Regenerating PSBT templates for loan #${loanId}`);
+      console.log(`   UTXO: ${loan.fundingTxid}:${fundingVout}, amount: ${collateralSats} sats`);
+      console.log(`   Borrower address: ${borrowerAddress}`);
+      
+      const newTemplates = [];
+      
+      try {
+        const repaymentPsbt = PsbtCreatorService.createRepaymentPsbt({
+          witnessScriptHex: loan.escrowWitnessScript,
+          escrowUtxo,
+          borrowerAddress
+        });
+        newTemplates.push({ txType: STORAGE_TX_TYPES.REPAYMENT, psbt: repaymentPsbt.psbtBase64, txHash: repaymentPsbt.txHash });
+      } catch (e: any) {
+        console.error(`Failed to create REPAYMENT template: ${e.message}`);
+      }
+      
+      const lenderPreference = loan.lenderDefaultPreference || 'eur';
+      const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
+      let lenderDestination = loan.lenderBtcAddress || '';
+      if (lenderPreference === 'eur' && platformBtcAddress) {
+        lenderDestination = platformBtcAddress;
+      }
+      
+      if (lenderDestination) {
+        try {
+          const interestRate = parseFloat(loan.interestRate) / 100;
+          const loanAmount = parseFloat(loan.amount);
+          const btcPrice = await getCurrentBtcPrice();
+          const amountOwedSats = Math.round((loanAmount * (1 + interestRate)) / btcPrice * 100_000_000);
+          
+          const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
+            witnessScriptHex: loan.escrowWitnessScript,
+            escrowUtxo,
+            lenderAddress: lenderDestination,
+            borrowerAddress,
+            amountOwedSats
+          });
+          newTemplates.push({ txType: STORAGE_TX_TYPES.DEFAULT, psbt: defaultPsbt.psbtBase64, txHash: defaultPsbt.txHash });
+        } catch (e: any) {
+          console.error(`Failed to create DEFAULT template: ${e.message}`);
+        }
+      }
+      
+      if (loan.borrowerPubkey && loan.lenderPubkey && loan.platformPubkey) {
+        try {
+          const timelockBlocks = (loan.termMonths || 12) * 30 * 144 + 14 * 144;
+          const recoveryPsbt = PsbtCreatorService.createRecoveryPsbt({
+            pubkeys: [loan.borrowerPubkey, loan.lenderPubkey, loan.platformPubkey],
+            escrowUtxo,
+            borrowerAddress,
+            timelockBlocks
+          });
+          newTemplates.push({ txType: STORAGE_TX_TYPES.RECOVERY, psbt: recoveryPsbt.psbtBase64, txHash: recoveryPsbt.txHash });
+        } catch (e: any) {
+          console.error(`Failed to create RECOVERY template: ${e.message}`);
+        }
+      }
+      
+      if (newTemplates.length === 0) {
+        return res.status(500).json({ message: "Failed to generate any PSBT templates" });
+      }
+      
+      const existingTemplates = await storage.getPreSignedTransactions(loanId);
+      let updated = 0;
+      let created = 0;
+      
+      for (const tmpl of newTemplates) {
+        const existing = existingTemplates.find(t => t.txType === tmpl.txType);
+        if (existing) {
+          await storage.updatePreSignedTransaction(existing.id, {
+            psbt: tmpl.psbt,
+            signature: '',
+            broadcastStatus: 'pending',
+          });
+          updated++;
+          console.log(`   Updated ${tmpl.txType} template (record #${existing.id})`);
+        } else {
+          await storage.storePreSignedTransaction({
+            loanId,
+            partyRole: 'unsigned_template',
+            partyPubkey: loan.borrowerPubkey,
+            txType: tmpl.txType,
+            psbt: tmpl.psbt,
+            signature: '',
+            txHash: tmpl.txHash,
+          });
+          created++;
+          console.log(`   Created new ${tmpl.txType} template`);
+        }
+      }
+      
+      await storage.updateLoan(loanId, {
+        borrowerSigningComplete: false,
+        collateralReleaseError: null,
+      });
+      
+      console.log(`✅ [Admin] Regenerated ${newTemplates.length} templates for loan #${loanId} (${updated} updated, ${created} created)`);
+      
+      res.json({
+        success: true,
+        message: `Regenerated ${newTemplates.length} PSBT templates with real UTXO ${loan.fundingTxid}:${fundingVout}. Borrower needs to re-sign via the signing ceremony.`,
+        templates: newTemplates.map(t => t.txType),
+        updated,
+        created,
+      });
+    } catch (error: any) {
+      console.error("Error regenerating templates:", error);
+      res.status(500).json({ message: error.message || "Failed to regenerate templates" });
+    }
+  });
+  
   // DEVELOPMENT ONLY: Recover remaining collateral from escrow (for testing)
   app.post("/api/test/recover-escrow/:loanId", async (req, res) => {
     try {
