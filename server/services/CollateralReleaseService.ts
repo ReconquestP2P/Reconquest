@@ -514,143 +514,23 @@ export async function releaseCollateral(
         console.log(`⚠️ Error checking pre-signed transactions: ${e.message}`);
       }
     } else {
-      console.log(`📋 No pre-signed transaction found - using dynamic creation (legacy model)`);
-    }
-    
-    if (platformKeyMismatch) {
-      return {
-        success: false,
-        error: `Platform key mismatch and no pre-signed PSBT available. ` +
-               `Loan created with key ${loan.platformPubkey?.substring(0, 16)}..., ` +
-               `current key is ${currentPlatformPubkey.substring(0, 16)}.... Cannot sign.`
-      };
+      console.log(`🚫 No pre-signed transaction found for loan #${loanId}`);
     }
     
     // ================================================================
-    // STEP 2: Fallback - Create transaction dynamically (legacy model)
+    // SECURITY: Dynamic transaction creation is BLOCKED
+    // All collateral releases MUST use pre-signed PSBTs that were
+    // locked in during the borrower signing ceremony. This prevents
+    // any attack where a compromised admin changes destination addresses.
     // ================================================================
-    
-    // Get escrow details
-    const escrowAddress = loan.escrowAddress;
-    const witnessScriptHex = loan.escrowWitnessScript;
-    const borrowerReturnAddress = borrower.btcAddress;
-    
-    if (!witnessScriptHex) {
-      return { success: false, error: 'No witness script found for escrow' };
-    }
-    
-    // Fetch ALL UTXOs from escrow
-    console.log(`📡 Fetching UTXOs from escrow: ${escrowAddress}`);
-    const utxos = await fetchUTXOs(escrowAddress);
-    
-    if (utxos.length === 0) {
-      return { success: false, error: 'No UTXOs found in escrow address' };
-    }
-    
-    // Log all UTXOs and calculate total value
-    let totalInputValue = 0;
-    for (const utxo of utxos) {
-      console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
-      totalInputValue += utxo.value;
-    }
-    console.log(`   Total UTXOs: ${utxos.length}, Total value: ${totalInputValue} sats`);
-    
-    // Get platform's private key
-    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
-    
-    // Bitcoin-Blind Lender: Decrypt the lender's private key (platform-controlled)
-    let lenderPrivateKey: string | null = null;
-    if (loan.lenderPrivateKeyEncrypted) {
-      try {
-        lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
-        console.log(`🔑 Decrypted lender private key for platform-controlled signing`);
-      } catch (decryptError: any) {
-        console.error(`Failed to decrypt lender private key:`, decryptError.message);
-        return { success: false, error: 'Failed to decrypt lender signing key' };
-      }
-    } else {
-      return { success: false, error: 'No encrypted lender key found - cannot sign' };
-    }
-    
-    const witnessScript = Buffer.from(witnessScriptHex, 'hex');
-    
-    // Dynamic fee estimation from mempool.space (scales with input count)
-    const { estimateMultisigFee } = await import('./fee-estimator.js');
-    const feeEstimate = await estimateMultisigFee('medium', utxos.length, 1);
-    const fee = feeEstimate.feeSats;
-    const outputValue = totalInputValue - fee;
-    
-    if (outputValue <= 0) {
-      return { success: false, error: 'Total UTXO value too small to cover fee' };
-    }
-    
-    console.log(`💰 Creating transaction: ${totalInputValue} - ${fee} = ${outputValue} sats (${feeEstimate.feeRate} sat/vB × ${feeEstimate.estimatedVbytes} vB, source: ${feeEstimate.source})`);
-    console.log(`   Destination: ${borrowerReturnAddress}`);
-    
-    // Create PSBT
-    const network = getNetwork();
-    const psbt = new bitcoin.Psbt({ network });
-    
-    // Add ALL inputs
-    for (const utxo of utxos) {
-      psbt.addInput({
-        hash: utxo.txid,
-        index: utxo.vout,
-        witnessUtxo: {
-          script: bitcoin.payments.p2wsh({
-            redeem: { output: witnessScript, network },
-            network,
-          }).output!,
-          value: BigInt(utxo.value),
-        },
-        witnessScript: witnessScript,
-      });
-    }
-    
-    // Add output to borrower
-    psbt.addOutput({
-      address: borrowerReturnAddress,
-      value: BigInt(outputValue),
-    });
-    
-    // Sign ALL inputs with BOTH platform key AND lender key (2 of 3 signatures)
-    console.log(`🔑 Signing ${utxos.length} input(s) with platform key...`);
-    for (let i = 0; i < utxos.length; i++) {
-      signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
-    }
-    
-    console.log(`🔑 Signing ${utxos.length} input(s) with lender key (platform-controlled)...`);
-    for (let i = 0; i < utxos.length; i++) {
-      signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
-    }
-    
-    // Now we have 2 of 3 signatures - finalize and broadcast
-    try {
-      psbt.finalizeAllInputs();
-      const tx = psbt.extractTransaction();
-      const txHex = tx.toHex();
-      const txid = tx.getId();
-      
-      console.log(`✅ [LEGACY] Transaction finalized with platform + lender keys: ${txid}`);
-      
-      // Broadcast
-      const broadcastTxid = await broadcastToTestnet4(txHex);
-      
-      console.log(`📡 [LEGACY] Transaction broadcast successful: ${broadcastTxid}`);
-      
-      return {
-        success: true,
-        txid: broadcastTxid,
-        broadcastUrl: getExplorerUrl('tx', broadcastTxid),
-      };
-    } catch (finalizeError: any) {
-      console.error('Failed to finalize transaction:', finalizeError.message);
-      
-      return {
-        success: false,
-        error: `Could not finalize transaction: ${finalizeError.message}`,
-      };
-    }
+    console.error(`❌ [SECURITY] Collateral release blocked for loan #${loanId}: No pre-signed PSBT available.`);
+    console.error(`   Dynamic transaction creation is disabled for security.`);
+    console.error(`   All loans must complete the signing ceremony before collateral can be released.`);
+    return {
+      success: false,
+      error: 'No pre-signed transaction available. Dynamic transaction creation is disabled for security. ' +
+             'The borrower must complete the signing ceremony before collateral can be released.'
+    };
     
   } catch (error: any) {
     console.error('Collateral release error:', error);
@@ -675,12 +555,10 @@ export async function releaseCollateralToAddress(
   loanId: number,
   destinationAddress: string
 ): Promise<ReleaseResult> {
-  console.log(`🔐 Starting collateral release for loan #${loanId} to ${destinationAddress}`);
+  console.log(`🔐 Starting collateral liquidation for loan #${loanId}`);
   
   try {
-    // Dynamic import to avoid circular dependency
     const { storage } = await import('../storage.js');
-    const { EncryptionService } = await import('./EncryptionService.js');
     
     const loan = await storage.getLoan(loanId);
     if (!loan) {
@@ -692,141 +570,26 @@ export async function releaseCollateralToAddress(
     }
     
     // ================================================================
-    // PLATFORM KEY MATCH VERIFICATION
-    // Ensures we can actually sign with the current platform key
+    // SECURITY: Liquidation MUST use pre-signed transaction templates
+    // Dynamic transaction creation is blocked to prevent address
+    // substitution attacks from compromised admin accounts.
     // ================================================================
-    const currentPlatformPubkey = BitcoinEscrowService.getPlatformPublicKey();
+    const txHex = loan.txLiquidationHex || loan.txDefaultHex;
     
-    if (!loan.platformPubkey) {
-      console.warn(`⚠️ [LIQUIDATION] Loan #${loanId} has no recorded platform key (old loan)`);
-      console.warn(`   Current platform key: ${currentPlatformPubkey}`);
-      console.warn(`   Proceeding anyway for backwards compatibility...`);
-    } else if (loan.platformPubkey !== currentPlatformPubkey) {
-      // KEY MISMATCH DETECTED - Cannot sign!
-      console.error(`❌ [LIQUIDATION] Platform key mismatch for loan #${loanId}`);
-      console.error(`   Loan created with: ${loan.platformPubkey}`);
-      console.error(`   Current key is:    ${currentPlatformPubkey}`);
+    if (!txHex) {
+      console.error(`❌ [SECURITY] Liquidation blocked for loan #${loanId}: No pre-signed liquidation PSBT available.`);
+      console.error(`   Dynamic transaction creation is disabled for security.`);
       return {
         success: false,
-        error: `Platform key mismatch. Loan created with key ${loan.platformPubkey.substring(0, 16)}..., ` +
-               `but current key is ${currentPlatformPubkey.substring(0, 16)}.... ` +
-               `Cannot sign for liquidation.`
+        error: 'No pre-signed liquidation transaction available. Dynamic transaction creation is disabled for security. ' +
+               'The borrower must complete the signing ceremony before liquidation can proceed.'
       };
-    } else {
-      console.log(`✅ [LIQUIDATION] Platform key match verified for loan #${loanId}`);
     }
     
-    const escrowAddress = loan.escrowAddress;
-    const witnessScriptHex = loan.escrowWitnessScript;
-    
-    if (!witnessScriptHex) {
-      return { success: false, error: 'No witness script found for escrow' };
-    }
-    
-    // Bitcoin-Blind Lender Model: Get the encrypted lender private key
-    // Platform controls this key on behalf of the lender
-    if (!loan.lenderPrivateKeyEncrypted) {
-      return { success: false, error: 'No lender private key found - cannot sign for liquidation' };
-    }
-    
-    // Decrypt the lender's private key (using static method)
-    console.log(`🔓 Decrypting lender private key for Bitcoin-blind liquidation...`);
-    let lenderPrivateKey: string;
-    try {
-      lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
-    } catch (decryptError: any) {
-      console.error('Failed to decrypt lender key:', decryptError.message);
-      return { success: false, error: 'Failed to decrypt lender signing key' };
-    }
-    
-    // Fetch ALL UTXOs from escrow
-    console.log(`📡 Fetching UTXOs from escrow: ${escrowAddress}`);
-    const utxos = await fetchUTXOs(escrowAddress);
-    
-    if (utxos.length === 0) {
-      return { success: false, error: 'No UTXOs found in escrow address' };
-    }
-    
-    // Log all UTXOs and calculate total value
-    let totalInputValue = 0;
-    for (const utxo of utxos) {
-      console.log(`   Found UTXO: ${utxo.txid}:${utxo.vout} (${utxo.value} sats)`);
-      totalInputValue += utxo.value;
-    }
-    console.log(`   Total UTXOs: ${utxos.length}, Total value: ${totalInputValue} sats`);
-    
-    // Get platform keys
-    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
-    
-    const witnessScript = Buffer.from(witnessScriptHex, 'hex');
-    
-    // Dynamic fee estimation - high priority for liquidations
-    const { estimateMultisigFee: estimateMultisigFeeLiq } = await import('./fee-estimator.js');
-    const feeEstimateLiq = await estimateMultisigFeeLiq('high', utxos.length, 1);
-    const fee = feeEstimateLiq.feeSats;
-    const outputValue = totalInputValue - fee;
-    
-    if (outputValue <= 0) {
-      return { success: false, error: 'Total UTXO value too small to cover fee' };
-    }
-    
-    console.log(`💰 Creating liquidation transaction: ${totalInputValue} - ${fee} = ${outputValue} sats (${feeEstimateLiq.feeRate} sat/vB × ${feeEstimateLiq.estimatedVbytes} vB, source: ${feeEstimateLiq.source})`);
-    console.log(`   Destination (lender): ${destinationAddress}`);
-    
-    // Create PSBT
-    const network = getNetwork();
-    const psbt = new bitcoin.Psbt({ network });
-    
-    // Add ALL inputs
-    for (const utxo of utxos) {
-      psbt.addInput({
-        hash: utxo.txid,
-        index: utxo.vout,
-        witnessUtxo: {
-          script: bitcoin.payments.p2wsh({
-            redeem: { output: witnessScript, network },
-            network,
-          }).output!,
-          value: BigInt(utxo.value),
-        },
-        witnessScript: witnessScript,
-      });
-    }
-    
-    // Add output to lender (for liquidation)
-    psbt.addOutput({
-      address: destinationAddress,
-      value: BigInt(outputValue),
-    });
-    
-    // Bitcoin-Blind Lender Model: Sign with BOTH platform key AND lender key
-    // Platform controls 2 of 3 keys, enabling automatic liquidation
-    console.log(`🔑 Signing ${utxos.length} input(s) with PLATFORM key...`);
-    for (let i = 0; i < utxos.length; i++) {
-      signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
-    }
-    
-    console.log(`🔑 Signing ${utxos.length} input(s) with LENDER key (platform-controlled)...`);
-    for (let i = 0; i < utxos.length; i++) {
-      signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
-    }
-    
-    // Clear the lender private key from memory immediately after use
-    lenderPrivateKey = '';
-    
-    console.log(`🔑 Platform + Lender signatures applied (2 of 3) - finalizing...`);
+    console.log(`📋 Using pre-signed liquidation transaction for loan #${loanId}`);
     
     try {
-      psbt.finalizeAllInputs();
-      const tx = psbt.extractTransaction();
-      const txHex = tx.toHex();
-      const txid = tx.getId();
-      
-      console.log(`✅ Liquidation transaction finalized: ${txid}`);
-      
-      // Broadcast
       const broadcastTxid = await broadcastToTestnet4(txHex);
-      
       console.log(`📡 Liquidation broadcast successful: ${broadcastTxid}`);
       
       return {
@@ -834,11 +597,11 @@ export async function releaseCollateralToAddress(
         txid: broadcastTxid,
         broadcastUrl: getExplorerUrl('tx', broadcastTxid),
       };
-    } catch (finalizeError: any) {
-      console.error('Failed to finalize liquidation:', finalizeError.message);
+    } catch (broadcastError: any) {
+      console.error('Failed to broadcast pre-signed liquidation:', broadcastError.message);
       return {
         success: false,
-        error: `Could not finalize liquidation transaction: ${finalizeError.message}`,
+        error: `Could not broadcast liquidation transaction: ${broadcastError.message}`,
       };
     }
     

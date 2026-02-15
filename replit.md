@@ -134,7 +134,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Security Constraints
 
-**No Platform-Only Spend Path:**
+**No Dynamic Transaction Creation (Security Hardened):**
+- Dynamic transaction creation is COMPLETELY DISABLED in `CollateralReleaseService.ts`
+- Both `releaseCollateral()` and `releaseCollateralToAddress()` will ONLY use pre-signed PSBTs
+- If no pre-signed PSBT exists, the operation fails safely with a security error
+- This prevents address substitution attacks from compromised admin accounts
 - Platform can ONLY sign predefined transaction templates
 - No arbitrary transactions can be created after loan setup
 - All spends must match one of three valid types: REPAYMENT, DEFAULT_LIQUIDATION, BORROWER_RECOVERY
