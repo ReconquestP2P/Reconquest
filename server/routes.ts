@@ -1640,6 +1640,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lender = await storage.getUser(loan.lenderId!);
         const lenderBtcAddress = loan.lenderBtcAddress || '';
         
+        // Determine the correct destination address for lender's share based on preference
+        // EUR preference: funds go to platform BTC address (platform sells and sends EUR to lender)
+        // BTC preference: funds go directly to lender's BTC address
+        const lenderPreference = loan.lenderDefaultPreference || 'eur';
+        const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
+        let lenderDestinationAddress = lenderBtcAddress;
+        
+        if (lenderPreference === 'eur') {
+          if (!platformBtcAddress) {
+            return res.status(400).json({ 
+              message: "Cannot generate templates: Platform BTC address not configured (PLATFORM_BTC_ADDRESS env var). Required for EUR-preference lenders." 
+            });
+          }
+          lenderDestinationAddress = platformBtcAddress;
+          console.log(`📋 Lender prefers EUR - using platform BTC address for default/liquidation outputs: ${platformBtcAddress}`);
+        } else {
+          console.log(`📋 Lender prefers BTC - using lender BTC address for default/liquidation outputs: ${lenderBtcAddress}`);
+        }
+        
         // Calculate collateral in satoshis
         const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100000000);
         
@@ -1650,8 +1669,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           borrowerPubkey,
           lenderPubkey: loan.lenderPubkey,
           platformPubkey: PLATFORM_PUBKEY,
-          borrowerAddress: borrowerReturnAddress || lenderBtcAddress, // Fallback to lender address
-          lenderAddress: lenderBtcAddress,
+          borrowerAddress: borrowerReturnAddress || lenderBtcAddress,
+          lenderAddress: lenderDestinationAddress,
           collateralAmount: collateralSats
         });
         
@@ -2724,7 +2743,17 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
 
       // 2. DEFAULT_LIQUIDATION PSBT - lender gets owed amount
-      if (loan.lenderBtcAddress) {
+      // Determine lender destination based on EUR/BTC preference
+      const signingLenderPreference = loan.lenderDefaultPreference || 'eur';
+      const signingPlatformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
+      let signingLenderDestination = loan.lenderBtcAddress || '';
+      
+      if (signingLenderPreference === 'eur' && signingPlatformBtcAddress) {
+        signingLenderDestination = signingPlatformBtcAddress;
+        console.log(`📋 Lender prefers EUR - default/liquidation outputs go to platform address: ${signingPlatformBtcAddress}`);
+      }
+      
+      if (signingLenderDestination) {
         try {
           const interestRate = parseFloat(loan.interestRate) / 100;
           const loanAmount = parseFloat(loan.amount);
@@ -2734,7 +2763,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
             witnessScriptHex: loan.escrowWitnessScript,
             escrowUtxo,
-            lenderAddress: loan.lenderBtcAddress,
+            lenderAddress: signingLenderDestination,
             borrowerAddress: borrowerAddress,
             amountOwedSats
           });
