@@ -4595,9 +4595,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(404).json({ message: "Loan not found" });
       }
       
-      if (loan.status !== 'completed') {
+      if (loan.status !== 'completed' && loan.status !== 'repaid') {
         return res.status(400).json({ 
-          message: `Loan is not in completed status (current: ${loan.status}). This endpoint is only for retrying failed releases on completed loans.` 
+          message: `Loan must be in completed or repaid status (current: ${loan.status}).` 
         });
       }
       

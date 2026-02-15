@@ -667,8 +667,8 @@ export async function prepareRecoverySighashes(
     const mRequired = scriptBytes[0] - 0x50;
     console.log(`   Escrow requires ${mRequired}-of-3 signatures`);
     
-    if (mRequired > 2) {
-      return { success: false, error: `Escrow requires ${mRequired}-of-3 signatures. Recovery needs 2-of-3 escrow.` };
+    if (mRequired < 2 || mRequired > 3) {
+      return { success: false, error: `Escrow requires ${mRequired}-of-N signatures. Recovery only supports 2-of-3 or 3-of-3 escrows.` };
     }
     
     const borrower = await storage.getUser(loan.borrowerId);
@@ -777,6 +777,12 @@ export async function completeRecoveryWithSignatures(
     
     if (!loan.lenderPrivateKeyEncrypted) {
       return { success: false, error: 'No encrypted lender key found' };
+    }
+    
+    const scriptBytes = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const mRequired = scriptBytes[0] - 0x50;
+    if (mRequired < 2 || mRequired > 3) {
+      return { success: false, error: `Unsupported escrow type: ${mRequired}-of-N. Only 2-of-3 or 3-of-3 supported.` };
     }
     
     const borrower = await storage.getUser(loan.borrowerId);
@@ -893,8 +899,16 @@ export async function completeRecoveryWithSignatures(
       signPsbtInput(psbt, i, lenderPrivateKey, witnessScript);
     }
     
+    if (mRequired >= 3) {
+      const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
+      console.log(`🔑 [RECOVERY] 3-of-3 escrow: also signing with platform key...`);
+      for (let i = 0; i < utxos.length; i++) {
+        signPsbtInput(psbt, i, platformPrivateKey, witnessScript);
+      }
+    }
+    
     const sigCount = psbt.data.inputs[0]?.partialSig?.length || 0;
-    console.log(`   Total signatures: ${sigCount}`);
+    console.log(`   Total signatures: ${sigCount} (borrower + lender${mRequired >= 3 ? ' + platform' : ''})`);
     
     psbt.finalizeAllInputs();
     const tx = psbt.extractTransaction();

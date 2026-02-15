@@ -343,6 +343,30 @@ export default function AdminDashboard() {
     },
   });
 
+  const regenerateTemplatesMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      const response = await apiRequest(`/api/admin/loans/${loanId}/regenerate-templates`, "POST");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      toast({
+        title: data.success ? "Templates Regenerated" : "Regeneration Failed",
+        description: data.success 
+          ? `${data.templates?.length} templates updated. Borrower can now re-sign via passphrase recovery.`
+          : data.message || "Failed to regenerate templates",
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Regeneration Failed",
+        description: error.message || "Failed to regenerate templates",
+        variant: "destructive",
+      });
+    },
+  });
+
   const confirmBtcDepositMutation = useMutation({
     mutationFn: async (loanId: number) => {
       return await apiRequest(`/api/admin/loans/${loanId}/confirm-btc-deposit`, "POST");
@@ -1147,7 +1171,8 @@ export default function AdminDashboard() {
                           {new Date(loan.requestedAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          {loan.status === "completed" && !loan.collateralReleaseTxid && (
+                          <div className="flex flex-col gap-1">
+                          {(loan.status === "completed" || loan.status === "repaid") && !loan.collateralReleaseTxid && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -1164,11 +1189,29 @@ export default function AdminDashboard() {
                               Retry Release
                             </Button>
                           )}
-                          {loan.status === "completed" && loan.collateralReleaseTxid && (
+                          {(loan.status === "completed" || loan.status === "repaid") && !loan.collateralReleaseTxid && loan.fundingTxid && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                              onClick={() => regenerateTemplatesMutation.mutate(loan.id)}
+                              disabled={regenerateTemplatesMutation.isPending}
+                              data-testid={`button-regen-templates-${loan.id}`}
+                            >
+                              {regenerateTemplatesMutation.isPending ? (
+                                <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                              ) : (
+                                <Shield className="h-4 w-4 mr-1" />
+                              )}
+                              Regen Templates
+                            </Button>
+                          )}
+                          {(loan.status === "completed" || loan.status === "repaid") && loan.collateralReleaseTxid && (
                             <Badge className="bg-green-100 text-green-800">
                               Released
                             </Badge>
                           )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
