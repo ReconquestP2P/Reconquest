@@ -3969,6 +3969,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       );
       
       if (!result.success) {
+        console.error(`❌ Resolution failed for loan #${loanId}: ${result.error}`);
         return res.status(400).json({ 
           message: `Failed to complete transaction: ${result.error}` 
         });
