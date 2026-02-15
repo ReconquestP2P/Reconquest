@@ -824,3 +824,95 @@ export async function sendPartialDepositWarningEmail(params: {
     html,
   });
 }
+
+export async function sendDisputeNotificationEmail(params: {
+  to: string;
+  recipientName: string;
+  recipientRole: 'borrower' | 'lender';
+  loanId: number;
+  loanAmount: string;
+  currency: string;
+  interestRate: string;
+  disputeDeadline: string;
+  dashboardUrl: string;
+}): Promise<boolean> {
+  const { to, recipientName, recipientRole, loanId, loanAmount, currency, interestRate, disputeDeadline, dashboardUrl } = params;
+  const loanRef = loanId.toString().padStart(6, '0');
+  const dashboardPath = recipientRole === 'borrower' ? '/borrower' : '/lender';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+          ${getEmailHeader()}
+        </div>
+
+        <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 25px;">
+          <h2 style="color: #92400E; margin: 0 0 8px 0; font-size: 18px;">⚠️ Loan Under Dispute Review</h2>
+          <p style="color: #78350F; margin: 0; font-size: 14px;">
+            Loan <strong>#${loanRef}</strong> has been placed under dispute review by the platform.
+          </p>
+        </div>
+
+        <p style="font-size: 15px; color: #333; line-height: 1.7;">
+          Dear <strong>${recipientName}</strong>,
+        </p>
+
+        <p style="font-size: 15px; color: #333; line-height: 1.7;">
+          We are writing to inform you that <strong>Loan #${loanRef}</strong> (${currency} ${parseFloat(loanAmount).toFixed(2)} at ${parseFloat(interestRate).toFixed(2)}% APY) has been placed under dispute review.
+        </p>
+
+        <div style="background-color: #f0f0f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h3 style="color: #333; margin: 0 0 12px 0; font-size: 16px;">📋 What This Means</h3>
+          <p style="font-size: 14px; color: #555; line-height: 1.7; margin: 0;">
+            You have a <strong>7-day dispute period</strong> to submit any relevant documentation or information regarding this loan. 
+            This may include proof of payment, bank transfer receipts, communication records, or any other evidence you consider relevant.
+          </p>
+        </div>
+
+        <div style="background-color: #FEF2F2; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h3 style="color: #991B1B; margin: 0 0 12px 0; font-size: 16px;">📅 Deadline</h3>
+          <p style="font-size: 14px; color: #555; line-height: 1.7; margin: 0;">
+            All documentation must be submitted by <strong>${disputeDeadline}</strong>.
+          </p>
+          <p style="font-size: 14px; color: #555; line-height: 1.7; margin: 8px 0 0 0;">
+            After this date, the platform will review all submitted materials and issue a final resolution.
+          </p>
+        </div>
+
+        <div style="background-color: #EFF6FF; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <h3 style="color: #1E40AF; margin: 0 0 12px 0; font-size: 16px;">📧 How to Submit</h3>
+          <p style="font-size: 14px; color: #555; line-height: 1.7; margin: 0;">
+            Please send all documentation and information directly to:<br>
+            <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37; font-weight: 600; font-size: 16px;">admin@reconquestp2p.com</a>
+          </p>
+          <p style="font-size: 14px; color: #555; line-height: 1.7; margin: 8px 0 0 0;">
+            Include <strong>"Loan #${loanRef} - Dispute Documentation"</strong> in the subject line.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardUrl}${dashboardPath}" style="display: inline-block; background-color: #D4AF37; color: #000; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+            View My Dashboard
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #7F8C8D; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <strong>— The Reconquest Team 👑</strong><br><br>Questions? Contact us at <a href="mailto:admin@reconquestp2p.com" style="color: #D4AF37;">admin@reconquestp2p.com</a>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to,
+    from: 'Reconquest <noreply@reconquestp2p.com>',
+    subject: `⚠️ Dispute Review - Loan #${loanRef} | 7-Day Response Period`,
+    html,
+  });
+}

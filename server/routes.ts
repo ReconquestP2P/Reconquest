@@ -3688,7 +3688,6 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   // Set a loan to under_review status (for testing)
   app.post("/api/admin/disputes/:loanId/set-under-review", authenticateToken, async (req, res) => {
     try {
-      // Verify admin role
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -3705,8 +3704,57 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(404).json({ message: "Loan not found" });
       }
       
-      // SECURITY: Sanitize response to remove lender private key
-      res.json({ success: true, loan: ResponseSanitizer.sanitizeLoan(updatedLoan) });
+      const disputeDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const deadlineStr = disputeDeadline.toLocaleDateString('en-GB', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+      });
+      const rawBaseUrl = process.env.APP_URL || process.env.REPLIT_DEPLOYMENT_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      
+      const { sendDisputeNotificationEmail } = await import('./email.js');
+      
+      const borrower = await storage.getUser(updatedLoan.borrowerId);
+      const lender = updatedLoan.lenderId ? await storage.getUser(updatedLoan.lenderId) : null;
+      
+      const emailResults: string[] = [];
+      
+      if (borrower) {
+        const sent = await sendDisputeNotificationEmail({
+          to: borrower.email,
+          recipientName: borrower.username,
+          recipientRole: 'borrower',
+          loanId,
+          loanAmount: updatedLoan.amount,
+          currency: updatedLoan.currency,
+          interestRate: updatedLoan.interestRate,
+          disputeDeadline: deadlineStr,
+          dashboardUrl: baseUrl,
+        });
+        emailResults.push(`Borrower (${borrower.email}): ${sent ? 'sent' : 'failed'}`);
+      }
+      
+      if (lender) {
+        const sent = await sendDisputeNotificationEmail({
+          to: lender.email,
+          recipientName: lender.username,
+          recipientRole: 'lender',
+          loanId,
+          loanAmount: updatedLoan.amount,
+          currency: updatedLoan.currency,
+          interestRate: updatedLoan.interestRate,
+          disputeDeadline: deadlineStr,
+          dashboardUrl: baseUrl,
+        });
+        emailResults.push(`Lender (${lender.email}): ${sent ? 'sent' : 'failed'}`);
+      }
+      
+      console.log(`[Dispute] Loan #${loanId} set under review. Emails: ${emailResults.join(', ')}`);
+      
+      res.json({ 
+        success: true, 
+        loan: ResponseSanitizer.sanitizeLoan(updatedLoan),
+        emailsSent: emailResults
+      });
     } catch (error) {
       console.error("Error setting loan under review:", error);
       res.status(500).json({ message: "Failed to update loan status" });

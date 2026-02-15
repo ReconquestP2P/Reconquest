@@ -218,14 +218,16 @@ export default function AdminDashboard() {
 
   const setUnderReviewMutation = useMutation({
     mutationFn: async (loanId: number) => {
-      return await apiRequest(`/api/admin/disputes/${loanId}/set-under-review`, "POST");
+      const res = await apiRequest(`/api/admin/disputes/${loanId}/set-under-review`, "POST");
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/disputes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      const emailInfo = data?.emailsSent ? ` ${data.emailsSent.join(', ')}` : '';
       toast({
-        title: "✅ Loan Set Under Review",
-        description: "Loan is now ready for dispute resolution",
+        title: "Loan Set Under Review",
+        description: `Dispute notifications sent to borrower and lender. 7-day response period started.${emailInfo}`,
       });
     },
     onError: (error: any) => {
