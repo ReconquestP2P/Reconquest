@@ -92,7 +92,7 @@ export default function BorrowerDashboard() {
     loan.fiatTransferConfirmed === true && 
     loan.borrowerConfirmedReceipt === true) ||
     loan.status === "repayment_pending" ||
-    loan.status === "repaid" ||
+    (loan.status === "repaid" && !loan.collateralReleased) ||
     (loan.status === "completed" && !loan.collateralReleased)
   );
   
