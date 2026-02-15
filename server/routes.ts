@@ -2907,24 +2907,43 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           continue;
         }
 
-        // Store the verified pre-signed transaction
-        const tx = await storage.storePreSignedTransaction({
-          loanId,
-          partyRole: 'borrower',
-          partyPubkey: loan.borrowerPubkey,
-          txType: type.toLowerCase().replace('_', '_'), // normalize type
-          psbt: psbtBase64,
-          signature: signature || 'embedded_in_psbt',
-          txHash: txHash || crypto.createHash('sha256').update(psbtBase64).digest('hex').slice(0, 64)
-        });
+        const typeMapping: Record<string, string> = {
+          'REPAYMENT': 'repayment',
+          'DEFAULT_LIQUIDATION': 'default',
+          'BORROWER_RECOVERY': 'recovery',
+          'LIQUIDATION': 'liquidation',
+        };
+        const normalizedType = typeMapping[type.toUpperCase()] || type.toLowerCase();
+
+        const existingTemplates = await storage.getPreSignedTransactions(loanId, normalizedType);
+        let tx;
+        if (existingTemplates.length > 0) {
+          tx = await storage.updatePreSignedTransaction(existingTemplates[0].id, {
+            psbt: psbtBase64,
+            signature: signature || 'embedded_in_psbt',
+          });
+          if (!tx) {
+            tx = existingTemplates[0];
+          }
+          console.log(`[SigningCeremony] Updated existing template #${existingTemplates[0].id} with signed ${type} PSBT for loan #${loanId}`);
+        } else {
+          tx = await storage.storePreSignedTransaction({
+            loanId,
+            partyRole: 'borrower',
+            partyPubkey: loan.borrowerPubkey,
+            txType: normalizedType,
+            psbt: psbtBase64,
+            signature: signature || 'embedded_in_psbt',
+            txHash: txHash || crypto.createHash('sha256').update(psbtBase64).digest('hex').slice(0, 64)
+          });
+          console.log(`[SigningCeremony] Stored new signed ${type} PSBT for loan #${loanId}`);
+        }
 
         stored.push({
           type,
           id: tx.id,
           verified: true
         });
-
-        console.log(`[SigningCeremony] Stored verified ${type} PSBT for loan #${loanId}`);
       }
 
       // Require at least one valid signed PSBT
@@ -3942,13 +3961,29 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       const txType = decisionToTxType[decision];
       
       // Get pre-signed templates from database
+      // Select the LATEST PSBT with a cryptographically verified borrower signature
       const preSignedTxs = await storage.getPreSignedTransactions(loanId);
-      const matchingTx = preSignedTxs.find(tx => tx.txType === txType);
+      const allMatching = preSignedTxs
+        .filter(tx => tx.txType === txType)
+        .sort((a, b) => (b.id - a.id));
       
-      if (!matchingTx || !matchingTx.psbt) {
-        return res.status(400).json({ 
-          message: `No pre-signed ${txType} transaction found for this loan. The borrower must complete the signing ceremony first.`
-        });
+      let matchingTx = null;
+      for (const candidate of allMatching) {
+        if (candidate.psbt && loan.borrowerPubkey) {
+          const hasBorrowerSig = PsbtCreatorService.verifySignature(candidate.psbt, loan.borrowerPubkey, 0);
+          if (hasBorrowerSig) {
+            matchingTx = candidate;
+            break;
+          }
+        }
+      }
+      
+      if (!matchingTx) {
+        const hasUnsignedTemplate = allMatching.length > 0;
+        const msg = hasUnsignedTemplate
+          ? `The ${txType} transaction template exists but has no valid borrower signature. The borrower must complete the signing ceremony to sign it.`
+          : `No pre-signed ${txType} transaction found for this loan. The borrower must complete the signing ceremony first.`;
+        return res.status(400).json({ message: msg });
       }
       
       console.log(`📋 Using pre-signed ${txType} PSBT for loan #${loanId} (template ID: ${matchingTx.id})`);
