@@ -3926,48 +3926,61 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         return res.status(400).json({ message: "Borrower address not found" });
       }
       
+      // ================================================================
+      // SECURITY: Use pre-signed PSBTs from the signing ceremony
+      // These already contain the borrower's signature, locked to
+      // specific output addresses. We add platform + lender signatures
+      // to complete the 3-of-3 multisig.
+      // ================================================================
+      
+      // Map decision to the correct pre-signed PSBT tx_type
+      const decisionToTxType: Record<string, string> = {
+        'BORROWER_NOT_DEFAULTED': 'repayment',
+        'BORROWER_DEFAULTED': 'default',
+        'TIMEOUT_DEFAULT': 'liquidation',
+      };
+      const txType = decisionToTxType[decision];
+      
+      // Get pre-signed templates from database
+      const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+      const matchingTx = preSignedTxs.find(tx => tx.txType === txType);
+      
+      if (!matchingTx || !matchingTx.psbt) {
+        return res.status(400).json({ 
+          message: `No pre-signed ${txType} transaction found for this loan. The borrower must complete the signing ceremony first.`
+        });
+      }
+      
+      console.log(`📋 Using pre-signed ${txType} PSBT for loan #${loanId} (template ID: ${matchingTx.id})`);
+      
       // Get platform private key for signing
       const { BitcoinEscrowService } = await import('./services/BitcoinEscrowService.js');
       const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
       
-      // Create platform-signed PSBT
-      const { createPlatformSignedPsbt, completePsbtWithPlatformLenderKey } = await import('./services/SplitPayoutService.js');
+      // Import signing helper
+      const { addPlatformSignaturesAndBroadcast } = await import('./services/CollateralReleaseService.js');
+      const { EncryptionService } = await import('./services/EncryptionService.js');
       
-      let effectiveLenderAddress = lenderAddress;
-      let effectiveBorrowerAddress = borrowerAddress;
+      console.log(`🔐 [Bitcoin-Blind] Admin executing resolution for Loan #${loanId} using pre-signed PSBT`);
+      console.log(`   Adding platform + lender signatures and broadcasting...`);
       
-      if (decision === 'BORROWER_NOT_DEFAULTED') {
-        effectiveLenderAddress = borrowerAddress;
-      }
-      
-      const psbtResult = await createPlatformSignedPsbt(
-        loan,
-        effectiveLenderAddress,
-        effectiveBorrowerAddress,
-        platformPrivateKey
-      );
-      
-      if (!psbtResult.success || !psbtResult.psbtBase64) {
-        return res.status(400).json({ 
-          message: `Failed to create resolution transaction: ${psbtResult.error}` 
-        });
-      }
-      
-      console.log(`🔐 [Bitcoin-Blind] Admin executing immediate resolution for Loan #${loanId}`);
-      console.log(`   Platform signing with controlled lender key and broadcasting...`);
-      
-      // IMMEDIATE EXECUTION: Sign with platform-controlled lender key and broadcast
-      const result = await completePsbtWithPlatformLenderKey(
-        psbtResult.psbtBase64,
-        loan.lenderPrivateKeyEncrypted,
-        loan.lenderPubkey,
-        loan.escrowWitnessScript
+      const result = await addPlatformSignaturesAndBroadcast(
+        storage, loan, matchingTx.psbt, EncryptionService, matchingTx.id
       );
       
       if (!result.success) {
         return res.status(400).json({ 
           message: `Failed to complete transaction: ${result.error}` 
         });
+      }
+      
+      // Calculate split amounts for status tracking using the preview service
+      const { previewSplit } = await import('./services/SplitPayoutService.js');
+      let splitCalc: any = null;
+      try {
+        splitCalc = await previewSplit(loan);
+      } catch (e) {
+        console.warn('Could not calculate split preview for status tracking');
       }
       
       // Update loan status to resolved
@@ -3982,9 +3995,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         collateralReleasedAt: new Date(),
         collateralReleaseError: null,
         pendingResolutionDecision: decision,
-        pendingResolutionLenderSats: psbtResult.lenderPayoutSats,
-        pendingResolutionBorrowerSats: psbtResult.borrowerPayoutSats,
-        pendingResolutionBtcPrice: psbtResult.calculation?.btcPriceEur.toString(),
+        pendingResolutionLenderSats: splitCalc?.calculation?.lenderPayoutSats || 0,
+        pendingResolutionBorrowerSats: splitCalc?.calculation?.borrowerPayoutSats || 0,
+        pendingResolutionBtcPrice: splitCalc?.calculation?.btcPriceEur?.toString() || '0',
       });
       
       // Create audit log

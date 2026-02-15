@@ -138,7 +138,7 @@ function signPsbtInput(
  * 
  * SECURITY: Validates PSBT before co-signing to ensure it matches escrow
  */
-async function addPlatformSignaturesAndBroadcast(
+export async function addPlatformSignaturesAndBroadcast(
   storage: any,
   loan: any,
   psbtBase64: string,
