@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail, Gavel, AlertTriangle } from "lucide-react";
+import { RefreshCw, Shield, TrendingUp, Users, Lock, UserPlus, Calendar, Mail, Gavel, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Loan, User, Dispute, DisputeDecision } from "@shared/schema";
 import { DECISION_LABELS } from "@shared/schema";
@@ -142,6 +142,8 @@ export default function AdminDashboard() {
   const [authError, setAuthError] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [loanSortColumn, setLoanSortColumn] = useState<string>("id");
+  const [loanSortDirection, setLoanSortDirection] = useState<"asc" | "desc">("desc");
 
   const { data: adminStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
@@ -174,6 +176,45 @@ export default function AdminDashboard() {
   });
 
   const { toast } = useToast();
+
+  const toggleLoanSort = (column: string) => {
+    if (loanSortColumn === column) {
+      setLoanSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setLoanSortColumn(column);
+      setLoanSortDirection("desc");
+    }
+  };
+
+  const sortedLoans = (() => {
+    if (!loans) return [];
+    const sorted = [...loans].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (loanSortColumn) {
+        case "id": valA = a.id; valB = b.id; break;
+        case "borrower": valA = a.borrowerId; valB = b.borrowerId; break;
+        case "amount": valA = Number(a.amount); valB = Number(b.amount); break;
+        case "collateral": valA = Number(a.collateralBtc); valB = Number(b.collateralBtc); break;
+        case "status": valA = a.status; valB = b.status; break;
+        case "ltv": valA = a.currentLtv ?? -1; valB = b.currentLtv ?? -1; break;
+        case "interest": valA = Number(a.interestRate); valB = Number(b.interestRate); break;
+        case "created": valA = new Date(a.requestedAt).getTime(); valB = new Date(b.requestedAt).getTime(); break;
+        default: valA = a.id; valB = b.id;
+      }
+      if (valA < valB) return loanSortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return loanSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  })();
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (loanSortColumn !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return loanSortDirection === "asc"
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   const [resolvingLoanId, setResolvingLoanId] = useState<number | null>(null);
   const [splitPreview, setSplitPreview] = useState<SplitPreview | null>(null);
   const [previewingLoanId, setPreviewingLoanId] = useState<number | null>(null);
@@ -1046,19 +1087,35 @@ export default function AdminDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Loan ID</TableHead>
-                      <TableHead>Borrower</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Collateral (BTC)</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Current LTV</TableHead>
-                      <TableHead>Interest Rate</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("id")}>
+                        <div className="flex items-center">Loan ID<SortIcon column="id" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("borrower")}>
+                        <div className="flex items-center">Borrower<SortIcon column="borrower" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("amount")}>
+                        <div className="flex items-center">Amount<SortIcon column="amount" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("collateral")}>
+                        <div className="flex items-center">Collateral (BTC)<SortIcon column="collateral" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("status")}>
+                        <div className="flex items-center">Status<SortIcon column="status" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("ltv")}>
+                        <div className="flex items-center">Current LTV<SortIcon column="ltv" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("interest")}>
+                        <div className="flex items-center">Interest Rate<SortIcon column="interest" /></div>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleLoanSort("created")}>
+                        <div className="flex items-center">Created<SortIcon column="created" /></div>
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loans?.map((loan) => (
+                    {sortedLoans.map((loan) => (
                       <TableRow key={loan.id}>
                         <TableCell className="font-medium">#{loan.id}</TableCell>
                         <TableCell>{loan.borrowerId}</TableCell>
