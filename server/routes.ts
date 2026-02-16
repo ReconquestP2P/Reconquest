@@ -4165,7 +4165,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       res.json({
         success: true,
         decision,
-        calculation: psbtResult.calculation,
+        calculation: splitCalc?.calculation || null,
         lenderPayoutSats: lenderSats,
         borrowerPayoutSats: borrowerSats,
         txid: result.txid,
