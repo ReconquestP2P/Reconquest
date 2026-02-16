@@ -200,13 +200,8 @@ export class LtvMonitoringService {
       await storage.updateLoan(loan.id, { lastLtvAlertLevel: currentBucket });
       console.log(`   📝 Updated lastLtvAlertLevel for loan #${loan.id} to ${currentBucket}%`);
     }
-    // LTV dropped back - only reset if it dropped a full bucket below the last alert
-    // This prevents repeated alerts when LTV bounces around a threshold boundary
-    else if (lastAlertLevel > 0 && currentBucket < lastAlertLevel - LTV_ALERT_STEP) {
-      const newLevel = Math.max(0, currentBucket);
-      await storage.updateLoan(loan.id, { lastLtvAlertLevel: newLevel });
-      console.log(`✅ [LtvMonitor] Loan #${loan.id} LTV improved to ${currentLtvPercent.toFixed(1)}%, lowered alert level from ${lastAlertLevel}% to ${newLevel}%`);
-    }
+    // No reset — alerts are one-way. Once a bucket level is reached, it stays recorded.
+    // This ensures each 5% threshold email is sent exactly once per loan lifetime.
 
     return result;
   }
