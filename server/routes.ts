@@ -3965,30 +3965,39 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         }
       }
       
-      if (!matchingTx) {
-        const hasUnsignedTemplate = allMatching.length > 0;
-        const msg = hasUnsignedTemplate
-          ? `The ${txType} transaction template exists but has no valid borrower signature. The borrower must complete the signing ceremony to sign it.`
-          : `No pre-signed ${txType} transaction found for this loan. The borrower must complete the signing ceremony first.`;
-        return res.status(400).json({ message: msg });
-      }
-      
-      console.log(`📋 Using pre-signed ${txType} PSBT for loan #${loanId} (template ID: ${matchingTx.id})`);
-      
-      // Get platform private key for signing
-      const { BitcoinEscrowService } = await import('./services/BitcoinEscrowService.js');
-      const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
-      
-      // Import signing helper
-      const { addPlatformSignaturesAndBroadcast } = await import('./services/CollateralReleaseService.js');
       const { EncryptionService } = await import('./services/EncryptionService.js');
       
-      console.log(`🔐 [Bitcoin-Blind] Admin executing resolution for Loan #${loanId} using pre-signed PSBT`);
-      console.log(`   Adding platform + lender signatures and broadcasting...`);
+      let result: any;
       
-      const result = await addPlatformSignaturesAndBroadcast(
-        storage, loan, matchingTx.psbt, EncryptionService, matchingTx.id
-      );
+      if (matchingTx) {
+        // Happy path: borrower has signed, use pre-signed PSBT
+        console.log(`📋 Using pre-signed ${txType} PSBT for loan #${loanId} (template ID: ${matchingTx.id})`);
+        
+        const { addPlatformSignaturesAndBroadcast } = await import('./services/CollateralReleaseService.js');
+        
+        console.log(`🔐 [Bitcoin-Blind] Admin executing resolution for Loan #${loanId} using pre-signed PSBT`);
+        console.log(`   Adding platform + lender signatures and broadcasting...`);
+        
+        result = await addPlatformSignaturesAndBroadcast(
+          storage, loan, matchingTx.psbt, EncryptionService, matchingTx.id
+        );
+      } else {
+        // Fallback: borrower hasn't signed — platform controls 2 of 3 keys on 2-of-3 escrow
+        // This is valid for BORROWER_DEFAULTED and TIMEOUT_DEFAULT decisions
+        if (decision === 'BORROWER_NOT_DEFAULTED') {
+          return res.status(400).json({ 
+            message: "Cannot return collateral to borrower without their signed transaction. The borrower must complete the signing ceremony first." 
+          });
+        }
+        
+        console.log(`⚠️ No borrower-signed PSBT found for loan #${loanId}. Using platform+lender keys (2-of-3).`);
+        
+        const { createAndSignWithPlatformKeys } = await import('./services/CollateralReleaseService.js');
+        
+        result = await createAndSignWithPlatformKeys(
+          storage, loan, lenderAddress, EncryptionService, borrowerAddress
+        );
+      }
       
       if (!result.success) {
         console.error(`❌ Resolution failed for loan #${loanId}: ${result.error}`);

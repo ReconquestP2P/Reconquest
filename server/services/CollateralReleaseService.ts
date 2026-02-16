@@ -274,6 +274,135 @@ export async function addPlatformSignaturesAndBroadcast(
 }
 
 /**
+ * Create a fresh PSBT and sign with platform + lender keys (2-of-3 multisig).
+ * Used for default/liquidation scenarios where the borrower has NOT signed.
+ * Platform controls 2 of 3 keys, so borrower participation is not needed.
+ * 
+ * SECURITY: Only valid for 2-of-3 escrows where platform holds platform+lender keys.
+ */
+export async function createAndSignWithPlatformKeys(
+  storage: any,
+  loan: any,
+  targetAddress: string,
+  EncryptionService: any,
+  borrowerAddress?: string,
+  amountOwedSats?: number
+): Promise<ReleaseResult> {
+  try {
+    const network = getNetwork();
+    
+    if (!loan.escrowWitnessScript) {
+      return { success: false, error: 'Loan has no escrow witness script' };
+    }
+    
+    const scriptBytes = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const mRequired = scriptBytes[0] - 0x50;
+    if (mRequired !== 2) {
+      return { success: false, error: `Escrow requires ${mRequired}-of-3 — platform cannot sign alone without borrower` };
+    }
+    
+    if (!loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'No encrypted lender key found' };
+    }
+    
+    if (!loan.fundingTxid) {
+      return { success: false, error: 'No funding transaction found for escrow UTXO' };
+    }
+    
+    const fundingVout = loan.fundingVout ?? 0;
+    
+    let utxoAmount: number;
+    try {
+      const utxoUrl = getUtxoUrl(loan.fundingTxid);
+      const resp = await fetch(utxoUrl);
+      if (!resp.ok) throw new Error(`UTXO fetch failed: ${resp.status}`);
+      const utxos: any[] = await resp.json();
+      const matchingUtxo = utxos.find((u: any) => u.vout === fundingVout);
+      if (!matchingUtxo) throw new Error('UTXO not found');
+      utxoAmount = matchingUtxo.value;
+    } catch (e: any) {
+      const collateralBtc = parseFloat(String(loan.collateralBtc));
+      utxoAmount = Math.round(collateralBtc * 100_000_000);
+      console.warn(`⚠️ Could not fetch UTXO, using loan collateral value: ${utxoAmount} sats`);
+    }
+    
+    const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
+    const estimatedVsize = 220;
+    const fee = estimatedVsize * 1; // 1 sat/vB minimum
+    
+    const psbt = new bitcoin.Psbt({ network });
+    psbt.addInput({
+      hash: loan.fundingTxid,
+      index: fundingVout,
+      witnessUtxo: {
+        script: bitcoin.payments.p2wsh({
+          redeem: { output: witnessScript, network },
+          network,
+        }).output!,
+        value: BigInt(utxoAmount),
+      },
+      witnessScript: witnessScript,
+    });
+    
+    if (amountOwedSats && borrowerAddress) {
+      const lenderAmount = Math.min(amountOwedSats, utxoAmount - fee - 546);
+      const borrowerRemainder = utxoAmount - lenderAmount - fee;
+      
+      psbt.addOutput({ address: targetAddress, value: BigInt(lenderAmount) });
+      if (borrowerRemainder > 546) {
+        psbt.addOutput({ address: borrowerAddress, value: BigInt(borrowerRemainder) });
+      }
+    } else {
+      const outputAmount = utxoAmount - fee;
+      if (outputAmount <= 546) {
+        return { success: false, error: 'UTXO amount too small after fees' };
+      }
+      psbt.addOutput({ address: targetAddress, value: BigInt(outputAmount) });
+    }
+    
+    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
+    const lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+    
+    const platformKeyBuffer = Buffer.from(platformPrivateKey, 'hex');
+    const platformKeyPair = {
+      publicKey: Buffer.from(ecc.pointFromScalar(platformKeyBuffer, true)!),
+      privateKey: platformKeyBuffer,
+      sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, platformKeyBuffer)),
+    };
+    
+    const lenderKeyBuffer = Buffer.from(lenderPrivateKey, 'hex');
+    const lenderKeyPair = {
+      publicKey: Buffer.from(ecc.pointFromScalar(lenderKeyBuffer, true)!),
+      privateKey: lenderKeyBuffer,
+      sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, lenderKeyBuffer)),
+    };
+    
+    psbt.signInput(0, platformKeyPair);
+    psbt.signInput(0, lenderKeyPair);
+    
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+    
+    console.log(`✅ Platform-signed transaction finalized (no borrower sig needed): ${txid}`);
+    
+    const broadcastTxid = await broadcastToTestnet4(txHex);
+    
+    return {
+      success: true,
+      txid: broadcastTxid,
+      broadcastUrl: getExplorerUrl('tx', broadcastTxid),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `Platform-signed transaction error: ${error.message}`
+    };
+  }
+}
+
+/**
  * Add ONLY the lender signature to a pre-signed PSBT and broadcast.
  * Used for legacy loans with platform key mismatch where escrow is 2-of-3.
  * Borrower's signature is already present, so borrower+lender = 2 sigs = valid.
