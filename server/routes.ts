@@ -4023,6 +4023,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         disputeResolvedAt: new Date(),
         status: finalStatus,
         collateralReleased: true,
+        collateralReleaseTxid: result.txid || null,
         escrowState: 'collateral_released',
         collateralReleasedAt: new Date(),
         collateralReleaseError: null,
