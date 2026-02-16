@@ -200,10 +200,12 @@ export class LtvMonitoringService {
       await storage.updateLoan(loan.id, { lastLtvAlertLevel: currentBucket });
       console.log(`   📝 Updated lastLtvAlertLevel for loan #${loan.id} to ${currentBucket}%`);
     }
-    // LTV dropped back below 75% - reset alert level so alerts can fire again if it climbs back
-    else if (currentLtvPercent < EARLY_WARNING_LTV_THRESHOLD * 100 && lastAlertLevel > 0) {
-      await storage.updateLoan(loan.id, { lastLtvAlertLevel: 0 });
-      console.log(`✅ [LtvMonitor] Loan #${loan.id} LTV healthy at ${currentLtvPercent.toFixed(1)}%, reset alert level`);
+    // LTV dropped back - only reset if it dropped a full bucket below the last alert
+    // This prevents repeated alerts when LTV bounces around a threshold boundary
+    else if (lastAlertLevel > 0 && currentBucket < lastAlertLevel - LTV_ALERT_STEP) {
+      const newLevel = Math.max(0, currentBucket);
+      await storage.updateLoan(loan.id, { lastLtvAlertLevel: newLevel });
+      console.log(`✅ [LtvMonitor] Loan #${loan.id} LTV improved to ${currentLtvPercent.toFixed(1)}%, lowered alert level from ${lastAlertLevel}% to ${newLevel}%`);
     }
 
     return result;
