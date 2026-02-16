@@ -305,55 +305,68 @@ export async function createAndSignWithPlatformKeys(
       return { success: false, error: 'No encrypted lender key found' };
     }
     
+    if (!loan.escrowAddress) {
+      return { success: false, error: 'No escrow address found on loan' };
+    }
+    
     if (!loan.fundingTxid) {
       return { success: false, error: 'No funding transaction found for escrow UTXO' };
     }
     
-    const fundingVout = loan.fundingVout ?? 0;
+    const allUtxos = await fetchUTXOs(loan.escrowAddress);
     
-    let utxoAmount: number;
-    try {
-      const utxoUrl = getUtxoUrl(loan.fundingTxid);
-      const resp = await fetch(utxoUrl);
-      if (!resp.ok) throw new Error(`UTXO fetch failed: ${resp.status}`);
-      const utxos: any[] = await resp.json();
-      const matchingUtxo = utxos.find((u: any) => u.vout === fundingVout);
-      if (!matchingUtxo) throw new Error('UTXO not found');
-      utxoAmount = matchingUtxo.value;
-    } catch (e: any) {
+    if (allUtxos.length === 0) {
       const collateralBtc = parseFloat(String(loan.collateralBtc));
-      utxoAmount = Math.round(collateralBtc * 100_000_000);
-      console.warn(`⚠️ Could not fetch UTXO, using loan collateral value: ${utxoAmount} sats`);
+      const fallbackAmount = Math.round(collateralBtc * 100_000_000);
+      const fundingVout = loan.fundingVout ?? 0;
+      allUtxos.push({ txid: loan.fundingTxid, vout: fundingVout, value: fallbackAmount });
+      console.warn(`⚠️ Could not fetch UTXOs from escrow address, using loan collateral value: ${fallbackAmount} sats`);
     }
     
+    if (allUtxos.length > 1) {
+      console.log(`📦 Found ${allUtxos.length} UTXOs at escrow address — sweeping ALL deposits`);
+    }
+    
+    let totalInputValue = 0;
+    for (const utxo of allUtxos) {
+      totalInputValue += utxo.value;
+    }
+    console.log(`   Total input value: ${totalInputValue} sats from ${allUtxos.length} UTXO(s)`);
+    
     const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
-    const estimatedVsize = 220;
-    const fee = estimatedVsize * 1; // 1 sat/vB minimum
+    const numOutputs = (amountOwedSats && borrowerAddress) ? 2 : 1;
+    const { estimateTransactionFee } = await import('./fee-estimator.js');
+    const feeEstimate = await estimateTransactionFee('medium', allUtxos.length, numOutputs);
+    const fee = Math.max(feeEstimate.feeSats, allUtxos.length * 110 + 50);
+    console.log(`   Fee estimate: ${fee} sats (${feeEstimate.feeRate} sat/vB, ${allUtxos.length} inputs, ${numOutputs} outputs)`);
     
     const psbt = new bitcoin.Psbt({ network });
-    psbt.addInput({
-      hash: loan.fundingTxid,
-      index: fundingVout,
-      witnessUtxo: {
-        script: bitcoin.payments.p2wsh({
-          redeem: { output: witnessScript, network },
-          network,
-        }).output!,
-        value: BigInt(utxoAmount),
-      },
-      witnessScript: witnessScript,
-    });
+    
+    for (const utxo of allUtxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript, network },
+            network,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+    }
     
     if (amountOwedSats && borrowerAddress) {
-      const lenderAmount = Math.min(amountOwedSats, utxoAmount - fee - 546);
-      const borrowerRemainder = utxoAmount - lenderAmount - fee;
+      const lenderAmount = Math.min(amountOwedSats, totalInputValue - fee - 546);
+      const borrowerRemainder = totalInputValue - lenderAmount - fee;
       
       psbt.addOutput({ address: targetAddress, value: BigInt(lenderAmount) });
       if (borrowerRemainder > 546) {
         psbt.addOutput({ address: borrowerAddress, value: BigInt(borrowerRemainder) });
       }
     } else {
-      const outputAmount = utxoAmount - fee;
+      const outputAmount = totalInputValue - fee;
       if (outputAmount <= 546) {
         return { success: false, error: 'UTXO amount too small after fees' };
       }
@@ -377,8 +390,10 @@ export async function createAndSignWithPlatformKeys(
       sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, lenderKeyBuffer)),
     };
     
-    psbt.signInput(0, platformKeyPair);
-    psbt.signInput(0, lenderKeyPair);
+    for (let i = 0; i < allUtxos.length; i++) {
+      psbt.signInput(i, platformKeyPair);
+      psbt.signInput(i, lenderKeyPair);
+    }
     
     psbt.finalizeAllInputs();
     const tx = psbt.extractTransaction();
@@ -398,6 +413,120 @@ export async function createAndSignWithPlatformKeys(
     return {
       success: false,
       error: `Platform-signed transaction error: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Sweep any remaining UTXOs at an escrow address back to the borrower.
+ * Called after a pre-signed PSBT has been broadcast (which only spends one UTXO).
+ * If the borrower accidentally sent multiple deposits, this recovers them all.
+ * Uses platform + lender keys (2-of-3) — no borrower participation needed.
+ */
+export async function sweepRemainingUtxos(
+  loan: any,
+  borrowerAddress: string,
+  EncryptionService: any
+): Promise<ReleaseResult & { sweptCount?: number; sweptAmount?: number }> {
+  try {
+    if (!loan.escrowAddress || !loan.escrowWitnessScript || !loan.lenderPrivateKeyEncrypted) {
+      return { success: false, error: 'Missing escrow data for sweep' };
+    }
+
+    const allUtxos = await fetchUTXOs(loan.escrowAddress);
+    
+    const fundingTxid = loan.fundingTxid || '';
+    const fundingVout = loan.fundingVout ?? 0;
+    const remainingUtxos = allUtxos.filter(
+      (u) => !(u.txid === fundingTxid && u.vout === fundingVout)
+    );
+    
+    if (remainingUtxos.length === 0) {
+      return { success: true, txid: '', sweptCount: 0, sweptAmount: 0 };
+    }
+
+    console.log(`🧹 Found ${remainingUtxos.length} remaining UTXO(s) at escrow — sweeping back to borrower`);
+
+    const network = getNetwork();
+    const witnessScript = Buffer.from(loan.escrowWitnessScript, 'hex');
+
+    let totalValue = 0;
+    for (const utxo of remainingUtxos) {
+      totalValue += utxo.value;
+    }
+
+    const { estimateTransactionFee: estimateSweepFee } = await import('./fee-estimator.js');
+    const sweepFeeEstimate = await estimateSweepFee('medium', remainingUtxos.length, 1);
+    const fee = Math.max(sweepFeeEstimate.feeSats, remainingUtxos.length * 110 + 50);
+    const outputAmount = totalValue - fee;
+
+    if (outputAmount <= 546) {
+      console.log(`🧹 Remaining UTXOs too small to sweep (${totalValue} sats, fee would be ${fee})`);
+      return { success: true, txid: '', sweptCount: 0, sweptAmount: 0 };
+    }
+
+    const psbt = new bitcoin.Psbt({ network });
+
+    for (const utxo of remainingUtxos) {
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: bitcoin.payments.p2wsh({
+            redeem: { output: witnessScript, network },
+            network,
+          }).output!,
+          value: BigInt(utxo.value),
+        },
+        witnessScript: witnessScript,
+      });
+    }
+
+    psbt.addOutput({ address: borrowerAddress, value: BigInt(outputAmount) });
+
+    const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
+    const lenderPrivateKey = EncryptionService.decrypt(loan.lenderPrivateKeyEncrypted);
+
+    const platformKeyBuffer = Buffer.from(platformPrivateKey, 'hex');
+    const platformKeyPair = {
+      publicKey: Buffer.from(ecc.pointFromScalar(platformKeyBuffer, true)!),
+      privateKey: platformKeyBuffer,
+      sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, platformKeyBuffer)),
+    };
+
+    const lenderKeyBuffer = Buffer.from(lenderPrivateKey, 'hex');
+    const lenderKeyPair = {
+      publicKey: Buffer.from(ecc.pointFromScalar(lenderKeyBuffer, true)!),
+      privateKey: lenderKeyBuffer,
+      sign: (hash: Buffer) => Buffer.from(ecc.sign(hash, lenderKeyBuffer)),
+    };
+
+    for (let i = 0; i < remainingUtxos.length; i++) {
+      psbt.signInput(i, platformKeyPair);
+      psbt.signInput(i, lenderKeyPair);
+    }
+
+    psbt.finalizeAllInputs();
+    const tx = psbt.extractTransaction();
+    const txHex = tx.toHex();
+    const txid = tx.getId();
+
+    console.log(`🧹 Sweep transaction finalized: ${txid} (${remainingUtxos.length} UTXOs, ${outputAmount} sats to borrower)`);
+
+    const broadcastTxid = await broadcastToTestnet4(txHex);
+
+    return {
+      success: true,
+      txid: broadcastTxid,
+      broadcastUrl: getExplorerUrl('tx', broadcastTxid),
+      sweptCount: remainingUtxos.length,
+      sweptAmount: outputAmount,
+    };
+  } catch (error: any) {
+    console.error(`🧹 Sweep failed: ${error.message}`);
+    return {
+      success: false,
+      error: `Sweep error: ${error.message}`,
     };
   }
 }

@@ -4006,6 +4006,19 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         });
       }
       
+      // After successful broadcast, sweep any remaining UTXOs back to borrower
+      if (matchingTx && borrowerAddress) {
+        try {
+          const { sweepRemainingUtxos } = await import('./services/CollateralReleaseService.js');
+          const sweepResult = await sweepRemainingUtxos(loan, borrowerAddress, EncryptionService);
+          if (sweepResult.sweptCount && sweepResult.sweptCount > 0) {
+            console.log(`🧹 Swept ${sweepResult.sweptCount} extra UTXO(s) (${sweepResult.sweptAmount} sats) back to borrower. Txid: ${sweepResult.txid}`);
+          }
+        } catch (sweepErr: any) {
+          console.warn(`🧹 Sweep attempt failed (non-critical): ${sweepErr.message}`);
+        }
+      }
+      
       // Calculate split amounts for status tracking using the preview service
       const { previewSplit } = await import('./services/SplitPayoutService.js');
       let splitCalc: any = null;

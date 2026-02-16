@@ -5,7 +5,7 @@
  * Uses pre-signed REPAYMENT PSBTs with platform co-signing.
  */
 
-import { releaseCollateral, ReleaseResult } from './CollateralReleaseService.js';
+import { releaseCollateral, sweepRemainingUtxos, ReleaseResult } from './CollateralReleaseService.js';
 import { getExplorerUrl } from './bitcoin-network-selector.js';
 import type { IStorage } from '../storage.js';
 
@@ -63,6 +63,22 @@ export async function processLoanRelease(
     });
     
     console.log(`[AutoRelease] ✅ Loan ${loanId} collateral released: ${result.txid}`);
+    
+    // Sweep any remaining UTXOs back to borrower (e.g. accidental double deposits)
+    if (loan.borrowerId) {
+      try {
+        const borrower = await storage.getUser(loan.borrowerId);
+        if (borrower?.btcAddress && loan.escrowAddress && loan.lenderPrivateKeyEncrypted) {
+          const { EncryptionService } = await import('./EncryptionService.js');
+          const sweepResult = await sweepRemainingUtxos(loan, borrower.btcAddress, EncryptionService);
+          if (sweepResult.sweptCount && sweepResult.sweptCount > 0) {
+            console.log(`[AutoRelease] 🧹 Swept ${sweepResult.sweptCount} extra UTXO(s) (${sweepResult.sweptAmount} sats) back to borrower. Txid: ${sweepResult.txid}`);
+          }
+        }
+      } catch (sweepErr: any) {
+        console.warn(`[AutoRelease] 🧹 Sweep attempt failed (non-critical): ${sweepErr.message}`);
+      }
+    }
     
     // Send notification to borrower
     await notifyBorrower(storage, loanId, result.txid!);

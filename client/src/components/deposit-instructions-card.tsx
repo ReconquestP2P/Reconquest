@@ -569,7 +569,8 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <ul className="list-disc ml-4 mt-2 space-y-1">
               <li>This is a <strong>Bitcoin TESTNET</strong> address</li>
               <li><strong>Double-check the address</strong> before sending</li>
-              <li>Send <strong>exactly {loan.collateralBtc} BTC</strong></li>
+              <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> in a <strong>single transaction</strong></li>
+              <li>If you accidentally send multiple transactions, the platform will automatically return any extra deposits to your BTC address</li>
             </ul>
           </AlertDescription>
         </Alert>
