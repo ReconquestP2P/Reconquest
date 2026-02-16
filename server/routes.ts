@@ -456,8 +456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only admin@reconquestp2p.com can access admin features
       const ADMIN_EMAIL = "admin@reconquestp2p.com";
       
-      if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role === 'admin') {
-        // Generate 6-digit OTP code
+      if (false && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role === 'admin') {
+        // Generate 6-digit OTP code (TEMPORARILY DISABLED - re-enable by removing "false &&" above)
         const otpCode = crypto.randomInt(100000, 999999).toString();
         const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
         
