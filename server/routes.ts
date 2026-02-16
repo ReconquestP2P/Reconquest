@@ -4042,9 +4042,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         evidenceSnapshot: JSON.stringify({
           decision,
           adminNotes,
-          calculation: psbtResult.calculation,
-          lenderPayoutSats: psbtResult.lenderPayoutSats,
-          borrowerPayoutSats: psbtResult.borrowerPayoutSats,
+          calculation: splitCalc?.calculation || null,
+          lenderPayoutSats: splitCalc?.calculation?.lenderPayoutSats || 0,
+          borrowerPayoutSats: splitCalc?.calculation?.borrowerPayoutSats || 0,
           txid: result.txid,
           timestamp: new Date().toISOString(),
         }),
@@ -4058,9 +4058,9 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       await storage.createDisputeAuditLog(auditLog);
       
       // Send notification emails to both parties
-      const calc = psbtResult.calculation;
-      const lenderSats = psbtResult.lenderPayoutSats || 0;
-      const borrowerSats = psbtResult.borrowerPayoutSats || 0;
+      const calc = splitCalc?.calculation || null;
+      const lenderSats = splitCalc?.calculation?.lenderPayoutSats || 0;
+      const borrowerSats = splitCalc?.calculation?.borrowerPayoutSats || 0;
       const baseUrl = getBaseUrl();
       
       if (calc) {
