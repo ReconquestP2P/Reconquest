@@ -1211,6 +1211,18 @@ export default function AdminDashboard() {
                               Released
                             </Badge>
                           )}
+                          {(loan.status === "repayment_pending" || loan.status === "active") && loan.disputeStatus !== "under_review" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-600 hover:bg-red-50"
+                              onClick={() => setUnderReviewMutation.mutate(loan.id)}
+                              disabled={setUnderReviewMutation.isPending}
+                              data-testid={`button-set-dispute-${loan.id}`}
+                            >
+                              ⚖️ Mark as Dispute
+                            </Button>
+                          )}
                           </div>
                         </TableCell>
                       </TableRow>
