@@ -3967,6 +3967,18 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       const { EncryptionService } = await import('./services/EncryptionService.js');
       
+      // Calculate the split BEFORE building the transaction so amounts are correct
+      const { previewSplit } = await import('./services/SplitPayoutService.js');
+      let splitCalcPre: any = null;
+      try {
+        splitCalcPre = await previewSplit(loan);
+        console.log(`📊 Split calculation: lender=${splitCalcPre.calculation.lenderPayoutSats} sats, borrower=${splitCalcPre.calculation.borrowerPayoutSats} sats`);
+      } catch (e: any) {
+        console.warn(`Could not calculate split preview: ${e.message}`);
+      }
+      
+      const lenderOwedSats = splitCalcPre?.calculation?.lenderPayoutSats || 0;
+      
       let result: any;
       
       if (matchingTx) {
@@ -3995,7 +4007,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         const { createAndSignWithPlatformKeys } = await import('./services/CollateralReleaseService.js');
         
         result = await createAndSignWithPlatformKeys(
-          storage, loan, lenderAddress, EncryptionService, borrowerAddress
+          storage, loan, lenderAddress, EncryptionService, borrowerAddress, lenderOwedSats
         );
       }
       
@@ -4019,14 +4031,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         }
       }
       
-      // Calculate split amounts for status tracking using the preview service
-      const { previewSplit } = await import('./services/SplitPayoutService.js');
-      let splitCalc: any = null;
-      try {
-        splitCalc = await previewSplit(loan);
-      } catch (e) {
-        console.warn('Could not calculate split preview for status tracking');
-      }
+      // Reuse the split calculation from before the transaction
+      const splitCalc = splitCalcPre;
       
       // Update loan status to resolved
       const finalStatus = decision === 'BORROWER_NOT_DEFAULTED' ? 'completed' : 'defaulted';
