@@ -493,6 +493,11 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   }
 
   const depositDetected = loan.escrowMonitoringActive && !!loan.fundingTxid;
+  const requiredSats = Math.round(parseFloat(String(loan.collateralBtc)) * 100_000_000);
+  const depositedSats = loan.fundedAmountSats || 0;
+  const isInsufficientDeposit = depositDetected && depositedSats > 0 && depositedSats < requiredSats;
+  const shortfallBtc = isInsufficientDeposit ? ((requiredSats - depositedSats) / 100_000_000).toFixed(8) : '0';
+  const depositedBtc = depositedSats > 0 ? (depositedSats / 100_000_000).toFixed(8) : '0';
 
   return (
     <>
@@ -501,9 +506,14 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-300">
           <Bitcoin className="h-5 w-5" />
           Deposit Your Bitcoin Collateral - Loan #{loan.id}
-          {depositDetected && (
+          {depositDetected && !isInsufficientDeposit && (
             <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-300 dark:border-green-700">
               BTC Sent
+            </span>
+          )}
+          {isInsufficientDeposit && (
+            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-300 dark:border-red-700">
+              Insufficient Deposit
             </span>
           )}
           {!depositDetected && loan.escrowMonitoringActive && (
@@ -579,10 +589,30 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           <div className="space-y-3">
             {loan.fundingTxid ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>Deposit detected — awaiting blockchain confirmation</span>
-                </div>
+                {isInsufficientDeposit ? (
+                  <Alert className="bg-red-50 dark:bg-red-900/20 border-red-300">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-sm space-y-2">
+                      <p className="font-semibold text-red-800 dark:text-red-300">Insufficient Collateral Deposited</p>
+                      <div className="grid grid-cols-2 gap-1 text-red-700 dark:text-red-400">
+                        <span>Required:</span>
+                        <span className="font-mono font-medium">{loan.collateralBtc} BTC</span>
+                        <span>Received:</span>
+                        <span className="font-mono font-medium">{depositedBtc} BTC</span>
+                        <span>Shortfall:</span>
+                        <span className="font-mono font-medium text-red-800 dark:text-red-300">{shortfallBtc} BTC</span>
+                      </div>
+                      <p className="text-red-700 dark:text-red-400 mt-2">
+                        Please send the remaining <strong>{shortfallBtc} BTC</strong> to the same escrow address above to reach the required collateral amount.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                    <span>Deposit detected — awaiting blockchain confirmation</span>
+                  </div>
+                )}
                 <div className="text-center">
                   <a 
                     href={escrowExplorerUrl || '#'}
