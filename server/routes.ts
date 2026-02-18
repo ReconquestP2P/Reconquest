@@ -3995,20 +3995,28 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         );
       } else {
         // Fallback: borrower hasn't signed — platform controls 2 of 3 keys on 2-of-3 escrow
-        // This is valid for BORROWER_DEFAULTED and TIMEOUT_DEFAULT decisions
-        if (decision === 'BORROWER_NOT_DEFAULTED') {
-          return res.status(400).json({ 
-            message: "Cannot return collateral to borrower without their signed transaction. The borrower must complete the signing ceremony first." 
-          });
-        }
-        
-        console.log(`⚠️ No borrower-signed PSBT found for loan #${loanId}. Using platform+lender keys (2-of-3).`);
+        // Platform can resolve any decision since it holds platform + lender keys (2-of-3)
         
         const { createAndSignWithPlatformKeys } = await import('./services/CollateralReleaseService.js');
         
-        result = await createAndSignWithPlatformKeys(
-          storage, loan, lenderAddress, EncryptionService, borrowerAddress, lenderOwedSats
-        );
+        if (decision === 'BORROWER_NOT_DEFAULTED') {
+          // Borrower was right — return ALL collateral to borrower (no lender share)
+          if (!borrowerAddress) {
+            return res.status(400).json({ 
+              message: "Borrower BTC address not found. Cannot return collateral." 
+            });
+          }
+          console.log(`⚠️ No borrower-signed PSBT found for loan #${loanId}. Using platform+lender keys (2-of-3) to return collateral to borrower.`);
+          result = await createAndSignWithPlatformKeys(
+            storage, loan, borrowerAddress, EncryptionService
+          );
+        } else {
+          // BORROWER_DEFAULTED or TIMEOUT_DEFAULT — split between lender and borrower
+          console.log(`⚠️ No borrower-signed PSBT found for loan #${loanId}. Using platform+lender keys (2-of-3).`);
+          result = await createAndSignWithPlatformKeys(
+            storage, loan, lenderAddress, EncryptionService, borrowerAddress, lenderOwedSats
+          );
+        }
       }
       
       if (!result.success) {
