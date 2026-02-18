@@ -58,6 +58,22 @@ export default function LenderDashboard() {
   
   // Active loan details modal state
   const [activeDetailLoan, setActiveDetailLoan] = useState<any | null>(null);
+  const [historySortColumn, setHistorySortColumn] = useState<string>("id");
+  const [historySortDirection, setHistorySortDirection] = useState<"asc" | "desc">("desc");
+  const toggleHistorySort = (column: string) => {
+    if (historySortColumn === column) {
+      setHistorySortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setHistorySortColumn(column);
+      setHistorySortDirection("desc");
+    }
+  };
+  const HistorySortIcon = ({ column }: { column: string }) => {
+    if (historySortColumn !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return historySortDirection === "asc"
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
   
   // Expandable collateral history state
   const [expandedCollateralLoanId, setExpandedCollateralLoanId] = useState<number | null>(null);
@@ -1007,20 +1023,47 @@ export default function LenderDashboard() {
                     </div>
                   );
                 }
+                const sortedInvestments = [...closedInvestments].sort((a: any, b: any) => {
+                  let valA: any, valB: any;
+                  switch (historySortColumn) {
+                    case "id": valA = a.id; valB = b.id; break;
+                    case "amount": valA = Number(a.amount); valB = Number(b.amount); break;
+                    case "interest": valA = Number(a.interestRate); valB = Number(b.interestRate); break;
+                    case "status": valA = a.status; valB = b.status; break;
+                    case "resolved": 
+                      valA = new Date(a.disputeResolvedAt || a.collateralReleasedAt || a.repaidAt || 0).getTime();
+                      valB = new Date(b.disputeResolvedAt || b.collateralReleasedAt || b.repaidAt || 0).getTime();
+                      break;
+                    default: valA = a.id; valB = b.id;
+                  }
+                  if (valA < valB) return historySortDirection === "asc" ? -1 : 1;
+                  if (valA > valB) return historySortDirection === "asc" ? 1 : -1;
+                  return 0;
+                });
                 return (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Loan ID</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Interest Rate</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleHistorySort("id")}>
+                          <div className="flex items-center">Loan ID<HistorySortIcon column="id" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleHistorySort("amount")}>
+                          <div className="flex items-center">Amount<HistorySortIcon column="amount" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleHistorySort("interest")}>
+                          <div className="flex items-center">Interest Rate<HistorySortIcon column="interest" /></div>
+                        </TableHead>
+                        <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleHistorySort("status")}>
+                          <div className="flex items-center">Status<HistorySortIcon column="status" /></div>
+                        </TableHead>
                         <TableHead>Outcome</TableHead>
-                        <TableHead>Resolved</TableHead>
+                        <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleHistorySort("resolved")}>
+                          <div className="flex items-center">Resolved<HistorySortIcon column="resolved" /></div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {closedInvestments.map((loan: any) => (
+                      {sortedInvestments.map((loan: any) => (
                         <TableRow key={loan.id}>
                           <TableCell className="font-medium">#{loan.id}</TableCell>
                           <TableCell>{loan.currency === 'EUR' ? '€' : '$'}{parseFloat(loan.amount).toLocaleString()}</TableCell>
