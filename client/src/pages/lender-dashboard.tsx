@@ -436,7 +436,7 @@ export default function LenderDashboard() {
                           </div>
 
                           {/* Escrow Verification */}
-                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-green-600 dark:text-green-400 font-semibold">✓ Bitcoin Deposited</span>
                             </div>
