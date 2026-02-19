@@ -3520,6 +3520,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       if (result.success) {
         try {
           await storage.updateLoan(loanId, {
+            status: 'completed',
             collateralReleased: true,
             escrowState: 'collateral_released',
             collateralReleaseTxid: result.txid,
@@ -4655,6 +4656,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       
       if (result.success) {
         await storage.updateLoan(loanId, {
+          status: 'completed',
           collateralReleased: true,
           escrowState: 'collateral_released',
           collateralReleaseTxid: result.txid,

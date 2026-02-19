@@ -122,14 +122,17 @@ export default function LenderDashboard() {
   
   // Only show loans as "active" if BOTH lender confirmed fiat sent AND borrower confirmed receipt
   // Also include completed loans with unreleased collateral for visibility
-  const activeInvestments = lenderLoans.filter(loan => 
-    (loan.status === "active" && 
-    loan.fiatTransferConfirmed === true && 
-    loan.borrowerConfirmedReceipt === true) ||
-    loan.status === "repayment_pending" ||
-    (loan.status === "repaid" && !loan.collateralReleased) ||
-    (loan.status === "completed" && !loan.collateralReleased)
-  );
+  const activeInvestments = lenderLoans.filter(loan => {
+    if (loan.collateralReleased) return false;
+    return (
+      (loan.status === "active" && 
+      loan.fiatTransferConfirmed === true && 
+      loan.borrowerConfirmedReceipt === true) ||
+      loan.status === "repayment_pending" ||
+      loan.status === "repaid" ||
+      loan.status === "completed"
+    );
+  });
 
   // Mutation for confirming fiat transfer sent
   const confirmFiatMutation = useMutation({
