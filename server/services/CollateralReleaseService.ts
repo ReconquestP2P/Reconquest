@@ -773,17 +773,40 @@ export async function releaseCollateral(
     }
     
     // ================================================================
-    // SECURITY: Dynamic transaction creation is BLOCKED
-    // All collateral releases MUST use pre-signed PSBTs that were
-    // locked in during the borrower signing ceremony. This prevents
-    // any attack where a compromised admin changes destination addresses.
+    // FALLBACK: No pre-signed PSBT — use platform + lender keys (2-of-3)
+    // This is safe for repayment because:
+    // 1. Both parties confirmed the repayment (borrower repaid, lender confirmed)
+    // 2. Collateral goes to borrower's registered BTC address (from user profile)
+    // 3. Platform controls platform key + lender key = 2-of-3 signing authority
     // ================================================================
-    console.error(`❌ [SECURITY] Collateral release blocked for loan #${loanId}: No pre-signed PSBT available.`);
-    console.error(`   Dynamic transaction creation is disabled for security.`);
-    console.error(`   All loans must complete the signing ceremony before collateral can be released.`);
+    if (!platformKeyMismatch && loan.lenderPrivateKeyEncrypted) {
+      console.log(`⚠️ No pre-signed PSBT for loan #${loanId}. Using platform+lender keys (2-of-3) to return collateral to borrower.`);
+      const fallbackResult = await createAndSignWithPlatformKeys(
+        storage, loan, borrower.btcAddress, EncryptionService
+      );
+      if (fallbackResult.success) {
+        console.log(`✅ [PLATFORM-RELEASE] Collateral returned to borrower via platform+lender keys: ${fallbackResult.txid}`);
+        
+        // Sweep any remaining UTXOs (multi-UTXO case)
+        try {
+          const sweepResult = await sweepRemainingUtxos(loan, borrower.btcAddress, EncryptionService);
+          if (sweepResult.sweptCount && sweepResult.sweptCount > 0) {
+            console.log(`🧹 Swept ${sweepResult.sweptCount} extra UTXO(s) (${sweepResult.sweptAmount} sats) back to borrower. Txid: ${sweepResult.txid}`);
+          }
+        } catch (sweepErr: any) {
+          console.warn(`🧹 Sweep attempt failed (non-critical): ${sweepErr.message}`);
+        }
+        
+        return fallbackResult;
+      }
+      console.error(`❌ Platform+lender key release failed: ${fallbackResult.error}`);
+      return fallbackResult;
+    }
+    
+    console.error(`❌ [SECURITY] Collateral release blocked for loan #${loanId}: No pre-signed PSBT and platform key fallback unavailable.`);
     return {
       success: false,
-      error: 'No pre-signed transaction available. Dynamic transaction creation is disabled for security. ' +
+      error: 'No pre-signed transaction available and platform key fallback is unavailable. ' +
              'The borrower must complete the signing ceremony before collateral can be released.'
     };
     
