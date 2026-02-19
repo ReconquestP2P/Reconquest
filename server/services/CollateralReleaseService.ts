@@ -700,26 +700,36 @@ export async function releaseCollateral(
     
     // ================================================================
     // STEP 1: Try to use pre-signed REPAYMENT transaction if available
+    // Check both the legacy loan column AND the pre_signed_transactions table
     // ================================================================
-    const hasPreSignedTx = loan.txRepaymentHex || loan.borrowerSigningComplete;
+    let psbtBase64: string | null = null;
+    let preSignedTxId: number | undefined;
     
-    if (hasPreSignedTx && loan.txRepaymentHex) {
-      console.log(`📋 Found pre-signed REPAYMENT transaction for loan #${loanId}`);
-      console.log(`   Using pre-signed transaction model (Firefish non-custodial)`);
-      
+    // First check pre_signed_transactions table (preferred source)
+    if (loan.borrowerSigningComplete || loan.txRepaymentHex) {
       try {
         const preSignedTxs = await storage.getPreSignedTransactions(loanId);
         const repaymentTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.REPAYMENT);
-        
-        let psbtBase64 = loan.txRepaymentHex;
-        let preSignedTxId: number | undefined;
-        
         if (repaymentTxs.length > 0) {
           psbtBase64 = repaymentTxs[0].psbt;
           preSignedTxId = repaymentTxs[0].id;
-          console.log(`   Using PSBT from pre_signed_transactions table (record #${preSignedTxId})`);
+          console.log(`📋 Found pre-signed REPAYMENT PSBT in pre_signed_transactions table (record #${preSignedTxId})`);
         }
-        
+      } catch (e: any) {
+        console.log(`⚠️ Error checking pre-signed transactions table: ${e.message}`);
+      }
+      
+      // Fallback to legacy loan column
+      if (!psbtBase64 && loan.txRepaymentHex) {
+        psbtBase64 = loan.txRepaymentHex;
+        console.log(`📋 Using legacy pre-signed REPAYMENT from loan record`);
+      }
+    }
+    
+    if (psbtBase64) {
+      console.log(`   Using pre-signed transaction model (Firefish non-custodial)`);
+      
+      try {
         if (platformKeyMismatch) {
           console.log(`🔄 [LEGACY-RELEASE] Platform key mismatch - attempting borrower+lender signing (2-of-3)`);
           const legacyResult = await addLenderOnlySignatureAndBroadcast(
@@ -739,34 +749,11 @@ export async function releaseCollateral(
             return result;
           }
           console.log(`⚠️ Pre-signed approach failed: ${result.error}`);
-          console.log(`   Falling back to dynamic transaction creation...`);
+          console.log(`   Falling back to platform key release...`);
         }
       } catch (preSignedError: any) {
         console.log(`⚠️ Pre-signed transaction error: ${preSignedError.message}`);
-        console.log(`   Falling back to dynamic transaction creation...`);
-      }
-    } else if (platformKeyMismatch && loan.borrowerSigningComplete) {
-      console.log(`📋 Borrower signing complete but no txRepaymentHex - checking pre_signed_transactions table`);
-      try {
-        const preSignedTxs = await storage.getPreSignedTransactions(loanId);
-        const repaymentTxs = preSignedTxs.filter(tx => tx.txType === STORAGE_TX_TYPES.REPAYMENT);
-        if (repaymentTxs.length > 0) {
-          const psbtBase64 = repaymentTxs[0].psbt;
-          const preSignedTxId = repaymentTxs[0].id;
-          console.log(`   Found PSBT in pre_signed_transactions (record #${preSignedTxId})`);
-          const legacyResult = await addLenderOnlySignatureAndBroadcast(
-            storage, loan, psbtBase64, EncryptionService, preSignedTxId
-          );
-          if (legacyResult.success) {
-            console.log(`✅ [LEGACY-RELEASE] Transaction broadcast successful: ${legacyResult.txid}`);
-            return legacyResult;
-          }
-          console.log(`⚠️ Legacy borrower+lender signing failed: ${legacyResult.error}`);
-        } else {
-          console.log(`❌ No pre-signed REPAYMENT PSBTs found for legacy loan #${loanId}`);
-        }
-      } catch (e: any) {
-        console.log(`⚠️ Error checking pre-signed transactions: ${e.message}`);
+        console.log(`   Falling back to platform key release...`);
       }
     } else {
       console.log(`🚫 No pre-signed transaction found for loan #${loanId}`);
