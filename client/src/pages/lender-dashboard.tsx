@@ -271,9 +271,11 @@ export default function LenderDashboard() {
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
     queryClient.invalidateQueries({ queryKey: ["/api/loans", "available"] });
+    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans/enriched`] });
+    queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
     toast({
       title: "Refreshed",
-      description: "Latest loan requests have been loaded.",
+      description: "Latest data has been loaded.",
     });
   };
 
