@@ -1,0 +1,51 @@
+Verdict on the Replit Summary
+Overall: Good on operations, dangerously incomplete on code bugs.
+
+What Replit got right — and I missed
+These are valid items missing from my audit. I'll add them to the plan file:
+
+1. PLATFORM_ENCRYPTION_KEY — Critical gap I missed
+Confirmed in EncryptionService.ts:20. If this env var is not set, every lender's encrypted private key is stored using a key derived from the hardcoded string reconquest-testnet-dev-key-v1. On mainnet that means all encrypted lender keys in the database would be decryptable by anyone who reads the source code.
+
+2. PLATFORM_BTC_ADDRESS — I missed this entirely
+Confirmed in routes.ts:1648 and LtvMonitoringService.ts:257. Used in 5+ places. When the lender's default preference is 'eur', all defaulted/liquidated collateral routes to this address. If it's unset, the LTV monitor fires a critical error and the liquidation is silently skipped.
+
+3. Email templates — I missed the hardcoded strings
+Confirmed at email.ts:185: "This is a Bitcoin TESTNET address" and LendingWorkflowService.ts:361: "This is a Bitcoin testnet Native SegWit address. Do not send mainnet Bitcoin to this address." — the second one would actively tell mainnet users not to send real BTC.
+
+4. Database testnet data separation — Valid operational concern I didn't call out explicitly.
+
+5. LTV auto-liquidation & collateral release cron — Valid operational considerations I didn't include.
+
+What Replit got wrong — and my audit caught
+These are the items where Replit's summary is incorrect or dangerously misleading:
+
+1. "Setting BITCOIN_NETWORK=mainnet flips explorer URLs" — FALSE
+
+Replit claims setting the one env var fixes explorer URLs. It does not fix two hardcoded instances:
+
+collateral-release-status.tsx:106 — hardcoded mempool.space/testnet4/tx/
+routes.ts:6450 — hardcoded mempool.space/testnet4/tx/
+These are code bugs. The env var has no effect on them.
+
+2. Three bitcoin.networks.testnet lines in bitcoin-broadcast.ts — Completely missed
+
+This is the most critical code-level bug and Replit's summary has zero mention of it. bitcoin-broadcast.ts:154, 396, 501 use the bitcoinjs-lib testnet network object for address decoding. On mainnet, attempting to decode a bc1... output using the testnet network params will either throw an error or silently produce garbage. This breaks the core collateral release flow regardless of env vars.
+
+3. escrow-setup.tsx:75 and use-firefish-wasm.ts:168 — Completely missed
+
+Replit's table says "Network selector & config: Already built — Just set env var." That's wrong. The frontend WASM call passes network: 'testnet' as a literal string (escrow-setup.tsx:75), and the hook defaults to 'testnet' when no value is passed (use-firefish-wasm.ts:168). Setting the env var on the server does nothing for these client-side calls — they will generate tb1... escrow addresses on mainnet until the code is changed.
+
+Summary table
+Item	Replit	My audit
+BITCOIN_NETWORK env var	✅	✅
+PLATFORM_SIGNING_KEY	✅	✅
+PLATFORM_ENCRYPTION_KEY hardcoded fallback	✅	❌ missed
+PLATFORM_BTC_ADDRESS	✅	❌ missed
+Email templates with "TESTNET" text	✅	❌ missed
+Database testnet data separation	✅	❌ missed
+LTV/liquidation/cron operations	✅	❌ missed
+bitcoin-broadcast.ts hardcoded bitcoin.networks.testnet	❌ missed	✅ Critical
+escrow-setup.tsx hardcoded network: 'testnet'	❌ missed	✅ Critical
+use-firefish-wasm.ts || 'testnet' fallback	❌ missed	✅ Critical
+Hardcoded testnet4 explorer URLs not fixed by env var	❌ missed	✅
