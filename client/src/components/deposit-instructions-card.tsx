@@ -546,7 +546,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         </Alert>
 
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bitcoin Testnet Escrow Address:</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bitcoin {loan.escrowAddress?.startsWith('bc1') ? 'Mainnet' : 'Testnet'} Escrow Address:</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 p-3 bg-white dark:bg-gray-800 border border-gray-300 rounded-md text-sm font-mono break-all">
               {loan.escrowAddress}
@@ -577,7 +577,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           <AlertDescription className="text-sm">
             <p className="font-semibold text-red-800 dark:text-red-300">Security Reminders:</p>
             <ul className="list-disc ml-4 mt-2 space-y-1">
-              <li>This is a <strong>Bitcoin TESTNET</strong> address</li>
+              {!loan.escrowAddress?.startsWith('bc1') && <li>This is a <strong>Bitcoin TESTNET</strong> address</li>}
               <li><strong>Double-check the address</strong> before sending</li>
               <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> in a <strong>single transaction</strong></li>
               <li>If you accidentally send multiple transactions, the platform will automatically return any extra deposits to your BTC address</li>
