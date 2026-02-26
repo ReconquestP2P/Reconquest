@@ -4,7 +4,7 @@ import { ILtvValidationService, LtvValidationResult } from './LtvValidationServi
 import { IStorage } from '../storage';
 import { Loan } from '@shared/schema';
 import { sendEmail, createBrandedEmailHtml, getBaseUrl } from '../email';
-import { getExplorerUrl } from './bitcoin-network-selector.js';
+import { getExplorerUrl, isMainnet } from './bitcoin-network-selector.js';
 
 export interface ILendingWorkflowService {
   initiateLoan(borrowerId: number, collateralBtc: number, loanAmount: number): Promise<LoanInitiationResult>;
@@ -354,11 +354,11 @@ export class LendingWorkflowService implements ILendingWorkflowService {
             
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
               <h3 style="color: #856404; margin-top: 0;">Next Step: Deposit Bitcoin Collateral</h3>
-              <p><strong>Bitcoin Testnet Escrow Address:</strong></p>
+              <p><strong>Bitcoin ${isMainnet() ? 'Mainnet' : 'Testnet'} Escrow Address:</strong></p>
               <code style="background: #fff; padding: 10px; display: block; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; word-break: break-all;">${escrowAddress}</code>
               <p style="margin-top: 10px;"><strong>Amount to Send:</strong> ${collateralBtc} BTC</p>
-              <p><strong>Network:</strong> Bitcoin Testnet</p>
-              <p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address. Do not send mainnet Bitcoin to this address.</p>
+              <p><strong>Network:</strong> Bitcoin ${isMainnet() ? 'Mainnet' : 'Testnet'}</p>
+              ${!isMainnet() ? '<p style="color: #666; font-size: 12px; margin-top: 10px;">⚠️ This is a Bitcoin testnet Native SegWit address. Do not send mainnet Bitcoin to this address.</p>' : ''}
             </div>
             
             <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px 0;">

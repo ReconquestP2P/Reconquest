@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { getExplorerUrl } from './services/bitcoin-network-selector.js';
+import { getExplorerUrl, isMainnet } from './services/bitcoin-network-selector.js';
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error("RESEND_API_KEY environment variable must be set");
@@ -182,7 +182,7 @@ export async function sendBorrowerDepositNotification(params: {
           <div style="background-color: #FADBD8; border-left: 4px solid #E74C3C; padding: 15px; margin: 20px 0; border-radius: 5px;">
             <h4 style="margin-top: 0; color: #E74C3C;">⚠️ Important Security Reminders</h4>
             <ul style="margin: 10px 0; padding-left: 20px; color: #555;">
-              <li>This is a <strong>Bitcoin TESTNET</strong> address (for testing purposes only)</li>
+              ${!isMainnet() ? '<li>This is a <strong>Bitcoin TESTNET</strong> address (for testing purposes only)</li>' : ''}
               <li><strong>Double-check the address</strong> before sending - copy it carefully</li>
               <li>Send EXACTLY <strong>${collateralBtc} BTC</strong> to this address</li>
               <li>This address is a <strong>2-of-3 multisig escrow</strong> - your funds are secured by cryptography</li>

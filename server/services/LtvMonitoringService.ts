@@ -174,9 +174,15 @@ export class LtvMonitoringService {
       result.status = 'liquidation';
       console.log(`🚨 [LtvMonitor] Loan #${loan.id} LIQUIDATION TRIGGERED! LTV: ${currentLtvPercent.toFixed(1)}%`);
       console.log(`   Collateral: ${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)} vs Loan Value (P+I): €${totalLoanValue.toFixed(2)}`);
-      
-      await this.executeLiquidation(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
-      await storage.updateLoan(loan.id, { lastLtvAlertLevel: 95 });
+
+      if (process.env.AUTO_LIQUIDATION_ENABLED !== 'true') {
+        console.warn(`[LTV Monitor] AUTO_LIQUIDATION_ENABLED is not 'true' — liquidation logged but not executed for loan ${loan.id}`);
+        console.warn(`[LTV Monitor] Loan ${loan.id} details: LTV=${currentLtvPercent.toFixed(1)}%, collateral=${collateralBtc} BTC = €${collateralValueInLoanCurrency.toFixed(2)}, totalLoanValue=€${totalLoanValue.toFixed(2)}, btcPriceUsd=$${btcPriceUsd}`);
+        await storage.updateLoan(loan.id, { lastLtvAlertLevel: 95 });
+      } else {
+        await this.executeLiquidation(loan, currentLtv, collateralValueInLoanCurrency, btcPriceUsd);
+        await storage.updateLoan(loan.id, { lastLtvAlertLevel: 95 });
+      }
     }
     // Check if we've crossed a new 5% warning bucket since last alert
     else if (currentLtvPercent >= EARLY_WARNING_LTV_THRESHOLD * 100 && currentBucket > lastAlertLevel) {

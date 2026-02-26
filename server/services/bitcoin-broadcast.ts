@@ -16,7 +16,7 @@ import type { PreSignedTransaction } from '@shared/schema';
 import { STORAGE_TX_TYPES } from '@shared/txTypes';
 import { getBitcoinRpcClient } from './bitcoin-rpc-client';
 import { PreSignedTxBuilder } from './presigned-tx-builder';
-import { getBroadcastUrl, getCurrentNetwork } from './bitcoin-network-selector.js';
+import { getBroadcastUrl, getCurrentNetwork, getNetworkParams } from './bitcoin-network-selector.js';
 import { BitcoinEscrowService } from './BitcoinEscrowService.js';
 
 // Configure secp256k1 v3 with Node.js crypto hash functions (if not already done)
@@ -151,7 +151,7 @@ async function validatePsbtIntegrity(
     }
     
     // SECURITY: Validate ALL outputs based on txType - strict recipient enforcement
-    const network = bitcoin.networks.testnet;
+    const network = getNetworkParams();
     
     // Determine exact allowed recipients based on transaction type
     let primaryRecipient: string | undefined;
@@ -393,7 +393,7 @@ export async function aggregateSignatures(
             };
           }
           
-          const network = bitcoin.networks.testnet;
+          const network = getNetworkParams();
           const outputAddress = bitcoin.address.fromOutputScript(txOutputs[0].script, network);
           
           if (outputAddress !== canonicalTemplate.outputAddress) {
@@ -498,7 +498,7 @@ export async function aggregateSignatures(
           
           const bitcoin = await import('bitcoinjs-lib');
           const finalTx = bitcoin.Transaction.fromHex(finalTxHex);
-          const network = bitcoin.networks.testnet;
+          const network = getNetworkParams();
           
           // Verify input matches escrow
           if (loanContext.escrowTxid && finalTx.ins.length > 0) {

@@ -40,6 +40,14 @@ export default function EscrowSetup({ loanId, role, onEscrowCreated }: EscrowSet
   const [importPassword, setImportPassword] = useState('');
   const [importData, setImportData] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
+  const [bitcoinNetwork, setBitcoinNetwork] = useState<'testnet' | 'mainnet'>('mainnet');
+
+  useEffect(() => {
+    fetch('/api/network/info')
+      .then(r => r.json())
+      .then(data => setBitcoinNetwork(data.isMainnet ? 'mainnet' : 'testnet'))
+      .catch(() => {}); // keep safe default ('mainnet') on failure
+  }, []);
 
   // Auto-generate platform keys (simulating platform-managed keys)
   useEffect(() => {
@@ -72,7 +80,7 @@ export default function EscrowSetup({ loanId, role, onEscrowCreated }: EscrowSet
         borrowerKeys,
         lenderKeys: lenderKeys || null,
         platformKeys,
-        network: 'testnet',
+        network: bitcoinNetwork,
       });
 
       // Submit to backend

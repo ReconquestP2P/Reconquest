@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ExternalLink, CheckCircle, Loader2, AlertCircle, RefreshCw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralRecoveryModal } from "@/components/collateral-recovery-modal";
+import { useNetworkExplorer } from "@/hooks/useNetworkExplorer";
 
 interface ReleaseStatusProps {
   loanId: number;
@@ -34,7 +35,9 @@ export function CollateralReleaseStatus({
   userId
 }: ReleaseStatusProps) {
   const { toast } = useToast();
+  const { getTxUrl } = useNetworkExplorer();
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [txExplorerUrl, setTxExplorerUrl] = useState<string>('');
   
   const { data: releaseStatus } = useQuery<{
     collateralReleased?: boolean;
@@ -79,6 +82,12 @@ export function CollateralReleaseStatus({
   const isReleased = releaseStatus?.collateralReleased || collateralReleased;
   const txid = releaseStatus?.collateralReleaseTxid || collateralReleaseTxid;
   const error = releaseStatus?.collateralReleaseError || collateralReleaseError;
+
+  useEffect(() => {
+    if (txid) {
+      getTxUrl(txid).then(url => setTxExplorerUrl(url));
+    }
+  }, [txid, getTxUrl]);
   
   const canUseRecovery = loan && userId && loan.borrowerPubkey && loan.escrowAddress;
   
@@ -103,7 +112,7 @@ export function CollateralReleaseStatus({
                 {txid}
               </code>
               <a
-                href={`https://mempool.space/testnet4/tx/${txid}`}
+                href={txExplorerUrl || `https://mempool.space/tx/${txid}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-green-600 hover:text-green-700 dark:text-green-400"

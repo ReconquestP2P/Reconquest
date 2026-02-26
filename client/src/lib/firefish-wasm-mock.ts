@@ -125,7 +125,7 @@ export function initializeEscrowState(
   borrowerKeys: KeyPair,
   lenderKeys: KeyPair | null,
   platformKeys: KeyPair,
-  network: 'testnet' | 'mainnet' = 'testnet'
+  network: 'testnet' | 'mainnet' = 'mainnet'
 ): EscrowState {
   const parties = [
     borrowerKeys.publicKey,

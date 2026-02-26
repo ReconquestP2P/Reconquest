@@ -6,6 +6,7 @@ import { EncryptionService } from './EncryptionService';
 import { storage } from '../storage';
 import type { PreSignedTransaction, InsertPreSignedTransaction } from '@shared/schema';
 import { STORAGE_TX_TYPES, normalizeToStorageType } from '@shared/txTypes';
+import { isMainnet } from './bitcoin-network-selector.js';
 
 const execAsync = promisify(exec);
 
@@ -382,11 +383,12 @@ export class TransactionTemplateService {
     if (!platformPubkey || platformPubkey.length !== 66) {
       throw new Error(`Invalid platform pubkey: must be 66 hex characters`);
     }
-    if (!borrowerAddress || !borrowerAddress.startsWith('tb1')) {
-      throw new Error(`Invalid borrower address: must be testnet bech32 (tb1...)`);
+    const expectedPrefix = isMainnet() ? 'bc1' : 'tb1';
+    if (!borrowerAddress || !borrowerAddress.startsWith(expectedPrefix)) {
+      throw new Error(`Invalid borrower address: must be bech32 (${expectedPrefix}...)`);
     }
-    if (!lenderAddress || !lenderAddress.startsWith('tb1')) {
-      throw new Error(`Invalid lender address: must be testnet bech32 (tb1...)`);
+    if (!lenderAddress || !lenderAddress.startsWith(expectedPrefix)) {
+      throw new Error(`Invalid lender address: must be bech32 (${expectedPrefix}...)`);
     }
     if (collateralAmount < 1000) {
       throw new Error(`Collateral amount too small: minimum 1000 sats`);
@@ -397,7 +399,7 @@ export class TransactionTemplateService {
     const command = [
       'python3',
       scriptPath,
-      '--network', 'testnet',
+      '--network', isMainnet() ? 'mainnet' : 'testnet',
       '--generate-psbts',
       '--json',
       '--silent',
@@ -409,7 +411,7 @@ export class TransactionTemplateService {
       '--input-value', collateralAmount.toString()
     ].join(' ');
 
-    console.log(`[TransactionTemplates] Executing: python3 bitcoin_escrow.py --network testnet ...`);
+    console.log(`[TransactionTemplates] Executing: python3 bitcoin_escrow.py --network ${isMainnet() ? 'mainnet' : 'testnet'} ...`);
 
     try {
       // Execute Python script

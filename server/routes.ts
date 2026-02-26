@@ -4531,6 +4531,12 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   // STRESS TEST: Override BTC price to simulate market crash (admin only)
   app.post("/api/admin/ltv/stress-test", authenticateToken, async (req, res) => {
     try {
+      if (process.env.BITCOIN_NETWORK === 'mainnet') {
+        return res.status(403).json({
+          message: "Stress test endpoint is disabled on mainnet. This endpoint manipulates BTC price data and must never run in production.",
+          network: 'mainnet'
+        });
+      }
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -4588,6 +4594,12 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   // Get current stress test status
   app.get("/api/admin/ltv/stress-test/status", authenticateToken, async (req, res) => {
     try {
+      if (process.env.BITCOIN_NETWORK === 'mainnet') {
+        return res.status(403).json({
+          message: "Stress test endpoint is disabled on mainnet.",
+          network: 'mainnet'
+        });
+      }
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -6448,8 +6460,8 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         collateralReleaseTxid: loan.collateralReleaseTxid,
         collateralReleasedAt: loan.collateralReleasedAt,
         collateralReleaseError: loan.collateralReleaseError,
-        explorerUrl: loan.collateralReleaseTxid 
-          ? `https://mempool.space/testnet4/tx/${loan.collateralReleaseTxid}`
+        explorerUrl: loan.collateralReleaseTxid
+          ? getExplorerUrl('tx', loan.collateralReleaseTxid)
           : null
       });
     } catch (error: any) {

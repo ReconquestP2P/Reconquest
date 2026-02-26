@@ -165,7 +165,7 @@ export function useFirefishWASM(): UseFirefishWASMReturn {
         params.borrowerKeys,
         params.lenderKeys,
         params.platformKeys,
-        params.network || 'testnet'
+        params.network || 'mainnet'
       );
 
       const newSession: EscrowSession = {

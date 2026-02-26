@@ -14,7 +14,7 @@ import {
   type LoanDocument, type InsertLoanDocument
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and, isNotNull, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -568,18 +568,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLoan(id: number): Promise<Loan | undefined> {
-    const [loan] = await db.select().from(loans).where(eq(loans.id, id));
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
+    const [loan] = await db.select().from(loans).where(and(
+      eq(loans.id, id),
+      eq(loans.networkType, currentNetwork)
+    ));
     return loan || undefined;
   }
 
   async getUserLoans(userId: number): Promise<Loan[]> {
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
-      .where(eq(loans.borrowerId, userId))
-      .union(
-        db.select().from(loans).where(eq(loans.lenderId, userId))
-      );
+      .where(and(
+        eq(loans.networkType, currentNetwork),
+        or(eq(loans.borrowerId, userId), eq(loans.lenderId, userId))
+      ));
   }
 
   async createLoan(loanData: InsertLoan & { borrowerId: number }): Promise<Loan> {
@@ -590,6 +595,7 @@ export class DatabaseStorage implements IStorage {
         currency: loanData.currency || "USDC",
         purpose: loanData.purpose || null,
         dueDate: loanData.dueDate ?? null,
+        networkType: process.env.BITCOIN_NETWORK || 'testnet4',
       })
       .returning();
     return loan;
@@ -605,13 +611,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllLoans(): Promise<Loan[]> {
-    return await db.select().from(loans);
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
+    return await db.select().from(loans).where(eq(loans.networkType, currentNetwork));
   }
 
   async getAvailableLoans(): Promise<Loan[]> {
-    const { and } = await import('drizzle-orm');
     // Get current network type from environment
-    const currentNetwork = process.env.BITCOIN_NETWORK === 'mainnet' ? 'mainnet' : 'testnet4';
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
@@ -622,14 +628,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLoansWithActiveMonitoring(): Promise<Loan[]> {
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
-      .where(eq(loans.escrowMonitoringActive, true));
+      .where(and(
+        eq(loans.escrowMonitoringActive, true),
+        eq(loans.networkType, currentNetwork)
+      ));
   }
 
   async getLoansAwaitingDeposit(): Promise<Loan[]> {
-    const { and, isNotNull, isNull } = await import('drizzle-orm');
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
@@ -638,20 +648,25 @@ export class DatabaseStorage implements IStorage {
           isNotNull(loans.escrowAddress),
           eq(loans.borrowerSigningComplete, true),
           isNull(loans.depositConfirmedAt),
-          eq(loans.escrowState, 'escrow_created')
+          eq(loans.escrowState, 'escrow_created'),
+          eq(loans.networkType, currentNetwork)
         )
       );
   }
 
   async getLoansWithActiveTopUpMonitoring(): Promise<Loan[]> {
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
-      .where(eq(loans.topUpMonitoringActive, true));
+      .where(and(
+        eq(loans.topUpMonitoringActive, true),
+        eq(loans.networkType, currentNetwork)
+      ));
   }
 
   async getActiveLoansForLtvCheck(): Promise<Loan[]> {
-    const { and, isNotNull, or } = await import('drizzle-orm');
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
     return await db
       .select()
       .from(loans)
@@ -662,7 +677,8 @@ export class DatabaseStorage implements IStorage {
             eq(loans.escrowState, 'keys_generated'),
             eq(loans.escrowState, 'deposit_confirmed')
           ),
-          isNotNull(loans.escrowAddress)
+          isNotNull(loans.escrowAddress),
+          eq(loans.networkType, currentNetwork)
         )
       );
   }
@@ -683,10 +699,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserOffers(userId: number): Promise<LoanOffer[]> {
-    return await db
-      .select()
+    const currentNetwork = process.env.BITCOIN_NETWORK || 'testnet4';
+    const rows = await db
+      .select({
+        id: loanOffers.id,
+        loanId: loanOffers.loanId,
+        lenderId: loanOffers.lenderId,
+        amount: loanOffers.amount,
+        interestRate: loanOffers.interestRate,
+        status: loanOffers.status,
+        createdAt: loanOffers.createdAt,
+      })
       .from(loanOffers)
-      .where(eq(loanOffers.lenderId, userId));
+      .innerJoin(loans, eq(loanOffers.loanId, loans.id))
+      .where(and(
+        eq(loanOffers.lenderId, userId),
+        eq(loans.networkType, currentNetwork)
+      ));
+    return rows;
   }
 
   async getLoanOffer(offerId: number): Promise<LoanOffer | undefined> {
@@ -805,7 +835,6 @@ export class DatabaseStorage implements IStorage {
 
   async getPreSignedTransactions(loanId: number, txType?: string): Promise<PreSignedTransaction[]> {
     if (txType) {
-      const { and } = await import("drizzle-orm");
       return await db
         .select()
         .from(preSignedTransactions)

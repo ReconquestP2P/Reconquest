@@ -14,8 +14,13 @@ export class EncryptionService {
   private static getEncryptionKey(): Buffer {
     const key = process.env.PLATFORM_ENCRYPTION_KEY;
     if (!key) {
-      // For development/testnet, generate a deterministic key from environment
-      // In production, this MUST come from HSM/KMS
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          '[EncryptionService] PLATFORM_ENCRYPTION_KEY must be set in production. ' +
+          'Refusing to use insecure hardcoded fallback key.'
+        );
+      }
+      // Development/testnet only fallback
       console.warn('[EncryptionService] WARNING: Using fallback encryption key. Set PLATFORM_ENCRYPTION_KEY in production.');
       const fallbackKey = crypto.createHash('sha256').update('reconquest-testnet-dev-key-v1').digest();
       return fallbackKey;

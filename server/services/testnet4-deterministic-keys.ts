@@ -1,9 +1,16 @@
+if (process.env.BITCOIN_NETWORK === 'mainnet') {
+  throw new Error(
+    '[testnet4-deterministic-keys] Deterministic test keys must never be used on mainnet. ' +
+    'Remove all imports of this module from production code paths before going live.'
+  );
+}
+
 /**
  * Deterministic Key Generator for Testnet4 2-of-3 Multisig
- * 
+ *
  * IMPORTANT: These are TEST keys only - for Testnet4 demonstration.
  * In production, each party generates their own keys client-side.
- * 
+ *
  * Keys are derived deterministically from seed phrases so you can:
  * 1. Recreate the same multisig in Sparrow wallet
  * 2. Verify signatures independently

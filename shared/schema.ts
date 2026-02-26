@@ -195,7 +195,7 @@ export const loans = pgTable("loans", {
   lenderBtcAddress: text("lender_btc_address"), // BTC address locked at funding time for this specific loan
 
   // Network Type (testnet4, mainnet)
-  networkType: text("network_type").default("testnet4"),
+  networkType: text("network_type").$defaultFn(() => process.env.BITCOIN_NETWORK || 'testnet4'),
 });
 
 export const loanOffers = pgTable("loan_offers", {

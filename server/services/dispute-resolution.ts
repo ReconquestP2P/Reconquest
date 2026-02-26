@@ -8,8 +8,8 @@
 
 import * as tinysecp from 'tiny-secp256k1';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { generateTestnet4Multisig, sortPublicKeysBIP67 } from './testnet4-deterministic-keys.js';
-import { TESTNET4_CONFIG } from './testnet4-config.js';
+import { BitcoinEscrowService } from './BitcoinEscrowService.js';
+import { getBroadcastUrl } from './bitcoin-network-selector.js';
 import { 
   type Loan, 
   type Dispute,
@@ -196,10 +196,10 @@ function createBIP143Sighash(
 }
 
 /**
- * Broadcast transaction to Testnet4
+ * Broadcast transaction to Bitcoin network
  */
 async function broadcastTransaction(txHex: string): Promise<string> {
-  const url = TESTNET4_CONFIG.api.broadcastTx;
+  const url = getBroadcastUrl();
   console.log(`[DisputeResolution] Broadcasting to: ${url}`);
   
   const response = await fetch(url, {
@@ -263,9 +263,8 @@ export async function resolveDispute(
     };
   }
   
-  // 4. Get platform key for signing
-  const multisig = generateTestnet4Multisig();
-  const platformPrivateKey = multisig.keypairs.platform.privateKeyHex;
+  // 4. Get platform key for signing (always from environment, never hardcoded)
+  const platformPrivateKey = BitcoinEscrowService.getPlatformPrivateKey();
   
   // 5. Parse the pre-signed transaction to extract components
   // The pre-signed tx should already have borrower+lender signatures
