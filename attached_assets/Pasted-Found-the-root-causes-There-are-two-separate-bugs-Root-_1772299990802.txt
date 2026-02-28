@@ -1,0 +1,54 @@
+Found the root causes. There are two separate bugs:
+
+Root Cause Analysis
+Bug 1 — server/utils/multisig-creator.ts line 192: hardcoded 'tb' HRP
+This is the critical one. The function that generates the actual P2WSH address has 'tb' (testnet prefix) hardcoded with no network awareness whatsoever:
+
+
+// multisig-creator.ts:190-193
+function createP2WSHAddress(witnessScript: Uint8Array): string {
+  const scriptHash = sha256(witnessScript);
+  return bech32Encode('tb', 0, scriptHash);  // ← 'tb' hardcoded — always testnet
+}
+The comment on line 7 even says "This generates VALID P2WSH testnet addresses". This function is called by createMultisigAddress (line 213), which is called by the route at server/routes.ts:1612 to generate every escrow address stored in the DB. Every single loan, regardless of BITCOIN_NETWORK, gets a tb1q... address.
+
+Bug 2 — deposit-instructions-card.tsx line 549: hardcoded label
+
+<p className="...">Bitcoin Testnet Escrow Address:</p>
+The word "Testnet" is a string literal — it never changes regardless of network.
+
+Proposed fixes
+Fix 1 — server/utils/multisig-creator.ts
+
+
+// BEFORE:
+function createP2WSHAddress(witnessScript: Uint8Array): string {
+  const scriptHash = sha256(witnessScript);
+  return bech32Encode('tb', 0, scriptHash);
+}
+
+// AFTER:
+function createP2WSHAddress(witnessScript: Uint8Array, hrp: string): string {
+  const scriptHash = sha256(witnessScript);
+  return bech32Encode(hrp, 0, scriptHash);
+}
+And in createMultisigAddress (line 213):
+
+
+// BEFORE:
+const address = createP2WSHAddress(witnessScript);
+
+// AFTER:
+const hrp = process.env.BITCOIN_NETWORK === 'mainnet' ? 'bc' : 'tb';
+const address = createP2WSHAddress(witnessScript, hrp);
+Fix 2 — deposit-instructions-card.tsx
+
+
+// BEFORE:
+<p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bitcoin Testnet Escrow Address:</p>
+
+// AFTER:
+<p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+  Bitcoin {loan.escrowAddress?.startsWith('bc1') ? 'Mainnet' : 'Testnet'} Escrow Address:
+</p>
+This derives the label from the actual address prefix, so it's always accurate regardless of what the server was configured at creation time.
