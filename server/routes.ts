@@ -33,7 +33,7 @@ import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_inte
 import networkInfoRoutes from "./routes/network-info.js";
 import { mainnetLoanCreationLimits, mainnetLoanFundingLimits, getMainnetSafetyStatus } from "./middleware/mainnet-safety-limits";
 import { validateNetworkAddresses, validateAddressEndpoint, getValidationStats, detectAddressNetwork } from "./middleware/network-address-validator";
-import { getExplorerUrl } from "./services/bitcoin-network-selector.js";
+import { getExplorerUrl, isMainnet } from "./services/bitcoin-network-selector.js";
 
 // JWT secret - in production this should be an environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'reconquest_dev_secret_key_2025';
@@ -1706,10 +1706,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           console.warn(`⚠️ PSBT generation returned empty result`);
+          if (isMainnet()) {
+            return res.status(500).json({
+              message: "Escrow setup failed: PSBT generation returned no templates. BTC funds cannot be safely secured without them. Please contact support."
+            });
+          }
         }
       } catch (psbtError: any) {
-        console.error(`⚠️ PSBT generation error (non-fatal):`, psbtError.message);
-        // Continue without PSBTs - backward compatibility with old flow
+        console.error(`⚠️ PSBT generation error:`, psbtError.message);
+        if (isMainnet()) {
+          return res.status(500).json({
+            message: "Escrow setup failed: could not generate pre-signed transaction templates. BTC funds cannot be safely secured without them. Please contact support.",
+            detail: psbtError.message
+          });
+        }
+        // On testnet only: continue without PSBTs for development flexibility
+        console.warn(`⚠️ Continuing without PSBTs (testnet only)`);
       }
       
       // Send email to borrower with deposit instructions
