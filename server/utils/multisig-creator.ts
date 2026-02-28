@@ -1,9 +1,10 @@
 import * as secp256k1 from '@noble/secp256k1';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { getCurrentNetworkConfig } from '../services/bitcoin-network-selector.js';
 
 /**
  * Multisig Creator - Server-side utility for creating 2-of-3 multisig Bitcoin addresses
- * This generates VALID P2WSH testnet addresses with proper bech32 encoding
+ * Generates VALID P2WSH bech32 addresses for the current network (mainnet or testnet)
  */
 
 export interface MultisigAddress {
@@ -76,7 +77,7 @@ function createWitnessScript(pubkeys: string[]): Uint8Array {
   const scriptParts: number[] = [];
   
   scriptParts.push(0x52); // OP_2
-  
+
   for (const pubkeyHex of sortedPubkeys) {
     const pubkeyBytes = hexToBytes(pubkeyHex);
     scriptParts.push(pubkeyBytes.length); // Push length (33 = 0x21)
@@ -186,15 +187,18 @@ function bech32Encode(hrp: string, witnessVersion: number, data: Uint8Array): st
 /**
  * Create P2WSH address from witness script
  * P2WSH = bech32(OP_0 || SHA256(witnessScript))
+ * Uses the bech32 prefix from the current network config (bc for mainnet, tb for testnet)
  */
 function createP2WSHAddress(witnessScript: Uint8Array): string {
+  const networkConfig = getCurrentNetworkConfig();
+  const hrp = networkConfig.networkParams.bech32; // 'bc' for mainnet, 'tb' for testnet
   const scriptHash = sha256(witnessScript);
-  return bech32Encode('tb', 0, scriptHash);
+  return bech32Encode(hrp, 0, scriptHash);
 }
 
 /**
- * Create a 2-of-3 multisig Bitcoin testnet address
- * Generates a VALID P2WSH bech32 address that works on testnet/testnet4
+ * Create a 2-of-3 multisig Bitcoin address for the current network
+ * Generates a VALID P2WSH bech32 address (bc1... for mainnet, tb1... for testnet)
  */
 export async function createMultisigAddress(
   borrowerPubkey: string,
@@ -212,7 +216,8 @@ export async function createMultisigAddress(
   const scriptHashHex = bytesToHex(scriptHash);
   const address = createP2WSHAddress(witnessScript);
 
-  console.log(`✅ Created 2-of-3 multisig address: ${address}`);
+  const networkConfig = getCurrentNetworkConfig();
+  console.log(`✅ Created 2-of-3 multisig address (${networkConfig.network}): ${address}`);
   console.log(`   Borrower: ${borrowerPubkey.substring(0, 20)}...`);
   console.log(`   Lender: ${lenderPubkey.substring(0, 20)}...`);
   console.log(`   Platform: ${platformPubkey.substring(0, 20)}...`);
