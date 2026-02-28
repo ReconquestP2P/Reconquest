@@ -396,7 +396,7 @@ export class TransactionTemplateService {
 
     // Build Python command
     const scriptPath = path.resolve(process.cwd(), 'bitcoin_escrow.py');
-    const command = [
+    const cmdParts = [
       'python3',
       scriptPath,
       '--network', isMainnet() ? 'mainnet' : 'testnet',
@@ -409,7 +409,11 @@ export class TransactionTemplateService {
       '--borrower-address', borrowerAddress,
       '--lender-address', lenderAddress,
       '--input-value', collateralAmount.toString()
-    ].join(' ');
+    ];
+    if (isMainnet()) {
+      cmdParts.push('--confirm-mainnet');
+    }
+    const command = cmdParts.join(' ');
 
     console.log(`[TransactionTemplates] Executing: python3 bitcoin_escrow.py --network ${isMainnet() ? 'mainnet' : 'testnet'} ...`);
 

@@ -69,14 +69,14 @@ function sortPublicKeysBIP67(pubkeys: string[]): string[] {
 }
 
 /**
- * Create a 2-of-3 multisig witness script
- * Script: OP_2 <pubkey1> <pubkey2> <pubkey3> OP_3 OP_CHECKMULTISIG
+ * Create a 3-of-3 multisig witness script
+ * Script: OP_3 <pubkey1> <pubkey2> <pubkey3> OP_3 OP_CHECKMULTISIG
  */
 function createWitnessScript(pubkeys: string[]): Uint8Array {
   const sortedPubkeys = sortPublicKeysBIP67(pubkeys);
   const scriptParts: number[] = [];
   
-  scriptParts.push(0x52); // OP_2
+  scriptParts.push(0x53); // OP_3 (require all 3 signatures)
 
   for (const pubkeyHex of sortedPubkeys) {
     const pubkeyBytes = hexToBytes(pubkeyHex);
