@@ -1055,7 +1055,8 @@ export async function completeRecoveryWithSignatures(
     }
     
     const borrower = await storage.getUser(loan.borrowerId);
-    if (!borrower || !borrower.btcAddress) {
+    const borrowerReturnAddress = (loan as any).borrowerAddress || borrower?.btcAddress;
+    if (!borrowerReturnAddress) {
       return { success: false, error: 'No borrower return address found' };
     }
     
@@ -1094,7 +1095,7 @@ export async function completeRecoveryWithSignatures(
       verifyTx.addInput(Buffer.from(utxo.txid, 'hex').reverse(), utxo.vout);
     }
     verifyTx.addOutput(
-      bitcoin.address.toOutputScript(borrower.btcAddress, network),
+      bitcoin.address.toOutputScript(borrowerReturnAddress, network),
       BigInt(outputValue)
     );
     
@@ -1146,7 +1147,7 @@ export async function completeRecoveryWithSignatures(
     }
     
     psbt.addOutput({
-      address: borrower.btcAddress,
+      address: borrowerReturnAddress,
       value: BigInt(outputValue),
     });
     
