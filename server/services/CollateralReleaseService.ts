@@ -940,7 +940,8 @@ export async function prepareRecoverySighashes(
     }
     
     const borrower = await storage.getUser(loan.borrowerId);
-    if (!borrower || !borrower.btcAddress) {
+    const borrowerReturnAddress = (loan as any).borrowerAddress || borrower?.btcAddress;
+    if (!borrowerReturnAddress) {
       return { success: false, error: 'No borrower return address found. Please set your BTC address in settings.' };
     }
     
@@ -968,7 +969,7 @@ export async function prepareRecoverySighashes(
       return { success: false, error: 'UTXO value too small to cover fees (dust limit)' };
     }
     
-    console.log(`💰 [RECOVERY] Transaction: ${totalInputValue} - ${fee} = ${outputValue} sats → ${borrower.btcAddress} (${feeEstimateRecovery.feeRate} sat/vB × ${feeEstimateRecovery.estimatedVbytes} vB, source: ${feeEstimateRecovery.source})`);
+    console.log(`💰 [RECOVERY] Transaction: ${totalInputValue} - ${fee} = ${outputValue} sats → ${borrowerReturnAddress} (${feeEstimateRecovery.feeRate} sat/vB × ${feeEstimateRecovery.estimatedVbytes} vB, source: ${feeEstimateRecovery.source})`);
     
     const network = getNetwork();
     const tx = new bitcoin.Transaction();
@@ -979,7 +980,7 @@ export async function prepareRecoverySighashes(
     }
     
     tx.addOutput(
-      bitcoin.address.toOutputScript(borrower.btcAddress, network),
+      bitcoin.address.toOutputScript(borrowerReturnAddress, network),
       BigInt(outputValue)
     );
     
@@ -1003,7 +1004,7 @@ export async function prepareRecoverySighashes(
         utxos,
         outputValue,
         fee,
-        destinationAddress: borrower.btcAddress,
+        destinationAddress: borrowerReturnAddress,
         totalInputValue,
         signaturesRequired: mRequired,
       },
