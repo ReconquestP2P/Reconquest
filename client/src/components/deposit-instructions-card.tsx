@@ -580,7 +580,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
               {!loan.escrowAddress?.startsWith('bc1') && <li>This is a <strong>Bitcoin TESTNET</strong> address</li>}
               <li><strong>Double-check the address</strong> before sending</li>
               <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> in a <strong>single transaction</strong></li>
-              <li>Send only one transaction — every deposit is locked in the 3-of-3 multisig escrow and requires your signature to release</li>
+              <li>If you accidentally send multiple transactions, the extra amount will be locked in the escrow as part of a top-up in collateral</li>
             </ul>
           </AlertDescription>
         </Alert>
