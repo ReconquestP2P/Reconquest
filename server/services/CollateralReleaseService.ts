@@ -776,7 +776,7 @@ export async function releaseCollateral(
         
         // Sweep any remaining UTXOs (multi-UTXO case)
         try {
-          const sweepResult = await sweepRemainingUtxos(loan, borrower.btcAddress, EncryptionService);
+          const sweepResult = await sweepRemainingUtxos(loan, (loan as any).borrowerAddress || borrower.btcAddress, EncryptionService);
           if (sweepResult.sweptCount && sweepResult.sweptCount > 0) {
             console.log(`🧹 Swept ${sweepResult.sweptCount} extra UTXO(s) (${sweepResult.sweptAmount} sats) back to borrower. Txid: ${sweepResult.txid}`);
           }

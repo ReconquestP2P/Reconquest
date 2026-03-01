@@ -68,9 +68,10 @@ export async function processLoanRelease(
     if (loan.borrowerId) {
       try {
         const borrower = await storage.getUser(loan.borrowerId);
-        if (borrower?.btcAddress && loan.escrowAddress && loan.lenderPrivateKeyEncrypted) {
+        const sweepReturnAddress = (loan as any).borrowerAddress || borrower?.btcAddress;
+        if (sweepReturnAddress && loan.escrowAddress && loan.lenderPrivateKeyEncrypted) {
           const { EncryptionService } = await import('./EncryptionService.js');
-          const sweepResult = await sweepRemainingUtxos(loan, borrower.btcAddress, EncryptionService);
+          const sweepResult = await sweepRemainingUtxos(loan, sweepReturnAddress, EncryptionService);
           if (sweepResult.sweptCount && sweepResult.sweptCount > 0) {
             console.log(`[AutoRelease] 🧹 Swept ${sweepResult.sweptCount} extra UTXO(s) (${sweepResult.sweptAmount} sats) back to borrower. Txid: ${sweepResult.txid}`);
           }
