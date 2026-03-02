@@ -360,11 +360,14 @@ export class PsbtCreatorService {
       
       // Check if expected pubkey is in signatures
       const expectedPubkey = Buffer.from(pubkeyHex, 'hex');
-      const hasPubkey = input.partialSig.some(sig => sig.pubkey.equals(expectedPubkey));
+      console.log(`[VerifySig] Checking for pubkey ${pubkeyHex.slice(0, 20)}... in ${input.partialSig.length} partial sig(s)`);
+      const hasPubkey = input.partialSig.some(sig => Buffer.from(sig.pubkey).equals(expectedPubkey));
       if (!hasPubkey) {
         console.log('[PsbtCreator] Expected pubkey not found in signatures');
+        console.log('[VerifySig] Available pubkeys:', input.partialSig.map((sig: any) => Buffer.from(sig.pubkey).toString('hex').slice(0, 20) + '...'));
         return false;
       }
+      console.log('[VerifySig] Pubkey found, attempting cryptographic verification...');
       
       // Cryptographically verify signatures using bitcoinjs-lib
       // This validates the signature against the sighash
@@ -460,11 +463,16 @@ export class PsbtCreatorService {
       const psbt = bitcoin.Psbt.fromBase64(psbtBase64, { network });
       
       const txInput = psbt.txInputs[inputIndex];
-      const inputTxid = txInput.hash.reverse().toString('hex');
+      const inputTxid = Buffer.from(txInput.hash).reverse().toString('hex');
       const inputVout = txInput.index;
       
+      console.log(`[VerifyUtxo] PSBT has txid=${inputTxid} vout=${inputVout}`);
+      console.log(`[VerifyUtxo] Expected txid=${expectedTxid} vout=${expectedVout}`);
+      console.log(`[VerifyUtxo] Match: txid=${inputTxid === expectedTxid} vout=${inputVout === expectedVout}`);
+      
       return inputTxid === expectedTxid && inputVout === expectedVout;
-    } catch {
+    } catch (e: any) {
+      console.error(`[VerifyUtxo] Parse error:`, e.message);
       return false;
     }
   }
