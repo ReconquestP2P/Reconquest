@@ -215,98 +215,102 @@ export function SigningCeremonyModal({ isOpen, onClose, loan, role, userId }: Si
   };
 
   const signTransactions = async (privateKey: Uint8Array, publicKey: string) => {
-    const signedTransactions: SignedTransaction[] = [];
-    const signatures: Record<string, string> = {};
-    
-    // Reset progress
     setSigningProgress({
       repayment: 'pending',
       default: 'pending',
       liquidation: 'pending',
       recovery: 'pending'
     });
-    
-    // Borrowers sign all 4 transaction types
+
+    const signedTransactions: SignedTransaction[] = [];
+    const signedPsbts: Array<{ type: string; psbtBase64: string; signature: string; txHash: string }> = [];
+
     if (role === 'borrower') {
       const txTypes: Array<'repayment' | 'default' | 'liquidation' | 'recovery'> = ['repayment', 'default', 'liquidation', 'recovery'];
-      
+
       for (const txType of txTypes) {
         try {
           setSigningProgress(prev => ({ ...prev, [txType]: 'signing' }));
-          
+
           const psbtData = await fetchPSBTTemplate(loan.id, txType);
           if (psbtData) {
-            // Sign the PSBT content
-            const messageHash = sha256(new TextEncoder().encode(psbtData.psbtBase64));
-            const signature = await secp256k1.sign(messageHash, privateKey, { prehash: false });
-            
-            // Convert to DER format for the new API
-            const derSig = serializeSignatureDER(signature);
-            signatures[txType] = derSig;
-            
+            const signedPsbtBase64 = await signPsbtWithKey(
+              psbtData.psbtBase64,
+              privateKey,
+              publicKey
+            );
+
             signedTransactions.push({
               type: txType,
-              psbt: psbtData.psbtBase64,
-              signature: derSig,
+              psbt: signedPsbtBase64,
+              signature: 'embedded_in_psbt',
               txHash: psbtData.txHash,
             });
-            
+
+            signedPsbts.push({
+              type: txType,
+              psbtBase64: signedPsbtBase64,
+              signature: 'embedded_in_psbt',
+              txHash: psbtData.txHash,
+            });
+
             setSigningProgress(prev => ({ ...prev, [txType]: 'signed' }));
-            console.log(`✓ Signed ${txType} transaction`);
+            console.log(`✓ Signed ${txType} with Bitcoin BIP143 sighash`);
           } else {
-            console.warn(`No PSBT found for ${txType}`);
+            console.warn(`No PSBT template found for ${txType}`);
             setSigningProgress(prev => ({ ...prev, [txType]: 'error' }));
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error(`Error signing ${txType}:`, err);
           setSigningProgress(prev => ({ ...prev, [txType]: 'error' }));
         }
       }
-    }
-    
-    // Wipe private key immediately after signing
-    privateKey.fill(0);
-    console.log('Private key wiped from memory');
-    
-    if (Object.keys(signatures).length === 0) {
-      throw new Error('No PSBT templates found. Please ensure the key ceremony completed successfully.');
-    }
-    
-    console.log(`Signed ${Object.keys(signatures).length} transactions`);
-    
-    // Submit all signatures to the new API endpoint
-    try {
-      const submitResponse = await apiRequest(`/api/loans/${loan.id}/submit-signatures`, 'POST', {
-        signatures,
-        borrowerPubkey: publicKey
-      });
-      
-      const submitData = await submitResponse.json();
-      
-      if (!submitData.success) {
-        throw new Error(submitData.error || 'Failed to submit signatures');
+
+      // Wipe private key immediately after all signing is done
+      privateKey.fill(0);
+      console.log('Private key wiped from memory');
+
+      if (signedPsbts.length === 0) {
+        throw new Error('No PSBT templates found. Ensure your deposit has confirmed and try again.');
       }
-      
-      console.log('All signatures submitted to platform');
-    } catch (err: any) {
-      console.error('Error submitting signatures:', err);
-      throw new Error(`Failed to submit signatures: ${err.message}`);
+
+      console.log(`Submitting ${signedPsbts.length} properly signed PSBTs to server`);
+
+      const submitResponse = await apiRequest(`/api/loans/${loan.id}/sign-templates`, 'POST', {
+        signedPsbts,
+      });
+
+      const submitData = await submitResponse.json();
+
+      if (!submitData.success) {
+        const rejectedReason = submitData.rejected?.[0]?.reason;
+        throw new Error(rejectedReason || submitData.message || 'Server rejected signed PSBTs');
+      }
+
+      if ((submitData.stored?.length ?? 0) === 0) {
+        throw new Error('No PSBTs were accepted. Check the browser console for details.');
+      }
+
+      console.log(`Server accepted ${submitData.stored.length} signed PSBTs`);
+
+      // Download recovery file (contains signed PSBTs for offline recovery)
+      const result = { publicKey, signedTransactions };
+      downloadSignedTransactions(loan.id, role, result);
+      console.log('Recovery file downloaded');
+    } else {
+      // Wipe private key for non-borrower roles too
+      privateKey.fill(0);
     }
-    
-    // Download recovery file
-    const result = { publicKey, signedTransactions };
-    downloadSignedTransactions(loan.id, role, result);
-    console.log('Recovery file downloaded');
-    
-    // Complete signing ceremony
+
+    // Mark signing ceremony complete
     const response = await apiRequest(`/api/loans/${loan.id}/complete-signing`, 'POST', { role });
     const data = await response.json();
-    
+
     setTransactionsGenerated(true);
     setStep('complete');
-    
+
     queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
-    
+
     toast({
       title: data.loanActivated ? "Loan Activated!" : "Signing Complete!",
       description: data.message,
@@ -789,6 +793,208 @@ function serializeSignatureDER(signature: any): string {
   const totalLen = (innerContent.length / 2).toString(16).padStart(2, '0');
   
   return '30' + totalLen + innerContent;
+}
+
+// ================================================================
+// Bitcoin PSBT Signing — pure JS, no Buffer or WASM needed
+// Implements BIP143 P2WSH sighash for Segwit inputs
+// ================================================================
+
+interface PsbtEntry { key: Uint8Array; value: Uint8Array; }
+interface ParsedPsbt {
+  globalEntries: PsbtEntry[];
+  inputEntries: PsbtEntry[][];
+  outputEntries: PsbtEntry[][];
+}
+
+function concatU8(...arrays: Uint8Array[]): Uint8Array {
+  const len = arrays.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(len);
+  let off = 0;
+  for (const a of arrays) { out.set(a, off); off += a.length; }
+  return out;
+}
+
+function writeVI(n: number): Uint8Array {
+  if (n < 0xfd) return new Uint8Array([n]);
+  if (n < 0x10000) return new Uint8Array([0xfd, n & 0xff, (n >> 8) & 0xff]);
+  return new Uint8Array([0xfe, n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff]);
+}
+
+function readVI(buf: Uint8Array, pos: number): [number, number] {
+  const f = buf[pos];
+  if (f < 0xfd) return [f, pos + 1];
+  if (f === 0xfd) return [buf[pos + 1] | (buf[pos + 2] << 8), pos + 3];
+  const v = new DataView(buf.buffer, buf.byteOffset + pos + 1, 4);
+  return [v.getUint32(0, true), pos + 5];
+}
+
+function le32(n: number): Uint8Array {
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setUint32(0, n >>> 0, true);
+  return b;
+}
+
+function le64(n: bigint): Uint8Array {
+  const b = new Uint8Array(8);
+  new DataView(b.buffer).setBigUint64(0, n, true);
+  return b;
+}
+
+function dsha256(data: Uint8Array): Uint8Array {
+  return sha256(sha256(data));
+}
+
+function parsePsbtBinary(bytes: Uint8Array): ParsedPsbt {
+  if (bytes[0] !== 0x70 || bytes[1] !== 0x73 || bytes[2] !== 0x62 ||
+      bytes[3] !== 0x74 || bytes[4] !== 0xff) {
+    throw new Error('Invalid PSBT magic bytes');
+  }
+  let pos = 5;
+
+  function readEntry(): PsbtEntry | null {
+    const [keyLen, p1] = readVI(bytes, pos); pos = p1;
+    if (keyLen === 0) return null;
+    const key = bytes.slice(pos, pos + keyLen); pos += keyLen;
+    const [valLen, p2] = readVI(bytes, pos); pos = p2;
+    const value = bytes.slice(pos, pos + valLen); pos += valLen;
+    return { key, value };
+  }
+
+  const globalEntries: PsbtEntry[] = [];
+  while (true) { const e = readEntry(); if (!e) break; globalEntries.push(e); }
+
+  const unsignedTxEntry = globalEntries.find(e => e.key[0] === 0x00);
+  if (!unsignedTxEntry) throw new Error('No unsigned tx in PSBT');
+  const tx = unsignedTxEntry.value;
+
+  let tp = 4;
+  const [nIn, tp2] = readVI(tx, tp); tp = tp2;
+  for (let i = 0; i < nIn; i++) {
+    tp += 36;
+    const [sl, tp3] = readVI(tx, tp); tp = tp3 + sl + 4;
+  }
+  const [nOut, tp4] = readVI(tx, tp); tp = tp4;
+
+  const inputEntries: PsbtEntry[][] = [];
+  for (let i = 0; i < nIn; i++) {
+    const entries: PsbtEntry[] = [];
+    while (true) { const e = readEntry(); if (!e) break; entries.push(e); }
+    inputEntries.push(entries);
+  }
+
+  const outputEntries: PsbtEntry[][] = [];
+  for (let i = 0; i < nOut; i++) {
+    const entries: PsbtEntry[] = [];
+    while (true) { const e = readEntry(); if (!e) break; entries.push(e); }
+    outputEntries.push(entries);
+  }
+
+  return { globalEntries, inputEntries, outputEntries };
+}
+
+function encodePsbtBinary(parsed: ParsedPsbt): string {
+  const magic = new Uint8Array([0x70, 0x73, 0x62, 0x74, 0xff]);
+  const sep = new Uint8Array([0x00]);
+  function encEntry(e: PsbtEntry): Uint8Array {
+    return concatU8(writeVI(e.key.length), e.key, writeVI(e.value.length), e.value);
+  }
+  const parts: Uint8Array[] = [magic];
+  for (const e of parsed.globalEntries) parts.push(encEntry(e));
+  parts.push(sep);
+  for (const inpEntries of parsed.inputEntries) {
+    for (const e of inpEntries) parts.push(encEntry(e));
+    parts.push(sep);
+  }
+  for (const outEntries of parsed.outputEntries) {
+    for (const e of outEntries) parts.push(encEntry(e));
+    parts.push(sep);
+  }
+  const raw = concatU8(...parts);
+  return btoa(String.fromCharCode(...raw));
+}
+
+function computeBip143Sighash(parsed: ParsedPsbt, inputIndex: number): Uint8Array {
+  const tx = parsed.globalEntries.find(e => e.key[0] === 0x00)!.value;
+  const inpEntries = parsed.inputEntries[inputIndex];
+
+  const witnessUtxoEntry = inpEntries.find(e => e.key[0] === 0x01);
+  const witnessScriptEntry = inpEntries.find(e => e.key[0] === 0x04);
+  if (!witnessUtxoEntry) throw new Error('PSBT input missing witnessUtxo (key 0x01)');
+  if (!witnessScriptEntry) throw new Error('PSBT input missing witnessScript (key 0x04)');
+
+  const witnessUtxoVal = new DataView(
+    witnessUtxoEntry.value.buffer, witnessUtxoEntry.value.byteOffset, 8
+  ).getBigUint64(0, true);
+  const witnessScript = witnessScriptEntry.value;
+
+  let tp = 0;
+  const nVer = tx.slice(tp, tp + 4); tp += 4;
+  const [nIn, tp2] = readVI(tx, tp); tp = tp2;
+
+  const inputs: { op: Uint8Array; seq: Uint8Array }[] = [];
+  for (let i = 0; i < nIn; i++) {
+    const op = tx.slice(tp, tp + 36); tp += 36;
+    const [sl, tp3] = readVI(tx, tp); tp = tp3 + sl;
+    const seq = tx.slice(tp, tp + 4); tp += 4;
+    inputs.push({ op, seq });
+  }
+
+  const [nOut, tp4] = readVI(tx, tp); tp = tp4;
+  const outChunks: Uint8Array[] = [];
+  for (let i = 0; i < nOut; i++) {
+    const val8 = tx.slice(tp, tp + 8); tp += 8;
+    const [sl, tp5] = readVI(tx, tp);
+    const sc = tx.slice(tp5, tp5 + sl);
+    outChunks.push(concatU8(val8, writeVI(sl), sc));
+    tp = tp5 + sl;
+  }
+  const nLock = tx.slice(tp, tp + 4);
+
+  const hashPrevouts = dsha256(concatU8(...inputs.map(i => i.op)));
+  const hashSequence = dsha256(concatU8(...inputs.map(i => i.seq)));
+  const hashOutputs  = dsha256(concatU8(...outChunks));
+  const scriptCode   = concatU8(writeVI(witnessScript.length), witnessScript);
+
+  const preimage = concatU8(
+    nVer, hashPrevouts, hashSequence,
+    inputs[inputIndex].op,
+    scriptCode,
+    le64(witnessUtxoVal),
+    inputs[inputIndex].seq,
+    hashOutputs, nLock,
+    le32(1)
+  );
+
+  return dsha256(preimage);
+}
+
+async function signPsbtWithKey(
+  psbtBase64: string,
+  privateKeyBytes: Uint8Array,
+  publicKeyHex: string,
+  inputIndex = 0
+): Promise<string> {
+  const bytes = Uint8Array.from(atob(psbtBase64), c => c.charCodeAt(0));
+  const parsed = parsePsbtBinary(bytes);
+  const sighash = computeBip143Sighash(parsed, inputIndex);
+
+  const sig = await secp256k1.sign(sighash, privateKeyBytes, { prehash: false, lowS: true });
+
+  const derHex = serializeSignatureDER(sig);
+  const derBytes = hexToBytes(derHex);
+  const sigWithType = concatU8(derBytes, new Uint8Array([0x01]));
+
+  const pubkeyBytes = hexToBytes(publicKeyHex);
+  const sigKey = concatU8(new Uint8Array([0x02]), pubkeyBytes);
+
+  const filtered = parsed.inputEntries[inputIndex].filter(
+    e => !(e.key.length === 34 && e.key[0] === 0x02)
+  );
+  filtered.push({ key: sigKey, value: sigWithType });
+  parsed.inputEntries[inputIndex] = filtered;
+
+  return encodePsbtBinary(parsed);
 }
 
 export default SigningCeremonyModal;
