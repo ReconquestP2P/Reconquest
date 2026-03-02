@@ -688,7 +688,7 @@ async function fetchPSBTTemplate(loanId: number, txType: string): Promise<{ psbt
     const typeMap: Record<string, string> = {
       'repayment': 'REPAYMENT',
       'default': 'DEFAULT_LIQUIDATION',
-      'liquidation': 'FULL_LIQUIDATION',
+      'liquidation': 'DEFAULT_LIQUIDATION',
       'recovery': 'BORROWER_RECOVERY'
     };
     const targetType = typeMap[txType] || txType.toUpperCase();
@@ -919,9 +919,9 @@ function computeBip143Sighash(parsed: ParsedPsbt, inputIndex: number): Uint8Arra
   const inpEntries = parsed.inputEntries[inputIndex];
 
   const witnessUtxoEntry = inpEntries.find(e => e.key[0] === 0x01);
-  const witnessScriptEntry = inpEntries.find(e => e.key[0] === 0x04);
+  const witnessScriptEntry = inpEntries.find(e => e.key[0] === 0x05);
   if (!witnessUtxoEntry) throw new Error('PSBT input missing witnessUtxo (key 0x01)');
-  if (!witnessScriptEntry) throw new Error('PSBT input missing witnessScript (key 0x04)');
+  if (!witnessScriptEntry) throw new Error('PSBT input missing witnessScript (key 0x05)');
 
   const witnessUtxoVal = new DataView(
     witnessUtxoEntry.value.buffer, witnessUtxoEntry.value.byteOffset, 8
