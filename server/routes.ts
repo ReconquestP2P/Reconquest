@@ -1629,100 +1629,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         borrowerAddress: borrowerReturnAddress || null, // Store borrower return address
       });
       
-      // Generate pre-signed PSBT templates for the signing ceremony
-      // These are unsigned templates - borrower will sign them client-side
-      let psbtTemplates: any[] = [];
-      let requiresSigning = false;
-      
-      try {
-        const { TransactionTemplateService } = await import('./services/TransactionTemplateService.js');
-        
-        // Get lender for their BTC address (for liquidation/default outputs)
-        const lender = await storage.getUser(loan.lenderId!);
-        const lenderBtcAddress = loan.lenderBtcAddress || '';
-        
-        // Determine the correct destination address for lender's share based on preference
-        // EUR preference: funds go to platform BTC address (platform sells and sends EUR to lender)
-        // BTC preference: funds go directly to lender's BTC address
-        const lenderPreference = loan.lenderDefaultPreference || 'eur';
-        const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
-        let lenderDestinationAddress = lenderBtcAddress;
-        
-        if (lenderPreference === 'eur') {
-          if (!platformBtcAddress) {
-            return res.status(400).json({ 
-              message: "Cannot generate templates: Platform BTC address not configured (PLATFORM_BTC_ADDRESS env var). Required for EUR-preference lenders." 
-            });
-          }
-          lenderDestinationAddress = platformBtcAddress;
-          console.log(`📋 Lender prefers EUR - using platform BTC address for default/liquidation outputs: ${platformBtcAddress}`);
-        } else {
-          console.log(`📋 Lender prefers BTC - using lender BTC address for default/liquidation outputs: ${lenderBtcAddress}`);
-        }
-        
-        // Calculate collateral in satoshis
-        const collateralSats = Math.round(parseFloat(loan.collateralBtc) * 100000000);
-        
-        console.log(`🔐 Generating pre-signed PSBT templates for Loan #${loanId}`);
-        
-        const psbtResult = await TransactionTemplateService.generatePreSignedTransactions({
-          loanId,
-          borrowerPubkey,
-          lenderPubkey: loan.lenderPubkey,
-          platformPubkey: PLATFORM_PUBKEY,
-          borrowerAddress: borrowerReturnAddress || lenderBtcAddress,
-          lenderAddress: lenderDestinationAddress,
-          collateralAmount: collateralSats
-        });
-        
-        // psbtResult is a PreSignedTransactionSet with { psbts: { repayment, default, liquidation, recovery }, escrowAddress, witnessScript }
-        if (psbtResult && psbtResult.psbts) {
-          console.log(`✅ Generated 4 PSBT templates for loan #${loanId}`);
-          // Convert to array format for response
-          psbtTemplates = [
-            { txType: STORAGE_TX_TYPES.REPAYMENT, psbtBase64: psbtResult.psbts.repayment },
-            { txType: STORAGE_TX_TYPES.DEFAULT, psbtBase64: psbtResult.psbts.default },
-            { txType: STORAGE_TX_TYPES.LIQUIDATION, psbtBase64: psbtResult.psbts.liquidation },
-            { txType: STORAGE_TX_TYPES.RECOVERY, psbtBase64: psbtResult.psbts.recovery }
-          ];
-          requiresSigning = true;
-
-          const existingTemplates = await storage.getPreSignedTransactions(loanId);
-          if (existingTemplates.length === 0) {
-            for (const tmpl of psbtTemplates) {
-              await storage.storePreSignedTransaction({
-                loanId,
-                partyRole: 'unsigned_template',
-                partyPubkey: borrowerPubkey,
-                txType: tmpl.txType,
-                psbt: tmpl.psbtBase64,
-                signature: '',
-                txHash: crypto.createHash('sha256').update(tmpl.psbtBase64).digest('hex').slice(0, 64),
-              });
-            }
-            console.log(`💾 Persisted ${psbtTemplates.length} unsigned PSBT templates to DB for loan #${loanId}`);
-          } else {
-            console.log(`⚠️ Templates already exist for loan #${loanId}, skipping duplicate persistence`);
-          }
-        } else {
-          console.warn(`⚠️ PSBT generation returned empty result`);
-          if (isMainnet()) {
-            return res.status(500).json({
-              message: "Escrow setup failed: PSBT generation returned no templates. BTC funds cannot be safely secured without them. Please contact support."
-            });
-          }
-        }
-      } catch (psbtError: any) {
-        console.error(`⚠️ PSBT generation error:`, psbtError.message);
-        if (isMainnet()) {
-          return res.status(500).json({
-            message: "Escrow setup failed: could not generate pre-signed transaction templates. BTC funds cannot be safely secured without them. Please contact support.",
-            detail: psbtError.message
-          });
-        }
-        // On testnet only: continue without PSBTs for development flexibility
-        console.warn(`⚠️ Continuing without PSBTs (testnet only)`);
-      }
+      // PSBT templates are no longer generated here.
+      // They are auto-generated with the REAL confirmed UTXO when the deposit is detected
+      // by the blockchain monitor (BlockchainMonitoring.ts → regeneratePsbtTemplates).
+      // The borrower is then prompted to sign AFTER deposit confirms, not before.
+      console.log(`🔐 Escrow created for Loan #${loanId}. PSBT templates will be generated after deposit confirms.`);
       
       // Send email to borrower with deposit instructions
       const borrower = await storage.getUser(borrowerId);
@@ -1754,14 +1665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lenderPubkey: loan.lenderPubkey,
         platformPubkey: PLATFORM_PUBKEY,
         loan: updatedLoan ? ResponseSanitizer.sanitizeLoan(updatedLoan) : undefined,
-        // NEW: Include PSBTs for borrower signing ceremony
-        requiresSigning,
-        psbts: psbtTemplates.length > 0 ? {
-          repayment: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.REPAYMENT)?.psbtBase64,
-          default: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.DEFAULT)?.psbtBase64,
-          liquidation: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.LIQUIDATION)?.psbtBase64,
-          recovery: psbtTemplates.find(t => t.txType === STORAGE_TX_TYPES.RECOVERY)?.psbtBase64
-        } : undefined
+        requiresSigning: false
       });
     } catch (error) {
       console.error('Error providing borrower key:', error);

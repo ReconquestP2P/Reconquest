@@ -65,16 +65,6 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         description: `Escrow address created: ${data.escrowAddress?.slice(0, 20)}...`,
       });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${userId}/loans`] });
-      
-      // NEW: Check if signing ceremony is required
-      if (data.requiresSigning && data.psbts) {
-        console.log('📝 PSBTs received, showing signing ceremony modal');
-        setSigningLoanData({
-          ...loan,
-          escrowAddress: data.escrowAddress,
-        });
-        setShowSigningModal(true);
-      }
     },
     onError: (error: any) => {
       toast({
