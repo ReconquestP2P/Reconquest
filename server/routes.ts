@@ -2635,7 +2635,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
 
       const escrowUtxo = {
         txid: fundingTxid,
-        vout: 0,
+        vout: loan.fundingVout ?? 0,
         amount: collateralSats
       };
 
