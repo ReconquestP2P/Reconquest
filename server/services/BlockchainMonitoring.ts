@@ -7,6 +7,9 @@ import { storage } from '../storage';
 import type { Loan } from '@shared/schema';
 import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail, sendPartialDepositWarningEmail } from '../email';
 import { getApiBaseUrl } from './bitcoin-network-selector.js';
+import { PsbtCreatorService } from './PsbtCreatorService.js';
+import { STORAGE_TX_TYPES } from '@shared/txTypes';
+import { getCurrentBtcPrice } from './price-service.js';
 
 interface UTXO {
   txid: string;
@@ -586,6 +589,15 @@ export class BlockchainMonitoringService {
     console.log(`[BlockchainMonitor] Loan ${loan.id} updated to awaiting_signatures`);
     console.log(`[BlockchainMonitor] 📅 Loan dates set: Start = ${loanStartDate.toISOString()}, Due = ${loanDueDate.toISOString()}`);
 
+    // Auto-regenerate PSBT templates with the REAL confirmed UTXO, then reset
+    // borrowerSigningComplete so the borrower signs once with the actual UTXO.
+    // This ensures the pre-signed PSBTs are always valid for the actual deposit.
+    try {
+      await this.regeneratePsbtTemplates(loan, result);
+    } catch (regenErr: any) {
+      console.error(`[BlockchainMonitor] PSBT regeneration failed for loan ${loan.id}:`, regenErr.message);
+    }
+
     // Send email notification to lender that borrower's deposit is confirmed
     if (loan.lenderId) {
       try {
@@ -878,6 +890,126 @@ export class BlockchainMonitoringService {
   clearCache(identifier: string): void {
     this.cache.delete(`address:${identifier}`);
     this.cache.delete(`tx:${identifier}`);
+  }
+
+  /**
+   * Regenerate PSBT templates using the real confirmed UTXO.
+   * Called automatically when a deposit is confirmed so that the borrower's
+   * subsequent signing ceremony produces valid pre-signed transactions.
+   */
+  private async regeneratePsbtTemplates(loan: Loan, result: FundingCheckResult): Promise<void> {
+    if (!loan.escrowWitnessScript || !loan.borrowerPubkey) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id}: skipping PSBT regen — missing witness script or borrower pubkey`);
+      return;
+    }
+
+    const txid = result.txid;
+    const vout = result.vout ?? 0;
+    const amountSats = result.amountSats ?? Math.round(parseFloat(loan.collateralBtc) * 100_000_000);
+
+    if (!txid) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id}: skipping PSBT regen — no txid`);
+      return;
+    }
+
+    const borrower = await storage.getUser(loan.borrowerId);
+    const borrowerAddress = (loan as any).borrowerAddress || borrower?.btcAddress;
+    if (!borrowerAddress) {
+      console.log(`[BlockchainMonitor] Loan ${loan.id}: skipping PSBT regen — no borrower return address`);
+      return;
+    }
+
+    const escrowUtxo = { txid, vout, amount: amountSats };
+    console.log(`[BlockchainMonitor] Regenerating PSBT templates for loan ${loan.id} with UTXO ${txid}:${vout} (${amountSats} sats)`);
+
+    const newTemplates: Array<{ txType: string; psbt: string; txHash: string }> = [];
+
+    // REPAYMENT template
+    try {
+      const repaymentPsbt = PsbtCreatorService.createRepaymentPsbt({
+        witnessScriptHex: loan.escrowWitnessScript,
+        escrowUtxo,
+        borrowerAddress,
+      });
+      newTemplates.push({ txType: STORAGE_TX_TYPES.REPAYMENT, psbt: repaymentPsbt.psbtBase64, txHash: repaymentPsbt.txHash });
+      console.log(`[BlockchainMonitor]   REPAYMENT template created`);
+    } catch (e: any) {
+      console.error(`[BlockchainMonitor]   REPAYMENT template failed: ${e.message}`);
+    }
+
+    // DEFAULT template
+    const lenderPreference = (loan as any).lenderDefaultPreference || 'eur';
+    const platformBtcAddress = process.env.PLATFORM_BTC_ADDRESS || '';
+    const lenderDestination = lenderPreference === 'eur' ? platformBtcAddress : ((loan as any).lenderBtcAddress || '');
+    if (lenderDestination) {
+      try {
+        const interestRate = parseFloat(loan.interestRate) / 100;
+        const loanAmount = parseFloat(loan.amount);
+        let btcPrice = 60000;
+        try { btcPrice = await getCurrentBtcPrice(); } catch (_) {}
+        const amountOwedSats = Math.round((loanAmount * (1 + interestRate)) / btcPrice * 100_000_000);
+        const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
+          witnessScriptHex: loan.escrowWitnessScript,
+          escrowUtxo,
+          lenderAddress: lenderDestination,
+          borrowerAddress,
+          amountOwedSats,
+        });
+        newTemplates.push({ txType: STORAGE_TX_TYPES.DEFAULT, psbt: defaultPsbt.psbtBase64, txHash: defaultPsbt.txHash });
+        console.log(`[BlockchainMonitor]   DEFAULT template created`);
+      } catch (e: any) {
+        console.error(`[BlockchainMonitor]   DEFAULT template failed: ${e.message}`);
+      }
+    }
+
+    // RECOVERY template
+    if (loan.lenderPubkey && loan.platformPubkey) {
+      try {
+        const timelockBlocks = (loan.termMonths || 12) * 30 * 144 + 14 * 144;
+        const recoveryPsbt = PsbtCreatorService.createRecoveryPsbt({
+          pubkeys: [loan.borrowerPubkey, loan.lenderPubkey, loan.platformPubkey],
+          escrowUtxo,
+          borrowerAddress,
+          timelockBlocks,
+        });
+        newTemplates.push({ txType: STORAGE_TX_TYPES.RECOVERY, psbt: recoveryPsbt.psbtBase64, txHash: recoveryPsbt.txHash });
+        console.log(`[BlockchainMonitor]   RECOVERY template created`);
+      } catch (e: any) {
+        console.error(`[BlockchainMonitor]   RECOVERY template failed: ${e.message}`);
+      }
+    }
+
+    if (newTemplates.length === 0) {
+      console.error(`[BlockchainMonitor] Loan ${loan.id}: no PSBT templates were created`);
+      return;
+    }
+
+    // Upsert templates and reset signing flag
+    const existingTemplates = await storage.getPreSignedTransactions(loan.id);
+    for (const tmpl of newTemplates) {
+      const existing = existingTemplates.find(t => t.txType === tmpl.txType);
+      if (existing) {
+        await storage.updatePreSignedTransaction(existing.id, {
+          psbt: tmpl.psbt,
+          signature: '',
+          broadcastStatus: 'pending',
+        });
+      } else {
+        await storage.storePreSignedTransaction({
+          loanId: loan.id,
+          partyRole: 'unsigned_template',
+          partyPubkey: loan.borrowerPubkey!,
+          txType: tmpl.txType,
+          psbt: tmpl.psbt,
+          signature: '',
+          txHash: tmpl.txHash,
+        });
+      }
+    }
+
+    // Reset signing flag so borrower signs with the real UTXO
+    await storage.updateLoan(loan.id, { borrowerSigningComplete: false, collateralReleaseError: null });
+    console.log(`[BlockchainMonitor] ✅ Loan ${loan.id}: ${newTemplates.length} PSBT template(s) regenerated. Borrower must now sign.`);
   }
 }
 

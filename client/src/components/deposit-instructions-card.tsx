@@ -386,7 +386,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
     return null;
   }
 
-  if (loan.escrowAddress && !loan.borrowerSigningComplete && !recoveryBundle) {
+  if (loan.escrowAddress && loan.depositConfirmedAt && !loan.borrowerSigningComplete && !recoveryBundle) {
     return (
       <>
       <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/10">
@@ -400,8 +400,8 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
           <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-sm">
-              <p className="font-semibold">Escrow address created!</p>
-              <p className="mt-1">Before you can deposit BTC, you need to sign the pre-defined transaction templates that protect your collateral.</p>
+              <p className="font-semibold">Deposit confirmed!</p>
+              <p className="mt-1">Your Bitcoin deposit has been confirmed. Now sign the pre-defined transaction templates that protect your collateral — this is a one-time step.</p>
             </AlertDescription>
           </Alert>
 
