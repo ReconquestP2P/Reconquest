@@ -9,7 +9,7 @@ import { sendTopUpDetectedEmail, sendTopUpConfirmedEmail, sendPartialDepositWarn
 import { getApiBaseUrl } from './bitcoin-network-selector.js';
 import { PsbtCreatorService } from './PsbtCreatorService.js';
 import { STORAGE_TX_TYPES } from '@shared/txTypes';
-import { getCurrentBtcPrice } from './price-service.js';
+import { getBtcPriceUsd } from './price-service.js';
 
 interface UTXO {
   txid: string;
@@ -946,7 +946,7 @@ export class BlockchainMonitoringService {
         const interestRate = parseFloat(loan.interestRate) / 100;
         const loanAmount = parseFloat(loan.amount);
         let btcPrice = 60000;
-        try { btcPrice = await getCurrentBtcPrice(); } catch (_) {}
+        try { btcPrice = await getBtcPriceUsd(); } catch (_) {}
         const amountOwedSats = Math.round((loanAmount * (1 + interestRate)) / btcPrice * 100_000_000);
         const defaultPsbt = PsbtCreatorService.createDefaultLiquidationPsbt({
           witnessScriptHex: loan.escrowWitnessScript,
