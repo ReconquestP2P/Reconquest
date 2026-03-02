@@ -24,6 +24,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const [copiedAmount, setCopiedAmount] = useState(false);
   const [generatingKey, setGeneratingKey] = useState(false);
   const [showPassphraseInput, setShowPassphraseInput] = useState(false);
   const [passphrase, setPassphrase] = useState('');
@@ -194,6 +195,18 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
         description: "Escrow address copied to clipboard.",
       });
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const copyAmountToClipboard = () => {
+    if (loan.collateralBtc) {
+      navigator.clipboard.writeText(String(loan.collateralBtc));
+      setCopiedAmount(true);
+      toast({
+        title: "Copied!",
+        description: "BTC amount copied to clipboard.",
+      });
+      setTimeout(() => setCopiedAmount(false), 2000);
     }
   };
 
@@ -524,7 +537,18 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <span className="text-gray-500">Interest Rate:</span>
             <span className="font-medium">{loan.interestRate}% p.a.</span>
             <span className="text-gray-500">Collateral Required:</span>
-            <span className="font-medium">{loan.collateralBtc} BTC</span>
+            <span className="flex items-center gap-2">
+              <span className="font-medium">{loan.collateralBtc} BTC</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-6 w-6"
+                onClick={copyAmountToClipboard}
+                title="Copy BTC amount"
+              >
+                {copiedAmount ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </span>
           </div>
         </div>
 
