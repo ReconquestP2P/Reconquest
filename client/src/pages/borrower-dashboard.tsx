@@ -754,9 +754,9 @@ export default function BorrowerDashboard() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Loans Matched - Awaiting BTC Deposit</CardTitle>
+                  <CardTitle>Loans Matched - Escrow Pending</CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Your loan has been matched with a lender! Deposit Bitcoin to the escrow address below to activate your loan.
+                    Your loan has been matched with a lender. Deposit Bitcoin to the escrow address, then sign the transaction templates to activate your loan.
                   </p>
                 </div>
                 <Button
@@ -772,7 +772,12 @@ export default function BorrowerDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {borrowerLoans.filter(loan => (loan.escrowState === 'escrow_created' || loan.escrowState === 'awaiting_borrower_key' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed').length === 0 ? (
+              {borrowerLoans.filter(loan =>
+                loan.escrowState === 'escrow_created' ||
+                loan.escrowState === 'awaiting_borrower_key' ||
+                (loan.status === 'funded' && loan.escrowState !== 'deposit_confirmed') ||
+                (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete)
+              ).length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
                     No loans awaiting BTC deposit. Once a lender commits to fund your loan request, it will appear here.
@@ -781,7 +786,12 @@ export default function BorrowerDashboard() {
               ) : (
                 <div className="space-y-6">
                   {borrowerLoans
-                    .filter(loan => (loan.escrowState === 'escrow_created' || loan.escrowState === 'awaiting_borrower_key' || loan.status === 'funded') && loan.escrowState !== 'deposit_confirmed')
+                    .filter(loan =>
+                      loan.escrowState === 'escrow_created' ||
+                      loan.escrowState === 'awaiting_borrower_key' ||
+                      (loan.status === 'funded' && loan.escrowState !== 'deposit_confirmed') ||
+                      (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete)
+                    )
                     .map((loan) => (
                       <DepositInstructionsCard key={loan.id} loan={loan} userId={userId} />
                     ))}
