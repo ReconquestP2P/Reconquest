@@ -4614,6 +4614,102 @@ async function sendFundingNotification(loan: any, lenderId: number) {
   });
   
   /**
+   * Admin endpoint: Cancel a loan and return BTC collateral to borrower.
+   *
+   * Used when a lender never transfers fiat funds after the borrower has
+   * deposited BTC into escrow. Platform co-signs the pre-signed REPAYMENT
+   * PSBT (with platform + lender keys) and broadcasts it, returning the
+   * BTC immediately to the borrower without any timelock.
+   */
+  app.post("/api/admin/loans/:loanId/cancel-and-return-btc", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const loanId = parseInt(req.params.loanId);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const uncancellableStatuses = ['cancelled', 'completed', 'repaid', 'active'];
+      if (uncancellableStatuses.includes(loan.status)) {
+        return res.status(400).json({
+          message: `Cannot cancel a loan with status '${loan.status}'. Only loans awaiting lender funding can be cancelled.`
+        });
+      }
+
+      if (!loan.fundingTxid) {
+        return res.status(400).json({
+          message: "No BTC deposit found for this loan. Nothing to return."
+        });
+      }
+
+      // Find the borrower-signed REPAYMENT PSBT
+      const preSignedTxs = await storage.getPreSignedTransactions(loanId);
+      const repaymentTx = preSignedTxs.find(
+        t => t.txType === 'repayment' && t.psbt && t.psbt.length > 0
+      );
+
+      if (!repaymentTx) {
+        return res.status(400).json({
+          message: "No signed repayment PSBT found. Borrower has not completed the signing ceremony yet.",
+          hint: "The borrower must complete the signing ceremony before the loan can be cancelled and BTC returned."
+        });
+      }
+
+      console.log(`🔴 Admin cancelling loan #${loanId} and returning BTC to borrower`);
+      console.log(`   Using pre-signed REPAYMENT PSBT (record #${repaymentTx.id})`);
+
+      const { EncryptionService } = await import('./services/EncryptionService.js');
+      const { addPlatformSignaturesAndBroadcast } = await import('./services/CollateralReleaseService.js');
+
+      const result = await addPlatformSignaturesAndBroadcast(
+        storage,
+        loan,
+        repaymentTx.psbt,
+        EncryptionService,
+        repaymentTx.id
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: `Failed to return BTC: ${result.error}`,
+          error: result.error
+        });
+      }
+
+      // Mark loan as cancelled
+      await storage.updateLoan(loanId, {
+        status: 'cancelled',
+        collateralReleased: true,
+        escrowState: 'collateral_released',
+        collateralReleaseTxid: result.txid,
+        collateralReleasedAt: new Date(),
+        collateralReleaseError: null,
+      });
+
+      console.log(`✅ Loan #${loanId} cancelled. BTC returned to borrower. Txid: ${result.txid}`);
+
+      res.json({
+        success: true,
+        message: `Loan #${loanId} cancelled. BTC collateral returned to borrower.`,
+        txid: result.txid,
+        broadcastUrl: result.broadcastUrl
+      });
+    } catch (error: any) {
+      console.error("Error cancelling loan:", error);
+      res.status(500).json({ message: error.message || "Failed to cancel loan" });
+    }
+  });
+
+  /**
    * Admin endpoint: Regenerate PSBT templates for legacy loans
    * 
    * For loans where the signing ceremony bug left broken unsigned templates,

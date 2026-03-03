@@ -163,7 +163,7 @@ export async function addPlatformSignaturesAndBroadcast(
     
     // SECURITY: Verify witness script matches loan's escrow script
     if (loan.escrowWitnessScript) {
-      const psbtWitnessHex = input.witnessScript.toString('hex').toLowerCase();
+      const psbtWitnessHex = Buffer.from(input.witnessScript).toString('hex').toLowerCase();
       const expectedWitnessHex = loan.escrowWitnessScript.toLowerCase();
       if (psbtWitnessHex !== expectedWitnessHex) {
         return { success: false, error: 'SECURITY: PSBT witness script does not match escrow' };
@@ -557,7 +557,7 @@ async function addLenderOnlySignatureAndBroadcast(
     }
     
     if (loan.escrowWitnessScript) {
-      const psbtWitnessHex = input.witnessScript.toString('hex').toLowerCase();
+      const psbtWitnessHex = Buffer.from(input.witnessScript).toString('hex').toLowerCase();
       const expectedWitnessHex = loan.escrowWitnessScript.toLowerCase();
       if (psbtWitnessHex !== expectedWitnessHex) {
         return { success: false, error: 'SECURITY: PSBT witness script does not match escrow' };

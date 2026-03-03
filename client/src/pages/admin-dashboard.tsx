@@ -319,6 +319,30 @@ export default function AdminDashboard() {
     },
   });
 
+  const cancelAndReturnBtcMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      const response = await apiRequest(`/api/admin/loans/${loanId}/cancel-and-return-btc`, "POST");
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/loans"] });
+      toast({
+        title: data.success ? "✅ Loan Cancelled & BTC Returned" : "⚠️ Cancellation Failed",
+        description: data.success
+          ? `BTC returned to borrower. TXID: ${data.txid?.substring(0, 16)}...`
+          : data.message || "Failed to cancel loan",
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Cancellation Failed",
+        description: error.message || "Failed to cancel loan and return BTC",
+        variant: "destructive",
+      });
+    },
+  });
+
   const retryCollateralReleaseMutation = useMutation({
     mutationFn: async (loanId: number) => {
       const response = await apiRequest(`/api/admin/loans/${loanId}/retry-collateral-release`, "POST");
@@ -1210,6 +1234,45 @@ export default function AdminDashboard() {
                             <Badge className="bg-green-100 text-green-800">
                               Released
                             </Badge>
+                          )}
+                          {loan.fundingTxid && !['cancelled', 'completed', 'repaid', 'active', 'repayment_pending'].includes(loan.status) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-700 border-red-700 hover:bg-red-50"
+                                  disabled={cancelAndReturnBtcMutation.isPending}
+                                  data-testid={`button-cancel-loan-${loan.id}`}
+                                >
+                                  {cancelAndReturnBtcMutation.isPending ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin mr-1" />
+                                  ) : (
+                                    <span className="mr-1">↩️</span>
+                                  )}
+                                  Cancel & Return BTC
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Cancel Loan #{loan.id} & Return BTC?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will co-sign the pre-signed repayment transaction and broadcast it to the Bitcoin network, returning the borrower's collateral immediately. Use this when a lender has failed to transfer funds.
+                                    <br /><br />
+                                    <strong>This action is irreversible.</strong>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => cancelAndReturnBtcMutation.mutate(loan.id)}
+                                    className="bg-red-700 hover:bg-red-800"
+                                  >
+                                    Yes, Cancel & Return BTC
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                           {(loan.status === "repayment_pending" || loan.status === "active") && loan.disputeStatus !== "under_review" && (
                             <Button
