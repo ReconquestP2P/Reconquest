@@ -2798,7 +2798,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
 
         // SECURITY: Verify the PSBT input uses the correct escrow script
         // NOTE: Recovery PSBTs may use a timelock-wrapped script - accept those too
-        const isRecovery = type.toUpperCase() === 'BORROWER_RECOVERY';
+        const isRecovery = type.toUpperCase() === 'BORROWER_RECOVERY' || type.toLowerCase() === 'recovery';
         const scriptMatch = PsbtCreatorService.verifyPsbtWitnessScript(
           psbtBase64, 
           loan.escrowWitnessScript
@@ -2871,13 +2871,14 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         borrowerSigningComplete: true
       });
 
-      // Also store in loan columns for quick access
+      // Also store in loan columns for quick access (case-insensitive comparison)
       for (const signedPsbt of signedPsbts) {
-        if (signedPsbt.type === 'REPAYMENT') {
+        const t = (signedPsbt.type || '').toUpperCase();
+        if (t === 'REPAYMENT') {
           await storage.updateLoan(loanId, { txRepaymentHex: signedPsbt.psbtBase64 });
-        } else if (signedPsbt.type === 'DEFAULT_LIQUIDATION') {
+        } else if (t === 'DEFAULT_LIQUIDATION' || t === 'DEFAULT' || t === 'LIQUIDATION') {
           await storage.updateLoan(loanId, { txDefaultHex: signedPsbt.psbtBase64 });
-        } else if (signedPsbt.type === 'BORROWER_RECOVERY') {
+        } else if (t === 'BORROWER_RECOVERY' || t === 'RECOVERY') {
           await storage.updateLoan(loanId, { txRecoveryHex: signedPsbt.psbtBase64 });
         }
       }

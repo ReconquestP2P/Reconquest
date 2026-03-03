@@ -439,7 +439,7 @@ export class PsbtCreatorService {
         return false;
       }
       
-      const psbtWitnessHex = input.witnessScript.toString('hex');
+      const psbtWitnessHex = Buffer.from(input.witnessScript).toString('hex');
       const expectedHex = expectedWitnessScriptHex.toLowerCase();
       
       if (psbtWitnessHex.toLowerCase() !== expectedHex) {
