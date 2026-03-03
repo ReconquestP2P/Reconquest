@@ -583,6 +583,7 @@ export default function BorrowerDashboard() {
                                       collateralReleaseTxid={loan.collateralReleaseTxid}
                                       collateralReleasedAt={loan.collateralReleasedAt}
                                       collateralReleaseError={loan.collateralReleaseError}
+                                      borrowerSigningComplete={loan.borrowerSigningComplete}
                                       loan={loan}
                                       userId={userId}
                                     />
@@ -776,7 +777,7 @@ export default function BorrowerDashboard() {
                 loan.escrowState === 'escrow_created' ||
                 loan.escrowState === 'awaiting_borrower_key' ||
                 (loan.status === 'funded' && loan.escrowState !== 'deposit_confirmed') ||
-                (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete)
+                (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete && loan.status !== 'repaid' && loan.status !== 'completed')
               ).length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400">
@@ -790,7 +791,7 @@ export default function BorrowerDashboard() {
                       loan.escrowState === 'escrow_created' ||
                       loan.escrowState === 'awaiting_borrower_key' ||
                       (loan.status === 'funded' && loan.escrowState !== 'deposit_confirmed') ||
-                      (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete)
+                      (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete && loan.status !== 'repaid' && loan.status !== 'completed')
                     )
                     .map((loan) => (
                       <DepositInstructionsCard key={loan.id} loan={loan} userId={userId} />

@@ -2867,8 +2867,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
       }
 
       // Update loan status to indicate signing ceremony complete
+      // Also clear any stale collateral release error so the UI shows "pending" not "error"
       await storage.updateLoan(loanId, {
-        borrowerSigningComplete: true
+        borrowerSigningComplete: true,
+        collateralReleaseError: null
       });
 
       // Also store in loan columns for quick access (case-insensitive comparison)
@@ -3053,9 +3055,10 @@ async function sendFundingNotification(loan: any, lenderId: number) {
         }
       }
 
-      // Update loan status
+      // Update loan status, clear any stale release error
       await storage.updateLoan(loanId, {
-        borrowerSigningComplete: true
+        borrowerSigningComplete: true,
+        collateralReleaseError: null
       });
 
       console.log(`[SubmitSignatures] All 4 signatures validated and stored for loan #${loanId}`);

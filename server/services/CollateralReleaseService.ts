@@ -749,6 +749,16 @@ export async function releaseCollateral(
             return result;
           }
           console.log(`⚠️ Pre-signed approach failed: ${result.error}`);
+          
+          if (result.error?.includes('no borrower signature')) {
+            console.log(`🔄 [RELEASE] PSBT has no borrower signature — resetting borrowerSigningComplete=false for loan #${loanId}`);
+            await storage.updateLoan(loanId, {
+              borrowerSigningComplete: false,
+              collateralReleaseError: 'Re-signing required: your passphrase is needed to authorize the collateral release. Please re-enter it in your dashboard.'
+            });
+            return { success: false, error: 'Re-signing required: your passphrase is needed to authorize the collateral release. Please re-enter it in your dashboard.' };
+          }
+          
           console.log(`   Falling back to platform key release...`);
         }
       } catch (preSignedError: any) {

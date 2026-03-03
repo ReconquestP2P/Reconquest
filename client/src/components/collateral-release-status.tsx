@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ExternalLink, CheckCircle, Loader2, AlertCircle, RefreshCw, Shield } from "lucide-react";
+import { ExternalLink, CheckCircle, Loader2, AlertCircle, RefreshCw, Shield, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CollateralRecoveryModal } from "@/components/collateral-recovery-modal";
 import { useNetworkExplorer } from "@/hooks/useNetworkExplorer";
+import SigningCeremonyModal from "@/components/signing-ceremony-modal";
 
 interface ReleaseStatusProps {
   loanId: number;
@@ -14,12 +15,16 @@ interface ReleaseStatusProps {
   collateralReleaseTxid?: string | null;
   collateralReleasedAt?: string | null;
   collateralReleaseError?: string | null;
+  borrowerSigningComplete?: boolean;
   loan?: {
     id: number;
     borrowerId: number;
     borrowerPubkey?: string | null;
     escrowAddress?: string | null;
     collateralBtc?: string | null;
+    escrowWitnessScript?: string | null;
+    fundingTxid?: string | null;
+    fundingVout?: number | null;
   };
   userId?: number;
 }
@@ -31,12 +36,14 @@ export function CollateralReleaseStatus({
   collateralReleaseTxid,
   collateralReleasedAt,
   collateralReleaseError,
+  borrowerSigningComplete,
   loan,
   userId
 }: ReleaseStatusProps) {
   const { toast } = useToast();
   const { getTxUrl } = useNetworkExplorer();
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [signingOpen, setSigningOpen] = useState(false);
   const [txExplorerUrl, setTxExplorerUrl] = useState<string>('');
   
   const { data: releaseStatus } = useQuery<{
@@ -90,9 +97,53 @@ export function CollateralReleaseStatus({
   }, [txid, getTxUrl]);
   
   const canUseRecovery = loan && userId && loan.borrowerPubkey && loan.escrowAddress;
+  const needsResigning = status === 'repaid' && !isReleased && borrowerSigningComplete === false;
   
   if (status !== 'repaid' && status !== 'completed') {
     return null;
+  }
+  
+  if (needsResigning) {
+    return (
+      <>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
+          <div className="flex items-start gap-3">
+            <PenLine className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                Re-signing Required
+              </p>
+              <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                Your collateral is ready to be returned, but we need your passphrase one more time to authorize the release. This is a one-time step.
+              </p>
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  onClick={() => setSigningOpen(true)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <PenLine className="h-4 w-4 mr-2" />
+                  Sign to Release Collateral
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {loan && userId && (
+          <SigningCeremonyModal
+            isOpen={signingOpen}
+            onClose={() => {
+              setSigningOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/users', userId, 'loans'] });
+              queryClient.invalidateQueries({ queryKey: [`/api/loans/${loanId}/release-status`] });
+            }}
+            loan={loan as any}
+            role="borrower"
+            userId={userId}
+          />
+        )}
+      </>
+    );
   }
   
   if (isReleased && txid) {
