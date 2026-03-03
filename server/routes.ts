@@ -2832,6 +2832,7 @@ async function sendFundingNotification(loan: any, lenderId: number) {
           tx = await storage.updatePreSignedTransaction(existingTemplates[0].id, {
             psbt: psbtBase64,
             signature: signature || 'embedded_in_psbt',
+            partyRole: 'borrower',
           });
           if (!tx) {
             tx = existingTemplates[0];

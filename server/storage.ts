@@ -80,6 +80,7 @@ export interface IStorage {
   updatePreSignedTransaction(id: number, updates: Partial<{
     signature: string;
     psbt: string;
+    partyRole: string;
     broadcastStatus: string;
     broadcastTxid: string;
     broadcastedAt: Date;
@@ -869,6 +870,7 @@ export class DatabaseStorage implements IStorage {
     updates: Partial<{
       signature: string;
       psbt: string;
+      partyRole: string;
       broadcastStatus: string;
       broadcastTxid: string;
       broadcastedAt: Date;

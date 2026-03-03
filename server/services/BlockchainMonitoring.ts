@@ -988,17 +988,21 @@ export class BlockchainMonitoringService {
     }
 
     // OPTIMIZATION: Check if the borrower already signed with the correct confirmed UTXO.
+    // Uses cryptographic signature verification (not partyRole) to detect genuinely signed PSBTs.
     // If so, skip overwriting their signed PSBTs and mark signing as complete immediately.
     const existingTemplates = await storage.getPreSignedTransactions(loan.id);
-    const existingSignedRepayment = existingTemplates.find(
-      t => t.txType === STORAGE_TX_TYPES.REPAYMENT && t.partyRole === 'borrower' && t.psbt
+    const existingRepayment = existingTemplates.find(
+      t => t.txType === STORAGE_TX_TYPES.REPAYMENT && t.psbt
     );
-    if (existingSignedRepayment) {
-      const alreadyMatchesUtxo = PsbtCreatorService.verifyPsbtUtxo(existingSignedRepayment.psbt, txid, vout);
-      if (alreadyMatchesUtxo) {
-        console.log(`[BlockchainMonitor] ✅ Loan ${loan.id}: borrower already signed with correct UTXO ${txid}:${vout}. Keeping signed PSBTs.`);
-        await storage.updateLoan(loan.id, { borrowerSigningComplete: true, collateralReleaseError: null });
-        return;
+    if (existingRepayment && loan.borrowerPubkey) {
+      const hasValidSig = PsbtCreatorService.verifySignature(existingRepayment.psbt, loan.borrowerPubkey);
+      if (hasValidSig) {
+        const alreadyMatchesUtxo = PsbtCreatorService.verifyPsbtUtxo(existingRepayment.psbt, txid, vout);
+        if (alreadyMatchesUtxo) {
+          console.log(`[BlockchainMonitor] ✅ Loan ${loan.id}: borrower already signed with correct UTXO ${txid}:${vout}. Keeping signed PSBTs.`);
+          await storage.updateLoan(loan.id, { borrowerSigningComplete: true, collateralReleaseError: null });
+          return;
+        }
       }
     }
 
