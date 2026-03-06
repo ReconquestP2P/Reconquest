@@ -538,7 +538,7 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <span className="text-gray-500">Interest Rate:</span>
             <span className="font-medium">{loan.interestRate}% p.a.</span>
             <span className="text-gray-500">Collateral Required:</span>
-            <span className="font-medium font-mono">{parseFloat(String(loan.collateralBtc)).toFixed(8)} BTC</span>
+            <span className="font-medium">{parseFloat(String(loan.collateralBtc)).toFixed(8)} BTC</span>
           </div>
         </div>
 
