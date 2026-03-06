@@ -600,8 +600,8 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <ul className="list-disc ml-4 mt-2 space-y-1">
               {!loan.escrowAddress?.startsWith('bc1') && <li>This is a <strong>Bitcoin TESTNET</strong> address</li>}
               <li><strong>Double-check the address</strong> before sending</li>
-              <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> in a <strong>single transaction</strong></li>
-              <li>If you accidentally send multiple transactions, the extra amount will be locked in the escrow as part of a top-up in collateral</li>
+              <li>Send <strong>exactly {loan.collateralBtc} BTC</strong> — the system tracks the total amount deposited, not the number of transactions</li>
+              <li>Sending more than the required amount will lock the excess in escrow as additional collateral, increasing your over-collateralization</li>
             </ul>
           </AlertDescription>
         </Alert>
