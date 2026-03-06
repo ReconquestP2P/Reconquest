@@ -538,28 +538,33 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <span className="text-gray-500">Interest Rate:</span>
             <span className="font-medium">{loan.interestRate}% p.a.</span>
             <span className="text-gray-500">Collateral Required:</span>
-            <span className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium font-mono">{parseFloat(String(loan.collateralBtc)).toFixed(8)}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs gap-1"
-                onClick={copyAmountToClipboard}
-                title="Copy exact BTC amount to clipboard"
-              >
-                {copiedAmount ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                {copiedAmount ? "Copied!" : "Copy amount"}
-              </Button>
-            </span>
+            <span className="font-medium font-mono">{parseFloat(String(loan.collateralBtc)).toFixed(8)} BTC</span>
           </div>
         </div>
 
         <Alert className="bg-white dark:bg-gray-800 border-orange-300">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-sm">
-            <p className="font-semibold">Deposit {loan.collateralBtc} BTC to the escrow address below.</p>
+            <p className="font-semibold">Deposit the exact BTC amount to the escrow address below.</p>
           </AlertDescription>
         </Alert>
+
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">BTC Amount to Send:</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 p-3 bg-white dark:bg-gray-800 border border-gray-300 rounded-md text-sm font-mono">
+              {parseFloat(String(loan.collateralBtc)).toFixed(8)}
+            </code>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={copyAmountToClipboard}
+              title="Copy BTC amount"
+            >
+              {copiedAmount ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
 
         <div className="space-y-2">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Bitcoin {loan.escrowAddress?.startsWith('bc1') ? 'Mainnet' : 'Testnet'} Escrow Address:</p>
