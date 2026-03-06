@@ -334,50 +334,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 </html>`);
   });
 
-  // Real-time Bitcoin price endpoint (CoinGecko API)
+  // Real-time Bitcoin price endpoint (uses shared price service with caching)
   app.get("/api/btc-price", async (req, res) => {
-    try {
-      const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur&include_24hr_change=true&include_last_updated_at=true'
-      );
-      
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const bitcoin = data.bitcoin;
-      
-      res.json({
-        usd: bitcoin.usd,
-        eur: bitcoin.eur,
-        usd_24h_change: bitcoin.usd_24h_change,
-        eur_24h_change: bitcoin.eur_24h_change,
-        last_updated: new Date(bitcoin.last_updated_at * 1000).toISOString(),
-        timestamp: new Date().toISOString(),
-        source: 'CoinGecko',
-        // Legacy format for backward compatibility
-        price: bitcoin.usd,
-        currency: "USD"
-      });
-    } catch (error) {
-      console.error('Bitcoin price API error:', error);
-      // Fallback to mock data if API fails
-      const mockPrice = Math.floor(Math.random() * 10000) + 95000;
-      res.json({
-        usd: mockPrice,
-        eur: Math.floor(mockPrice * 0.85), // Approximate EUR conversion
-        usd_24h_change: (Math.random() - 0.5) * 10, // Random change between -5% and +5%
-        eur_24h_change: (Math.random() - 0.5) * 10,
-        last_updated: new Date().toISOString(),
-        timestamp: new Date().toISOString(),
-        source: 'Mock (API Error)',
-        // Legacy format for backward compatibility
-        price: mockPrice,
-        currency: "USD",
-        error: 'Using fallback data due to API error'
-      });
-    }
+    const { getBtcPrice } = await import('./services/price-service.js');
+    const priceData = await getBtcPrice();
+    res.json({
+      usd: priceData.usd,
+      eur: priceData.eur,
+      usd_24h_change: priceData.usd24hChange,
+      eur_24h_change: priceData.usd24hChange,
+      last_updated: new Date(priceData.lastUpdatedAt * 1000).toISOString(),
+      timestamp: new Date().toISOString(),
+      source: 'CoinGecko',
+      price: priceData.usd,
+      currency: "USD"
+    });
   });
 
   // ⚠️ DEPRECATED - OLD ENDPOINT WITH CRITICAL BUG ⚠️
@@ -2225,49 +2196,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const bitcoinEscrow = new BitcoinEscrowService();
   const ltvValidator = new LtvValidationService();
   const getCurrentBtcPrice = async () => {
-    try {
-      const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
-      );
-      
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.bitcoin.usd;
-    } catch (error) {
-      console.error('Error fetching BTC price for lending workflow:', error);
-      // Fallback to mock data if API fails
-      const basePrice = 100000;
-      const variation = (Math.random() - 0.5) * 2000;
-      return Math.round(basePrice + variation);
-    }
+    const { getBtcPrice } = await import('./services/price-service.js');
+    const priceData = await getBtcPrice();
+    return priceData.usd;
   };
 
   // Helper function to get BTC price in specific currency
   const getBtcPriceForCurrency = async (currency: string) => {
-    try {
-      const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur'
-      );
-      
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (currency === 'EUR') {
-        return data.bitcoin.eur;
-      } else {
-        return data.bitcoin.usd; // Default to USD for USDC and other currencies
-      }
-    } catch (error) {
-      console.error('Error fetching BTC price for currency:', error);
-      // Fallback prices
-      return currency === 'EUR' ? 85000 : 100000;
-    }
+    const { getBtcPrice } = await import('./services/price-service.js');
+    const priceData = await getBtcPrice();
+    return currency === 'EUR' ? priceData.eur : priceData.usd;
   };
   
   const lendingWorkflow = new LendingWorkflowService(

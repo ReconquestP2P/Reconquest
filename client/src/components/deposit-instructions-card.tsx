@@ -200,11 +200,12 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
 
   const copyAmountToClipboard = () => {
     if (loan.collateralBtc) {
-      navigator.clipboard.writeText(String(loan.collateralBtc));
+      const cleanAmount = parseFloat(String(loan.collateralBtc)).toFixed(8);
+      navigator.clipboard.writeText(cleanAmount);
       setCopiedAmount(true);
       toast({
         title: "Copied!",
-        description: "BTC amount copied to clipboard.",
+        description: `${cleanAmount} copied to clipboard.`,
       });
       setTimeout(() => setCopiedAmount(false), 2000);
     }
@@ -537,16 +538,17 @@ export default function DepositInstructionsCard({ loan, userId }: DepositInstruc
             <span className="text-gray-500">Interest Rate:</span>
             <span className="font-medium">{loan.interestRate}% p.a.</span>
             <span className="text-gray-500">Collateral Required:</span>
-            <span className="flex items-center gap-2">
-              <span className="font-medium">{loan.collateralBtc} BTC</span>
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium font-mono">{parseFloat(String(loan.collateralBtc)).toFixed(8)}</span>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-6 w-6"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1"
                 onClick={copyAmountToClipboard}
-                title="Copy BTC amount"
+                title="Copy exact BTC amount to clipboard"
               >
                 {copiedAmount ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                {copiedAmount ? "Copied!" : "Copy amount"}
               </Button>
             </span>
           </div>
