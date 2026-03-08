@@ -381,7 +381,7 @@ export default function LenderDashboard() {
               <div>
                 <CardTitle>Pending Fund Transfers</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  BTC deposits confirmed - send fiat funds to borrowers' bank accounts
+                  BTC deposited and transaction templates signed — send fiat funds to borrowers' bank accounts
                 </p>
               </div>
               <Button 
@@ -398,16 +398,18 @@ export default function LenderDashboard() {
             <CardContent>
               {lenderLoans.filter(loan => 
                 loan.depositConfirmedAt && 
+                loan.borrowerSigningComplete === true &&
                 loan.borrowerKeysGeneratedAt && 
-                loan.lenderPubkey &&  // Bitcoin-blind: platform generates lender key at funding
+                loan.lenderPubkey &&
                 loan.status !== 'completed' &&
                 !loan.borrowerConfirmedReceipt
               ).length > 0 ? (
                 <div className="space-y-4">
                   {lenderLoans.filter(loan => 
                     loan.depositConfirmedAt && 
+                    loan.borrowerSigningComplete === true &&
                     loan.borrowerKeysGeneratedAt && 
-                    loan.lenderPubkey &&  // Bitcoin-blind: platform generates lender key at funding
+                    loan.lenderPubkey &&
                     loan.status !== 'completed' &&
                     !loan.borrowerConfirmedReceipt
                   ).map((loan) => (
@@ -419,7 +421,7 @@ export default function LenderDashboard() {
                             <div>
                               <h3 className="text-lg font-semibold">Loan #{loan.id.toString().padStart(6, '0')}</h3>
                               <p className="text-sm text-muted-foreground">
-                                Bitcoin escrow confirmed - awaiting your bank transfer
+                                Bitcoin secured and transaction templates signed — awaiting your bank transfer
                               </p>
                               <div className="flex gap-4 mt-2 text-sm">
                                 <span className="text-muted-foreground">
