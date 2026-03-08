@@ -223,9 +223,19 @@ export default function BorrowerDashboard() {
     },
   });
 
-  // Filter loans where lender has sent funds but borrower hasn't confirmed receipt
+  // Filter loans where lender has sent funds but borrower hasn't confirmed receipt.
+  // A loan must NOT still need escrow/signing work to appear here — that belongs in Escrow Pending.
+  const needsEscrowWork = (loan: any) =>
+    loan.escrowState === 'escrow_created' ||
+    loan.escrowState === 'awaiting_borrower_key' ||
+    (loan.status === 'funded' && loan.escrowState !== 'deposit_confirmed') ||
+    (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete && loan.status !== 'repaid' && loan.status !== 'completed');
+
   const pendingReceiptLoans = borrowerLoans.filter(
-    (loan: any) => loan.fiatTransferConfirmed === true && loan.borrowerConfirmedReceipt !== true
+    (loan: any) =>
+      loan.fiatTransferConfirmed === true &&
+      loan.borrowerConfirmedReceipt !== true &&
+      !needsEscrowWork(loan)
   );
 
   const getStatusBadge = (status: string) => {
