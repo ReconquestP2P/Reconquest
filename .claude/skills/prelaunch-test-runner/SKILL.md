@@ -1,4 +1,5 @@
-name: Pre-Launch Test Runner
+---
+name: prelaunch-test-runner
 description: >
   Activated when the user says "run pre-launch tests", "test mainnet migration",
   "verify mainnet is working", "run the testing plan", "7.1", "7.2", or asks

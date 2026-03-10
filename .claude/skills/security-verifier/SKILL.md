@@ -1,11 +1,12 @@
-name: Security Verifier
+---
+name: security-verifier
 description: >
   Activated when the user mentions security checks, pre-launch verification,
   signing key verification, encryption key, timelock enforcement, address
   validation, private key safety, safety limits, or asks "is it safe to go live"
   or "what do I need to check before mainnet". Walks through all 13 security
   verification checks from the Reconquest mainnet migration plan Section 5.
-allowed-tools: Read, Grep, Bash(grep:*), Bash(curl:*), Bash(node:*)
+
 ---
 
 # Security Verifier Skill

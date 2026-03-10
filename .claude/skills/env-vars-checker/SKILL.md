@@ -1,4 +1,5 @@
-name: Env Vars Checker
+---
+name: env-vars-checker
 description: >
   Activated when the user mentions environment variables, Replit Secrets,
   PLATFORM_SIGNING_KEY, PLATFORM_ENCRYPTION_KEY, PLATFORM_BTC_ADDRESS,
@@ -6,7 +7,7 @@ description: >
   Knows every required environment variable for Reconquest mainnet launch,
   what each one does, where it is read in the codebase, and what breaks if it
   is missing or wrong.
-allowed-tools: Read, Grep, Bash(printenv:*), Bash(grep:*)
+
 ---
 
 # Env Vars Checker Skill
