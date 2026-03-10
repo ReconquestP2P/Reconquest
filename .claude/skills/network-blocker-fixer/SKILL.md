@@ -1,12 +1,11 @@
 ---
-name: Network Blocker Fixer
+name: network-blocker-fixer
 description: >
   Activated when the user mentions fixing testnet blockers, migrating to mainnet,
   hardcoded testnet strings, bitcoin.networks.testnet, escrow-setup network param,
   use-firefish-wasm network fallback, or any of the 9 code blockers from the
   mainnet migration plan. Knows the exact file paths and line numbers for all
   9 blockers in the Reconquest project.
-allowed-tools: Read, Write, Edit, Grep, Glob
 ---
 
 # Network Blocker Fixer Skill
