@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User } from "lucide-react";
-import logoImage from "@assets/reconquest_logo_v8.png";
+import logoImage from "@assets/reconquest_logo_v9.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
