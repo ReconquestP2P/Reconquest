@@ -18,3 +18,9 @@ id = "dBnxrDjZLN6PPHWlVTPl2"
 uri = "file://attached_assets/reconquest_logo_v10.png"
 type = "image"
 title = "Logo v10 — crisp edges, sunrise gradient"
+
+[[outputs]]
+id = "zxXYl7QYwvI2XztJbCMyf"
+uri = "file://attached_assets/reconquest_logo_light.png"
+type = "image"
+title = "Light mode logo — same shield, dark text"

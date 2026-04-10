@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import logoImage from "@assets/reconquest_logo_v10.png";
+import logoDark from "@assets/reconquest_logo_v10.png";
+import logoLight from "@assets/reconquest_logo_light.png";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function About() {
@@ -10,7 +11,8 @@ export default function About() {
       {/* Logo */}
       <div className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <img src={logoImage} alt="Reconquest" className="h-40 w-auto mx-auto invert hue-rotate-[165deg] saturate-[155%] dark:invert-0 dark:hue-rotate-0 dark:saturate-100" />
+          <img src={logoLight} alt="Reconquest" className="h-40 w-auto mx-auto block dark:hidden" />
+          <img src={logoDark}  alt="Reconquest" className="h-40 w-auto mx-auto hidden dark:block" />
         </div>
       </div>
 

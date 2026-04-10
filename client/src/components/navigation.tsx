@@ -2,7 +2,8 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User } from "lucide-react";
-import logoImage from "@assets/reconquest_logo_v10.png";
+import logoDark from "@assets/reconquest_logo_v10.png";
+import logoLight from "@assets/reconquest_logo_light.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,7 +19,8 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src={logoImage} alt="Reconquest" className="h-16 w-auto invert hue-rotate-[165deg] saturate-[155%] dark:invert-0 dark:hue-rotate-0 dark:saturate-100" />
+              <img src={logoLight} alt="Reconquest" className="h-16 w-auto block dark:hidden" />
+              <img src={logoDark}  alt="Reconquest" className="h-16 w-auto hidden dark:block" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               {isAuthenticated && (
