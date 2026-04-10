@@ -10,7 +10,7 @@ export default function About() {
       {/* Logo */}
       <div className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <img src={logoImage} alt="Reconquest" className="h-40 w-auto mx-auto invert hue-rotate-180 dark:invert-0 dark:hue-rotate-0" />
+          <img src={logoImage} alt="Reconquest" className="h-40 w-auto mx-auto invert hue-rotate-180 saturate-200 dark:invert-0 dark:hue-rotate-0 dark:saturate-100" />
         </div>
       </div>
 
