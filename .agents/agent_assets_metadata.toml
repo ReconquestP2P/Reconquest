@@ -12,3 +12,9 @@ id = "fnDwSwKBKGJh3EwjxgD-2"
 uri = "file://attached_assets/reconquest_logo_v9.png"
 type = "image"
 title = "Logo v9 — direct colour lerp, bottom-left corner orange"
+
+[[outputs]]
+id = "dBnxrDjZLN6PPHWlVTPl2"
+uri = "file://attached_assets/reconquest_logo_v10.png"
+type = "image"
+title = "Logo v10 — crisp edges, sunrise gradient"
