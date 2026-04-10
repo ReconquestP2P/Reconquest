@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "5ColACO9y5tEZ9carIO6i"
+uri = "file://attached_assets/reconquest_logo_v8.png"
+type = "image"
+title = "Logo v8 — photo-sampled sunrise gradient"
