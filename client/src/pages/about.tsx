@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
+import logoImage from "@assets/reconquest_dark_mode_transparent_4x_1775751308342.png";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function About() {
@@ -10,7 +10,7 @@ export default function About() {
       {/* Logo */}
       <div className="pt-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          <img src={logoImage} alt="Reconquest" className="h-48 w-auto mx-auto rounded-lg bg-white/90 dark:bg-white/95 p-2" />
+          <img src={logoImage} alt="Reconquest" className="h-40 w-auto mx-auto" />
         </div>
       </div>
 

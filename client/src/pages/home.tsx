@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
-import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
 import bitcoinIcon from "@assets/image_1752547022307.png";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollAnimation, ScaleIn, SlideInLeft, SlideInRight } from "@/components/scroll-animation";

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User } from "lucide-react";
-import logoImage from "@assets/Reconquest logo 2_1752025456549.png";
+import logoImage from "@assets/reconquest_dark_mode_transparent_4x_1775751308342.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,10 +15,10 @@ export default function Navigation() {
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-28">
+        <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src={logoImage} alt="Reconquest" className="h-24 w-auto rounded-lg bg-white/90 dark:bg-white/95 p-1" />
+              <img src={logoImage} alt="Reconquest" className="h-16 w-auto" />
             </Link>
             <div className="hidden md:flex items-center ml-10 space-x-8">
               {isAuthenticated && (
