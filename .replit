@@ -43,11 +43,11 @@ integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0", "javascr
 
 [userenv.shared]
 BITCOIN_RPC_URL = "http://127.0.0.1:18332"
-BITCOIN_RPC_USER = "jorge_fest"
-BITCOIN_RPC_PASS = "testeando_Sparrow"
+BITCOIN_RPC_USER = ""
+BITCOIN_RPC_PASS = ""
 BITCOIN_NETWORK = "mainnet"
 APP_URL = "https://www.reconquestp2p.com"
-PLATFORM_SIGNING_KEY = "5d53c761c4a86e196920dfd0f213f15b6b27ed388acf0e513674591d377d0d33"
+PLATFORM_SIGNING_KEY = ""
 MAX_LOAN_AMOUNT_USD = "10000"
 MAX_BTC_COLLATERAL = "0.2"
 MAX_LOANS_PER_DAY = "10"
