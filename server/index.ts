@@ -13,7 +13,7 @@ function validatePlatformKey(): string {
   const privkey = process.env.PLATFORM_SIGNING_KEY;
   
   if (!privkey) {
-    throw new Error('❌ PLATFORM_SIGNING_KEY missing! App cannot start. Set this secret in Replit Secrets.');
+    throw new Error('❌ PLATFORM_SIGNING_KEY missing! App cannot start. Set this in your environment variables.');
   }
   
   if (privkey.length !== 64) {
@@ -101,10 +101,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Use PORT env var (provided by Railway and other platforms) or fall back to 5000
+  const port = parseInt(process.env.PORT || "5000", 10);
   server.listen({
     port,
     host: "0.0.0.0",
