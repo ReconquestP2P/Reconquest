@@ -5,7 +5,6 @@ import { Menu, X, User } from "lucide-react";
 import logoDark from "@assets/reconquest_logo_v10.png";
 import logoLight from "@assets/reconquest_logo_light.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Navigation() {
@@ -13,269 +12,136 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
 
+  const scrollToHowItWorks = () => {
+    setMobileMenuOpen(false);
+    if (location === "/") {
+      document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      setLocation("/");
+      setTimeout(() => {
+        document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+      }, 120);
+    }
+  };
+
+  const navLinkClass = (path: string) =>
+    `text-sm font-medium transition-colors ${
+      location === path ? "text-white" : "text-neutral-500 hover:text-white"
+    }`;
+
   return (
-    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2" onClick={() => setMobileMenuOpen(false)}>
-              <img src={logoLight} alt="Reconquest" className="h-16 w-auto block dark:hidden" />
-              <img src={logoDark}  alt="Reconquest" className="h-16 w-auto hidden dark:block" />
-            </Link>
-            <div className="hidden md:flex items-center ml-10 space-x-8">
-              {isAuthenticated && (
-                <>
-                  <Link
-                    href="/borrower"
-                    className={`px-3 py-2 text-sm font-medium transition-colors ${
-                      location === "/borrower"
-                        ? "text-primary"
-                        : "text-gray-700 dark:text-gray-300 hover:text-primary"
-                    }`}
-                  >
-                    Borrow
-                  </Link>
-                  <Link
-                    href="/lender"
-                    className={`px-3 py-2 text-sm font-medium transition-colors ${
-                      location === "/lender"
-                        ? "text-primary"
-                        : "text-gray-700 dark:text-gray-300 hover:text-primary"
-                    }`}
-                  >
-                    Lend
-                  </Link>
-                </>
-              )}
+    <nav className="bg-black border-b border-neutral-900 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6 md:px-12">
+        <div className="flex items-center justify-between h-20">
+          {/* Logo */}
+          <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+            <img src={logoLight} alt="Reconquest" className="h-14 w-auto block dark:hidden" />
+            <img src={logoDark}  alt="Reconquest" className="h-14 w-auto hidden dark:block" />
+          </Link>
 
-
-              <button
-                onClick={() => {
-                  if (location === '/') {
-                    // If already on homepage, just scroll to section
-                    const element = document.getElementById('how-it-works');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  } else {
-                    // If on different page, navigate to homepage first then scroll
-                    setLocation('/');
-                    setTimeout(() => {
-                      const element = document.getElementById('how-it-works');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }, 100);
-                  }
-                }}
-                className="text-gray-700 dark:text-gray-300 hover:text-primary px-3 py-2 text-sm font-medium"
-              >
-                How it Works
-              </button>
-              <Link
-                href="/about"
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
-                  location === "/about"
-                    ? "text-primary"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary"
-                }`}
-              >
-                About
-              </Link>
-            </div>
+          {/* Desktop centre links */}
+          <div className="hidden md:flex items-center gap-8">
+            {isAuthenticated && (
+              <>
+                <Link href="/borrower" className={navLinkClass("/borrower")}>Borrow</Link>
+                <Link href="/lender" className={navLinkClass("/lender")}>Lend</Link>
+              </>
+            )}
+            <button onClick={scrollToHowItWorks} className="text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+              How it Works
+            </button>
+            <Link href="/about" className={navLinkClass("/about")}>About</Link>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-4">
+
+          {/* Desktop right side */}
+          <div className="hidden md:flex items-center gap-6">
+            <BitcoinPriceOracle variant="compact" />
+            {isAuthenticated ? (
+              <>
+                <Link href="/my-account">
+                  <Button variant="ghost" size="sm" className="text-neutral-400 hover:text-white hover:bg-neutral-900 gap-2" data-testid="link-my-account">
+                    <User className="h-4 w-4" /> My Account
+                  </Button>
+                </Link>
+                <Button onClick={logout} variant="ghost" size="sm" className="text-red-500 hover:text-red-400 hover:bg-neutral-900">
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <button className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">
+                    Log in
+                  </button>
+                </Link>
+                <Link href="/signup">
+                  <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none font-medium px-6 border-0">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden text-neutral-400 hover:text-white transition-colors"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-neutral-900 bg-black">
+          <div className="px-6 py-4 space-y-1">
+            {isAuthenticated && (
+              <>
+                <Link href="/borrower" className="block py-3 text-sm font-medium text-neutral-400 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Borrow</Link>
+                <Link href="/lender" className="block py-3 text-sm font-medium text-neutral-400 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Lend</Link>
+              </>
+            )}
+            <button onClick={scrollToHowItWorks} className="block w-full text-left py-3 text-sm font-medium text-neutral-400 hover:text-white">
+              How it Works
+            </button>
+            <Link href="/about" className="block py-3 text-sm font-medium text-neutral-400 hover:text-white" onClick={() => setMobileMenuOpen(false)}>About</Link>
+
+            <div className="pt-3 border-t border-neutral-900 mt-2">
               <BitcoinPriceOracle variant="compact" />
             </div>
-            <div className="hidden md:flex items-center space-x-6">
-              <ThemeToggle />
+
+            <div className="pt-3 flex flex-col gap-3">
               {isAuthenticated ? (
                 <>
-                  <Link href="/my-account">
-                    <Button 
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2"
-                      data-testid="link-my-account"
-                    >
-                      <User className="h-4 w-4" />
-                      My Account
+                  <Link href="/my-account" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-my-account">
+                    <Button variant="outline" className="w-full border-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-900 rounded-none gap-2">
+                      <User className="h-4 w-4" /> My Account
                     </Button>
                   </Link>
-                  <Button 
-                    onClick={logout}
-                    variant="outline"
-                    className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
-                  >
+                  <Button onClick={() => { logout(); setMobileMenuOpen(false); }} variant="ghost" className="w-full text-red-500 hover:text-red-400 hover:bg-neutral-900 rounded-none">
                     Logout
                   </Button>
                 </>
               ) : (
                 <>
-                    <Link href="/login">
-                      <Button 
-                        variant="ghost"
-                        size="sm" 
-                        className="bg-gray-900 dark:bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary/80 px-5 py-2 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out hover:scale-105"
-                      >
-                        LOG IN
-                      </Button>
-                    </Link>
-                    <Link href="/signup">
-                      <Button 
-                        size="default" 
-                        className="bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-6 py-2.5 shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out"
-                      >
-                        SIGN UP
-                      </Button>
-                    </Link>
-                  </>
-                )
-              }
-            </div>
-            
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center space-x-2">
-              <ThemeToggle />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-700 dark:text-gray-300"
-              >
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full border-neutral-700 text-white hover:bg-neutral-900 rounded-none">
+                      Log in
+                    </Button>
+                  </Link>
+                  <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none font-medium border-0">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {isAuthenticated && (
-                <>
-                  <Link
-                    href="/borrower"
-                    className={`block px-3 py-2 text-base font-medium transition-colors ${
-                      location === "/borrower"
-                        ? "text-primary bg-primary/10"
-                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Borrow
-                  </Link>
-                  <Link
-                    href="/lender"
-                    className={`block px-3 py-2 text-base font-medium transition-colors ${
-                      location === "/lender"
-                        ? "text-primary bg-primary/10"
-                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Lend
-                  </Link>
-                </>
-              )}
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (location === '/') {
-                    // If already on homepage, just scroll to section
-                    const element = document.getElementById('how-it-works');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  } else {
-                    // If on different page, navigate to homepage first then scroll
-                    setLocation('/');
-                    setTimeout(() => {
-                      const element = document.getElementById('how-it-works');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }, 100);
-                  }
-                }}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
-                How it Works
-              </button>
-              <Link
-                href="/about"
-                className={`block px-3 py-2 text-base font-medium transition-colors ${
-                  location === "/about"
-                    ? "text-primary bg-primary/10"
-                    : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                About
-              </Link>
-              
-              
-              {/* Mobile Auth Buttons */}
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    href="/my-account"
-                    className={`block px-3 py-2 text-base font-medium transition-colors ${
-                      location === "/my-account"
-                        ? "text-primary bg-primary/10"
-                        : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    data-testid="mobile-link-my-account"
-                  >
-                    My Account
-                  </Link>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col gap-3 px-3 py-4 border-t border-gray-200 dark:border-gray-700 mt-2">
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Button 
-                      variant="ghost"
-                      className="w-full bg-gray-900 dark:bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary/80 px-5 py-3 min-h-[48px] text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300 ease-in-out"
-                    >
-                      LOG IN
-                    </Button>
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Button 
-                      className="w-full bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-6 py-3 min-h-[48px] text-base shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] transition-all duration-300 ease-in-out"
-                    >
-                      SIGN UP
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
-              {/* Mobile Bitcoin price */}
-              <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
-                <BitcoinPriceOracle variant="compact" />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </nav>
   );
 }

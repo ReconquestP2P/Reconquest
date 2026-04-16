@@ -1,494 +1,304 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Shield, Code, Bitcoin, Users, TrendingUp, DollarSign, Percent } from "lucide-react";
-import bitcoinIcon from "@assets/image_1752547022307.png";
+import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { ScrollAnimation, ScaleIn, SlideInLeft, SlideInRight } from "@/components/scroll-animation";
-import { AnimatedCounter } from "@/components/animated-counter";
+import { useState } from "react";
 import { motion } from "framer-motion";
+
+const noiseStyle = {
+  backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")',
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 32 },
+  show: (i = 0) => ({ opacity: 1, y: 0, transition: { duration: 0.6, delay: i * 0.12, ease: "easeOut" } }),
+};
+
+function FaqItem({ question, children }: { question: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-neutral-900">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-6 text-left group"
+      >
+        <span className="text-white font-medium text-lg group-hover:text-[#f97316] transition-colors">{question}</span>
+        <ChevronDown className={`h-5 w-5 text-neutral-500 flex-shrink-0 ml-4 transition-transform duration-300 ${open ? "rotate-180 text-[#f97316]" : ""}`} />
+      </button>
+      {open && (
+        <div className="pb-6 text-neutral-400 leading-relaxed space-y-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900">
-        <div className="max-w-7xl mx-auto text-center">
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-xl text-gray-600 dark:text-gray-300 mb-4 font-medium"
-          >
-            The Future of Lending Is Bitcoin-Backed
-          </motion.p>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-3xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6"
-          >
-            <div className="mb-2">The Global Marketplace for</div>
-            <div className="flex items-center justify-center gap-0.5">
-              <img src={bitcoinIcon} alt="Bitcoin" className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover floating" />
-              <span className="text-gradient-gold">itcoin-Backed Loans</span>
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.025]" style={noiseStyle} />
+
+      {/* ── HERO ─────────────────────────────────────── */}
+      <section className="relative max-w-7xl mx-auto px-6 md:px-12 pt-28 pb-36">
+        <motion.p
+          variants={fadeUp} initial="hidden" animate="show" custom={0}
+          className="text-sm uppercase tracking-[0.2em] text-neutral-500 mb-6 font-medium"
+        >
+          The Future of Lending Is Bitcoin-Backed
+        </motion.p>
+        <motion.h1
+          variants={fadeUp} initial="hidden" animate="show" custom={1}
+          className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tighter leading-[1.04] mb-8 max-w-5xl"
+        >
+          <span className="block">Unlock liquidity.</span>
+          <span className="block text-[#f97316]">Keep your Bitcoin.</span>
+        </motion.h1>
+        <motion.p
+          variants={fadeUp} initial="hidden" animate="show" custom={2}
+          className="text-xl md:text-2xl text-neutral-400 max-w-2xl mb-12 font-light leading-relaxed"
+        >
+          The P2P lending platform where Bitcoin works for you. Lock BTC as
+          collateral, receive EUR instantly — no selling required.
+        </motion.p>
+        <motion.div
+          variants={fadeUp} initial="hidden" animate="show" custom={3}
+          className="flex flex-col sm:flex-row gap-4"
+        >
+          <Link href={isAuthenticated ? "/borrower" : "/login"}>
+            <Button size="lg" className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none h-14 px-10 text-lg font-medium group border-0 w-full sm:w-auto">
+              Start Borrowing <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+          <Link href={isAuthenticated ? "/lender" : "/login"}>
+            <Button size="lg" variant="outline" className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-none h-14 px-10 text-lg font-medium transition-colors w-full sm:w-auto">
+              Explore Lending
+            </Button>
+          </Link>
+        </motion.div>
+      </section>
+
+      {/* ── STATS BAR ────────────────────────────────── */}
+      <div className="border-y border-neutral-900 bg-neutral-950/60">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {[
+            { value: "€2.4M", label: "Total Lent" },
+            { value: "247", label: "Active Borrowers" },
+            { value: "8.5%", label: "Avg. Return" },
+            { value: "0", label: "Security Incidents" },
+          ].map((s) => (
+            <div key={s.label}>
+              <div className="text-3xl md:text-4xl font-bold tracking-tight mb-1">{s.value}</div>
+              <div className="text-xs text-neutral-500 uppercase tracking-widest font-medium">{s.label}</div>
             </div>
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto"
+          ))}
+        </div>
+      </div>
+
+      {/* ── VIDEO ────────────────────────────────────── */}
+      <section className="max-w-4xl mx-auto px-6 md:px-12 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.7 }}
+          className="border border-neutral-800 overflow-hidden"
+        >
+          <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/6XizFXdNDUs"
+              title="Welcome to Reconquest"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────── */}
+      <section id="how-it-works" className="max-w-7xl mx-auto px-6 md:px-12 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.6 }}
+          className="mb-16"
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">Process</p>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">How Reconquest Works</h2>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-16 md:gap-24">
+          {/* Borrowers */}
+          <motion.div
+            initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6 }}
           >
-            Built for Bitcoiners seeking capital and Investors looking for safe, fixed returns.<br />
-            Secure, non-custodial lending with Bitcoin as collateral.
-          </motion.p>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12 px-4 sm:px-0"
-          >
-            <Link href={isAuthenticated ? "/borrower" : "/login"} className="w-full sm:w-auto max-w-sm">
-              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-8 py-4 min-h-[48px] text-lg shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out">
-                Start Borrowing
-              </Button>
-            </Link>
-            <Link href={isAuthenticated ? "/lender" : "/login"} className="w-full sm:w-auto max-w-sm">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary px-8 py-4 min-h-[48px] text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
-                Start Lending
-              </Button>
-            </Link>
+            <h3 className="text-xl font-semibold mb-8 text-[#f97316] uppercase tracking-widest text-sm">For Borrowers</h3>
+            <div className="space-y-8">
+              {[
+                { n: "01", title: "Set your Loan Terms", desc: "Define your preferred interest rate and duration." },
+                { n: "02", title: "Get Matched", desc: "A lender accepts your terms on the marketplace." },
+                { n: "03", title: "Deposit Collateral", desc: "Lock your Bitcoin in a 3-of-3 multisig escrow." },
+                { n: "04", title: "Receive EUR", desc: "Funds arrive to your bank account instantly." },
+              ].map((s) => (
+                <div key={s.n} className="flex gap-6">
+                  <span className="text-3xl font-bold text-neutral-800 tabular-nums leading-none mt-1">{s.n}</span>
+                  <div>
+                    <h4 className="font-semibold text-white mb-1">{s.title}</h4>
+                    <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
-          {/* Explainer Video */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-12 max-w-3xl mx-auto"
+          {/* Lenders */}
+          <motion.div
+            initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <div className="relative w-full p-1 rounded-2xl glassmorphism" style={{ paddingBottom: 'calc(56.25% + 8px)' }}>
-              <iframe
-                className="absolute top-1 left-1 right-1 bottom-1 w-[calc(100%-8px)] h-[calc(100%-8px)] rounded-xl shadow-2xl"
-                src="https://www.youtube.com/embed/6XizFXdNDUs"
-                title="Welcome to Reconquest"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <h3 className="text-xl font-semibold mb-8 text-white uppercase tracking-widest text-sm">For Lenders</h3>
+            <div className="space-y-8">
+              {[
+                { n: "01", title: "Browse Loan Requests", desc: "View vetted loans backed by Bitcoin collateral." },
+                { n: "02", title: "Select a Loan", desc: "Confirm your interest and wait for collateral confirmation." },
+                { n: "03", title: "Send Funds", desc: "Transfer the agreed EUR amount to the borrower." },
+                { n: "04", title: "Earn Fixed Yield", desc: "Receive principal + interest at loan maturity." },
+              ].map((s) => (
+                <div key={s.n} className="flex gap-6">
+                  <span className="text-3xl font-bold text-neutral-800 tabular-nums leading-none mt-1">{s.n}</span>
+                  <div>
+                    <h4 className="font-semibold text-white mb-1">{s.title}</h4>
+                    <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mt-12 text-sm text-gray-500 dark:text-gray-400"
-          >
-            Trusted by <span className="font-semibold text-primary">1,000+</span> users • 
-            <span className="font-semibold text-primary ml-2">500+</span> BTC collateralized
           </motion.div>
         </div>
       </section>
 
-      {/* Key Features */}
-      <section className="py-16 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ScrollAnimation>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Reconquest?</h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300">The most secure and efficient Bitcoin-backed lending platform</p>
+      {/* ── FEATURES ─────────────────────────────────── */}
+      <section className="max-w-7xl mx-auto px-6 md:px-12 py-24 space-y-32">
+        {[
+          {
+            icon: <Lock className="h-6 w-6 text-white" />,
+            title: "Absolute Control.",
+            body: "Your collateral sits in a deterministic 3-of-3 multisig escrow on the Bitcoin blockchain. We never co-mingle or rehypothecate your assets. Verifiable on-chain, always.",
+            flip: false,
+            visual: (
+              <div className="w-48 h-48 border border-neutral-700 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700">
+                <div className="w-24 h-24 border border-[#f97316]/30 rounded-full flex items-center justify-center">
+                  <div className="w-2 h-2 bg-[#f97316] rounded-full shadow-[0_0_15px_#f97316]" />
+                </div>
+              </div>
+            ),
+          },
+          {
+            icon: <Zap className="h-6 w-6 text-white" />,
+            title: "Instant Liquidity.",
+            body: "Once your transaction confirms, EUR is deployed immediately. No credit checks, no approval queues — pure mathematics and code.",
+            flip: true,
+            visual: (
+              <div className="w-full max-w-[220px] h-48 border-l border-b border-neutral-700 relative group-hover:border-neutral-500 transition-colors duration-700">
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#f97316] w-0 group-hover:w-full transition-all duration-1000 ease-out" />
+                {[{ left: 16, h: 96 }, { left: 80, h: 144 }, { left: 144, h: 64 }].map((b, i) => (
+                  <div key={i} className="absolute bottom-[2px] w-10 bg-neutral-800 group-hover:bg-neutral-700 transition-colors duration-500" style={{ left: b.left, height: b.h, transitionDelay: `${i * 100}ms` }} />
+                ))}
+              </div>
+            ),
+          },
+          {
+            icon: <Shield className="h-6 w-6 text-white" />,
+            title: "Protected Returns.",
+            body: "Continuous LTV monitoring protects lenders at all times. If collateral value drops, borrowers top up — or the platform liquidates automatically before any loss occurs.",
+            flip: false,
+            visual: (
+              <div className="w-48 h-48 relative flex items-center justify-center">
+                <div className="absolute inset-0 border border-neutral-800 rotate-45 group-hover:rotate-[50deg] transition-transform duration-700" />
+                <TrendingUp className="h-12 w-12 text-[#f97316]/60 group-hover:text-[#f97316] transition-colors duration-500" />
+              </div>
+            ),
+          },
+        ].map((f, i) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6 }}
+            className={`flex flex-col ${f.flip ? "md:flex-row-reverse" : "md:flex-row"} items-center gap-16 md:gap-32 group`}
+          >
+            <div className="flex-1 space-y-6">
+              <div className="h-12 w-12 bg-neutral-900 flex items-center justify-center">{f.icon}</div>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">{f.title}</h2>
+              <p className="text-neutral-400 text-lg leading-relaxed max-w-md">{f.body}</p>
             </div>
-          </ScrollAnimation>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <ScrollAnimation delay={0.1}>
-              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardContent className="text-center p-0">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Shield className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Non-Custodial Security</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Your Bitcoin remains in secure escrow. We never hold your keys.</p>
-                </CardContent>
-              </Card>
-            </ScrollAnimation>
-            
-            <ScrollAnimation delay={0.2}>
-              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardContent className="text-center p-0">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Competitive Rates</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Borrowers get low rates, lenders earn attractive yields.</p>
-                </CardContent>
-              </Card>
-            </ScrollAnimation>
-            
-            <ScrollAnimation delay={0.3}>
-              <Card className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardContent className="text-center p-0">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Code className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2 dark:text-white">Smart Contracts</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Automated, transparent lending with programmable escrow.</p>
-                </CardContent>
-              </Card>
-            </ScrollAnimation>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section id="how-it-works" className="py-16 bg-gradient-to-b from-transparent via-gray-50/30 to-transparent dark:via-gray-800/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ScrollAnimation>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">How Reconquest Works</h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300">Simple, secure Bitcoin-backed lending in 4 steps</p>
+            <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
+              <div className={`absolute inset-0 bg-gradient-to-${f.flip ? "tl" : "br"} from-neutral-800/10 to-transparent`} />
+              {f.visual}
             </div>
-          </ScrollAnimation>
-          
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            {/* For Borrowers */}
-            <SlideInLeft>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-                <Bitcoin className="h-8 w-8 text-primary mr-3" />
-                For Borrowers
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Set your Loan Terms</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Set your preferred interest rate and loan terms</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Get Matched with Lenders</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Wait for a lender to accept your terms</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Deposit Bitcoin Collateral</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Lock your Bitcoin in a secure 2-of-3 multisig escrow</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    4
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Receive Funds</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Receive your agreed amount to be repaid at maturity</p>
-                  </div>
-                </div>
-              </div>
-            </SlideInLeft>
+          </motion.div>
+        ))}
+      </section>
 
-            {/* For Lenders */}
-            <SlideInRight>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-                <span className="text-blue-600 mr-3 text-2xl">💸</span>
-                For Lenders
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Browse Loan Requests</h4>
-                    <p className="text-gray-600 dark:text-gray-300">View vetted loans with Bitcoin collateral backing</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Select a Loan Request</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Confirm your interest in a specific Loan and wait for confirmation of Lock of Collateral</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Send Funds to Borrower</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Send agreed amount to Borrower</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-4 mt-1 flex-shrink-0">
-                    4
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Earn Yield Automatically</h4>
-                    <p className="text-gray-600 dark:text-gray-300">Receive back from the borrower principal+interest at maturity</p>
-                  </div>
-                </div>
-              </div>
-            </SlideInRight>
-          </div>
+      {/* ── FAQ ──────────────────────────────────────── */}
+      <section className="max-w-4xl mx-auto px-6 md:px-12 py-24">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-3">Support</p>
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Frequently Asked Questions</h2>
+        </motion.div>
+
+        <div className="border-t border-neutral-900">
+          <FaqItem question="Why Reconquest?">
+            <p>Unlike centralized lenders that have collapsed, Reconquest never touches your Bitcoin collateral — it is locked in a multisig contract on the Bitcoin network. We only provide the technology for secure interaction between borrower and investor; we never access members' funds.</p>
+          </FaqItem>
+          <FaqItem question="What is Bitcoin-backed lending?">
+            <p>Bitcoin-backed lending lets you use Bitcoin as collateral to secure EUR loans without selling. Lenders earn a fixed yield by funding these collateralized loans.</p>
+          </FaqItem>
+          <FaqItem question="What currencies can I borrow?">
+            <p>Reconquest supports EUR loans using Bitcoin as collateral.</p>
+          </FaqItem>
+          <FaqItem question="What are the available loan terms?">
+            <p>Loan terms range from 3 to 18 months (3, 6, 9, 12, 18-month options). Interest rates are set through marketplace dynamics.</p>
+          </FaqItem>
+          <FaqItem question="How secure is the platform?">
+            <p>Reconquest uses 3-of-3 multisig escrow. Your Bitcoin is held in a smart contract requiring multiple cryptographic signatures for any transaction, ensuring maximum security for both parties.</p>
+          </FaqItem>
+          <FaqItem question="What if Bitcoin's price drops?">
+            <p>We continuously monitor all LTV ratios. If Bitcoin's price drops significantly, borrowers receive collateral top-up warnings. If the LTV reaches 95%, the position is automatically liquidated to protect lenders' principal and interest.</p>
+          </FaqItem>
+          <FaqItem question="What happens to my BTC if Reconquest disappears?">
+            <p>A signed Recovery Transaction is generated at loan creation. If Reconquest infrastructure ever fails completely, you can broadcast this transaction on any block explorer (e.g. Mempool.space) one month after loan maturity to recover your Bitcoin.</p>
+          </FaqItem>
+          <FaqItem question="When will I receive funds from the investor?">
+            <p>EUR SEPA transfers typically arrive same-day to 2 business days. SWIFT may take a few additional days. All timelines are confirmed on the loan card before you lock collateral.</p>
+          </FaqItem>
+          <FaqItem question="Who handles liquidation?">
+            <p><strong className="text-white">Self-Liquidation</strong> — You receive Bitcoin collateral directly to your designated address.</p>
+            <p><strong className="text-white">Reconquest Liquidation</strong> — We manage the process and return your investment in EUR. This mode is ideal for investors who prefer not to handle private keys or exchange interactions.</p>
+          </FaqItem>
         </div>
       </section>
 
-
-
-      {/* FAQs Section */}
-      <section className="py-16 bg-gradient-to-b from-gray-50 via-gray-100/50 to-gray-50 dark:from-gray-800 dark:via-gray-750 dark:to-gray-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Frequently Asked Questions</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">Everything you need to know about Bitcoin-backed lending</p>
+      {/* ── CTA STRIP ────────────────────────────────── */}
+      <section className="border-t border-neutral-900 py-24">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Ready to get started?</h2>
+            <p className="text-neutral-500">Join hundreds of borrowers and lenders already on Reconquest.</p>
           </div>
-          
-          <div className="space-y-4">
-            {/* General Section */}
-            <details className="bg-white dark:bg-gray-700 rounded-lg shadow-sm overflow-hidden">
-              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">General</h3>
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="px-6 pb-6 space-y-4">
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Why Reconquest?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">At Reconquest, members are in control. Unlike centralized lenders that have recently collapsed, Reconquest does not have access to Bitcoin collateral - it is never touched, traded or exchanged. Instead, it is securely locked in a smart contract built on top of the Bitcoin network, making the process secure for both Borrowers and Investors. You don't have to worry about Reconquest's solvency or reputation - we only provide the technology for secure interaction between Borrower and Investor, and we never have access to members' funds or collateral.</p>
-                </div>
-                
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What is Bitcoin-backed lending?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Bitcoin-backed lending allows you to use your Bitcoin as collateral to secure loans in stablecoins or fiat currencies, without selling your Bitcoin. Lenders can earn a Fixed Yield by funding these collateralized loans.</p>
-                </div>
-                
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What currencies can I borrow?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Reconquest supports loans in USDC and EUR. You can request loans in either currency using your Bitcoin as collateral.</p>
-                </div>
-                
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What are the loan terms available?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Loan terms range from 3 to 18 months, with options for 3, 6, 9, 12, and 18-month durations. Interest rates are competitive and set through market dynamics.</p>
-                </div>
-              </div>
-            </details>
-            
-            {/* Safety Section */}
-            <details className="bg-white dark:bg-gray-700 rounded-lg shadow-sm overflow-hidden">
-              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Safety</h3>
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="px-6 pb-6 space-y-4">
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">How secure is Reconquest?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Reconquest uses 2-of-3 multisig escrow to secure Bitcoin collateral. Your Bitcoin is held in smart contracts that require multiple signatures for any transactions, ensuring maximum security.</p>
-                </div>
-                
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What happens to my BTC if Reconquest disappears?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">In a highly unlikely scenario of a complete meltdown of Reconquest infrastructure you have at your disposal a text file with a 'Recovery transaction' which gives you (the Borrower) the ability retrieve your Bitcoin from the escrow. In such a scenario, you can use the 'Broadcast transaction' feature on a standard blockchain explorer like Mempool.space, one month after the loan matures, to unlock and send your Bitcoin back to your return address. You can download this transaction during the escrow setup process, or directly from the loan card on the platform.</p>
-                </div>
-                
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What happens if Bitcoin's price drops?</h4>
-                  <p className="text-gray-600 dark:text-gray-300">Reconquest monitors constantly all LTV's (loan-to-value ratio) to ensure a max of 95% LTV is reached. If Bitcoin's price drops significantly, borrowers will be requested to add more collateral or they will get liquidated to ensure Lenders ALWAYS receive back their principal+interests.</p>
-                </div>
-                
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Who is the Liquidator?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p className="mb-3">There are two modes for the liquidation:</p>
-                    <ul className="space-y-2">
-                      <li className="flex items-start">
-                        <span className="font-semibold mr-2">•</span>
-                        <div>
-                          <span className="font-semibold">Self-Liquidation</span> - Investors act as their own liquidators and receive Bitcoin collateral to their designated liquidation address.
-                        </div>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-semibold mr-2">•</span>
-                        <div>
-                          <span className="font-semibold">Reconquest Liquidation</span> - Reconquest manages the collateral liquidation process, and investors receive their investment back in bank currency. This mode allows Investors not to worry about handling cryptographic material, such as private keys or about interacting with exchanges.
-                        </div>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </details>
-            
-            {/* Receiving & Repaying Loans Section */}
-            <details className="bg-white dark:bg-gray-700 rounded-lg shadow-sm overflow-hidden">
-              <summary className="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Receiving & Repaying Loans</h3>
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <div className="px-6 pb-6 space-y-4">
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">When will I receive funds from the Investor?</h4>
-                  <div className="text-gray-600 dark:text-gray-300 space-y-3">
-                    <p>The time it takes for you to receive your funds depends on when the investor made the bank transfer and the speed of transaction processing. Typically, you should receive your funds no later than the loan's start date.</p>
-                    <p>For EUR SEPA payments, the transfers usually take from intraday to 1-2 days.</p>
-                    <p>SWIFT payments might take a bit longer, possibly a few more days.</p>
-                    <p>Stablecoin (USDC) transactions are settled in real-time.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What if I never receive funds from the Investor?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the resolution process ultimately confirms that you never received the funds, your Bitcoin will be unlocked and returned to you.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">How should I return the loan?</h4>
-                  <div className="text-gray-600 dark:text-gray-300 space-y-3">
-                    <p>The loan amount and interest (Amount due) should be repaid at the end of the loan period, no later than the maturity date to the banking account or USDC Ethereum address of the Investor.</p>
-                    <p>Due to certain complexities, we currently do not recommend partial repayments of the loan.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">When should I return the loan?</h4>
-                  <div className="text-gray-600 dark:text-gray-300 space-y-3">
-                    <p>Your loan should be repaid to the investor no later than the maturity date. It's advisable to initiate the transfer a few days before the maturity date to ensure timely repayment.</p>
-                    <p>For your convenience, you can download a calendar event from the 'Loan actions' menu.</p>
-                    <p>You will also receive an automated email notification 14, 7 and 2 days before the maturity, and on the day of the loan maturity.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What is the amount I should return to the Investor?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>You should return the 'Amount due'.</p>
-                    <p className="font-semibold">Amount due = Loan amount + Interest for the whole loan period.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What if I don't return the full amount due to the Investor?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. Part of your collateral might get liquidated to cover the full amount.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What if I don't return the loan?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the outcome of the procedure is deemed a 'default', your collateral will be liquidated to cover the outstanding amount.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What if I return the loan after the maturity?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the outcome of the procedure is deemed a 'default', your collateral will be liquidated to cover the outstanding amount.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Can I repay the loan earlier?</h4>
-                  <div className="text-gray-600 dark:text-gray-300 space-y-3">
-                    <p>Yes, you can repay any loan earlier.</p>
-                    <p>To do so, please select the 'Early repayment' option in the 'Loan Actions' menu.</p>
-                    <p>We will then seek confirmation from the investor that they are ready to confirm the repayment of your loan. Once they agree, you will get notified and the platform will guide you through the repayment process.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">How much should I pay back when I close my loan earlier?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>When repaying your loan earlier, you will need to repay the entire amount due for the entire period of the loan.</p>
-                  </div>
-                </div>
-                
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">What if the Investor never confirms they received funds back?</h4>
-                  <div className="text-gray-600 dark:text-gray-300">
-                    <p>Reconquest would start a resolution procedure as defined in the Escrow rules. If the resolution procedure results in us receiving only the confirmation of repayment from you (the borrower), we would consider the loan closed, and your collateral would be returned.</p>
-                  </div>
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-16 bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <ScrollAnimation delay={0}>
-              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-                <div className="text-3xl font-bold text-primary mb-2">
-                  <AnimatedCounter end={50} prefix="$" suffix="M+" duration={2000} />
-                </div>
-                <div className="text-gray-600 dark:text-gray-300">Total Volume</div>
-              </div>
-            </ScrollAnimation>
-            <ScrollAnimation delay={0.1}>
-              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-                <div className="text-3xl font-bold text-primary mb-2">
-                  <AnimatedCounter end={500} suffix="+" duration={2000} />
-                </div>
-                <div className="text-gray-600 dark:text-gray-300">BTC Collateralized</div>
-              </div>
-            </ScrollAnimation>
-            <ScrollAnimation delay={0.2}>
-              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-                <div className="text-3xl font-bold text-primary mb-2">99.9%</div>
-                <div className="text-gray-600 dark:text-gray-300">Uptime</div>
-              </div>
-            </ScrollAnimation>
-            <ScrollAnimation delay={0.3}>
-              <div className="p-6 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-border/20">
-                <div className="text-3xl font-bold text-primary mb-2">
-                  <AnimatedCounter end={1000} suffix="+" duration={2000} />
-                </div>
-                <div className="text-gray-600 dark:text-gray-300">Active Users</div>
-              </div>
-            </ScrollAnimation>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-primary/10 to-blue-50 dark:from-primary/20 dark:to-blue-900/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to Get Started?</h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">Join thousands of users leveraging Bitcoin for financial freedom</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4 sm:px-0">
-            <Link href="/login" className="w-full sm:w-auto max-w-sm">
-              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-[#ffb866] via-[#ffa033] to-[#ff8800] text-black font-bold px-8 py-4 min-h-[48px] text-lg shadow-[0_0_20px_rgba(255,160,51,0.4)] hover:shadow-[0_0_30px_rgba(255,160,51,0.6)] hover:scale-105 transition-all duration-300 ease-in-out">
-                Start Borrowing
+          <div className="flex gap-4">
+            <Link href={isAuthenticated ? "/borrower" : "/login"}>
+              <Button size="lg" className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none h-14 px-10 font-medium border-0 group">
+                Start Borrowing <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link href="/login" className="w-full sm:w-auto max-w-sm">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto bg-gray-900 border-2 border-primary text-primary hover:text-primary hover:bg-gray-800 hover:border-primary px-8 py-4 min-h-[48px] text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ease-in-out">
+            <Link href={isAuthenticated ? "/lender" : "/login"}>
+              <Button size="lg" variant="outline" className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-none h-14 px-10 font-medium transition-colors">
                 Start Lending
               </Button>
             </Link>
@@ -496,26 +306,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section className="py-16 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Need Help?</h2>
-          <p className="text-gray-300 mb-6">
-            Have questions about Bitcoin-backed lending or need support with your account?
-          </p>
-          <div className="flex items-center justify-center space-x-2">
-            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <a 
-              href="mailto:admin@reconquestp2p.com" 
-              className="text-blue-400 hover:text-blue-300 transition-colors font-medium"
-            >
-              admin@reconquestp2p.com
-            </a>
-          </div>
+      {/* ── FOOTER ───────────────────────────────────── */}
+      <footer className="border-t border-neutral-900 py-10">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">
+          <span className="text-lg font-bold tracking-tight text-neutral-600">Reconquest</span>
+          <span className="text-sm text-neutral-600">&copy; {new Date().getFullYear()} Reconquest. All rights reserved.</span>
         </div>
-      </section>
+      </footer>
     </div>
   );
 }

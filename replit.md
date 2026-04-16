@@ -41,8 +41,14 @@ Preferred communication style: Simple, everyday language.
 - **LTV Monitoring & Liquidation**: Real-time LTV monitoring with a two-tier warning system and automatic liquidation at 95% LTV. Borrowers can top-up collateral.
 - **Lender Default Preference**: Lenders can specify whether to receive fiat (platform handles BTC sale) or BTC directly in case of loan default, with per-loan address locking for security.
 
-### Branding
-- **Logo**: Custom shield + wordmark with a sunrise gradient, available in dark and light mode variants, and optimized for email usage.
+### Design System — Bitcoin Noir
+- **Theme**: Dark-first (default `"dark"` in ThemeProvider). Pure black (`hsl(0 0% 0%)`) background.
+- **Accent**: Orange `#f97316` / `hsl(32 100% 60%)` — single accent colour throughout.
+- **Typography**: Extra-bold tracking-tight headlines (`text-5xl`→`text-8xl`), neutral-400 body text.
+- **Buttons**: `rounded-none` sharp corners. Orange filled CTA, neutral-bordered ghost secondary.
+- **Noise texture**: Fixed SVG fractalNoise overlay at 2.5% opacity on all pages.
+- **Navbar**: Pure black bar, no blur/glass. Logo left, nav links centre (neutral-500 → white), BTC price + auth buttons right.
+- **Logo**: Custom shield + wordmark with a sunrise gradient, available in dark and light mode variants (`reconquest_logo_v10.png` dark, `reconquest_logo_light.png` light), and optimized for email usage.
 
 ## External Dependencies
 
