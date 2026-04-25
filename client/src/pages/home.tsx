@@ -82,9 +82,7 @@ export default function Home() {
           className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tighter leading-[1.04] mb-8"
         >
           <span className="block text-white">The Global Marketplace for</span>
-          <span className="block text-[#f97316]">
-            <Bitcoin className="inline-block h-[0.85em] w-[0.85em] mb-1 text-[#f97316]" />itcoin-Backed Loans
-          </span>
+          <span className="block text-[#f97316]">₿itcoin-Backed Loans</span>
         </motion.h1>
 
         <motion.p
