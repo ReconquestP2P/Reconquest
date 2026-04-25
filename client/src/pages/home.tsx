@@ -573,6 +573,25 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── NEED HELP ─────────────────────────────────────── */}
+      <section className="border-t border-neutral-900 py-16 text-center">
+        <div className="max-w-xl mx-auto px-6">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">Need Help?</h2>
+          <p className="text-neutral-400 mb-6">
+            Have questions about Bitcoin-backed lending or need support with your account?
+          </p>
+          <a
+            href="mailto:admin@reconquestp2p.com"
+            className="inline-flex items-center gap-2 text-[#f97316] hover:text-[#ea580c] font-medium transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            admin@reconquestp2p.com
+          </a>
+        </div>
+      </section>
+
       {/* ── FOOTER ────────────────────────────────────────── */}
       <footer className="border-t border-neutral-900 py-10">
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4">
