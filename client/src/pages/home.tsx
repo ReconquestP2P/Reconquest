@@ -99,7 +99,7 @@ export default function Home() {
           <span className="text-xl md:text-2xl text-white font-bold tracking-tight">
             For Bitcoiners who need liquidity. Borrow without selling.
           </span>
-          <span className="text-xl md:text-2xl text-neutral-400 font-bold tracking-tight">
+          <span className="text-xl md:text-2xl text-white font-bold tracking-tight">
             For Investors who demand safe, fixed returns. Lend protected by real collateral.
           </span>
         </motion.p>
