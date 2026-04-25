@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown } from "lucide-react";
+import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown, Bitcoin } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -63,15 +63,15 @@ export default function Home() {
       />
 
       {/* ── HERO ──────────────────────────────────────────── */}
-      <section className="relative max-w-7xl mx-auto px-6 md:px-12 pt-28 pb-36">
+      <section className="relative max-w-7xl mx-auto px-6 md:px-12 pt-28 pb-36 text-center">
         <motion.p
           variants={fadeUp}
           initial="hidden"
           animate="show"
           custom={0}
-          className="text-sm uppercase tracking-[0.2em] text-neutral-500 mb-6 font-medium"
+          className="text-sm tracking-[0.2em] text-neutral-400 mb-6 font-medium"
         >
-          Bitcoin-Collateralised P2P Lending
+          The Future of Lending Is Bitcoin-Backed
         </motion.p>
 
         <motion.h1
@@ -79,12 +79,11 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={1}
-          className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tighter leading-[1.04] mb-8 max-w-5xl"
+          className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tighter leading-[1.04] mb-8"
         >
-          <span className="block">Borrow EUR.</span>
-          <span className="block">
-            Keep your{" "}
-            <em className="not-italic text-[#f97316]">Bitcoin.</em>
+          <span className="block text-white">The Global Marketplace for</span>
+          <span className="block text-[#f97316]">
+            <Bitcoin className="inline-block h-[0.85em] w-[0.85em] mb-1 text-[#f97316]" />itcoin-Backed Loans
           </span>
         </motion.h1>
 
@@ -93,10 +92,10 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={2}
-          className="text-xl md:text-2xl text-neutral-400 max-w-2xl mb-12 font-light leading-relaxed"
+          className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed"
         >
-          Lock BTC in a 3-of-3 multisig escrow. Receive EUR from a matched
-          lender. Repay at maturity to get your Bitcoin back.
+          Built for Bitcoiners seeking capital and Investors looking for safe, fixed returns.
+          Secure, non-custodial lending with Bitcoin as collateral.
         </motion.p>
 
         <motion.div
@@ -104,7 +103,7 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={3}
-          className="flex flex-col sm:flex-row gap-4"
+          className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <Link href={isAuthenticated ? "/borrower" : "/login"}>
             <Button
@@ -121,7 +120,7 @@ export default function Home() {
               variant="outline"
               className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-none h-14 px-10 text-lg font-medium transition-colors w-full sm:w-auto"
             >
-              Explore Lending
+              Start Lending
             </Button>
           </Link>
         </motion.div>
