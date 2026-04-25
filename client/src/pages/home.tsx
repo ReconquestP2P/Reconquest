@@ -541,21 +541,19 @@ export default function Home() {
 
       {/* ── CTA STRIP ─────────────────────────────────────── */}
       <section className="border-t border-neutral-900 py-24">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
-              Ready to get started?
-            </h2>
-            <p className="text-neutral-500">
-              Create an account and post your first loan request or browse
-              available opportunities as a lender.
-            </p>
-          </div>
-          <div className="flex gap-4 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
+            Ready to get started?
+          </h2>
+          <p className="text-neutral-500 mb-8">
+            Create an account and post your first loan request or browse
+            available opportunities as a lender.
+          </p>
+          <div className="flex gap-4">
             <Link href={isAuthenticated ? "/borrower" : "/login"}>
               <Button
                 size="lg"
-                className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full h-12 text-base font-medium border-0 w-full sm:w-44"
+                className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full h-12 text-base font-medium border-0 w-44"
               >
                 Start Borrowing
               </Button>
@@ -564,7 +562,7 @@ export default function Home() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-full h-12 text-base font-medium transition-colors w-full sm:w-44"
+                className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-full h-12 text-base font-medium transition-colors w-44"
               >
                 Start Lending
               </Button>
