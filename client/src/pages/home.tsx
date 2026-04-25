@@ -1,18 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown } from "lucide-react";
-
-function BitcoinCoinIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="32" fill="#f7931a" />
-      <path
-        fill="white"
-        d="M46.5 27.8c.6-4.2-2.6-6.5-7-8l1.4-5.7-3.5-.9-1.4 5.5c-.9-.2-1.9-.5-2.8-.7l1.4-5.6-3.5-.9-1.4 5.7c-.8-.2-1.5-.4-2.2-.5l-4.8-1.2-.9 3.7s2.6.6 2.5.6c1.4.4 1.6 1.3 1.6 2l-1.6 6.4c.1 0 .2.1.4.1l-.4-.1-2.2 9c-.2.4-.6 1-1.6.8.0.1-2.5-.6-2.5-.6l-1.7 4 4.5 1.1 2.5.6-1.4 5.7 3.5.9 1.4-5.7c.9.3 1.9.5 2.8.7l-1.4 5.6 3.5.9 1.4-5.7c5.9 1.1 10.3.7 12.2-4.7 1.5-4.3-.1-6.8-3.2-8.4 2.3-.5 4-2 4.4-5.1zm-7.9 11.1c-1.1 4.3-8.4 2-10.8 1.4l1.9-7.7c2.4.6 10.1 1.8 8.9 6.3zm1.1-11.2c-1 3.9-7.1 1.9-9.1 1.4l1.7-7c2 .5 8.5 1.4 7.4 5.6z"
-      />
-    </svg>
-  );
-}
+import bitcoinIcon from "@assets/image_1752547022307.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -94,7 +83,10 @@ export default function Home() {
           className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tighter leading-[1.04] mb-8"
         >
           <span className="block text-white">The Global Marketplace for</span>
-          <span className="block text-[#f97316]">₿itcoin-Backed Loans</span>
+          <span className="flex items-center justify-center gap-0.5 text-[#f97316]">
+            <img src={bitcoinIcon} alt="Bitcoin" className="w-[0.85em] h-[0.85em] rounded-full object-cover floating" />
+            <span>itcoin-Backed Loans</span>
+          </span>
         </motion.h1>
 
         <motion.p
