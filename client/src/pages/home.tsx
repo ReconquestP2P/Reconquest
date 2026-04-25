@@ -114,7 +114,7 @@ export default function Home() {
           <Link href={isAuthenticated ? "/borrower" : "/login"}>
             <Button
               size="lg"
-              className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full h-12 px-8 text-base font-medium border-0 w-full sm:w-auto"
+              className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full h-12 text-base font-medium border-0 w-full sm:w-44"
             >
               Start Borrowing
             </Button>
@@ -123,7 +123,7 @@ export default function Home() {
             <Button
               size="lg"
               variant="outline"
-              className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-full h-12 px-8 text-base font-medium transition-colors w-full sm:w-auto"
+              className="border-neutral-700 bg-transparent text-white hover:bg-white hover:text-black rounded-full h-12 text-base font-medium transition-colors w-full sm:w-44"
             >
               Start Lending
             </Button>
