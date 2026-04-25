@@ -96,11 +96,11 @@ export default function Home() {
           custom={2}
           className="flex flex-col items-center gap-3 mb-12"
         >
-          <span className="text-lg md:text-xl text-white font-medium tracking-tight">
-            For Bitcoiners who need liquidity.
+          <span className="text-xl md:text-2xl text-white font-bold tracking-tight">
+            For Bitcoiners who need liquidity. Borrow without selling.
           </span>
-          <span className="text-lg md:text-xl text-neutral-400 font-light tracking-tight">
-            For Investors looking for safe, fixed returns.
+          <span className="text-xl md:text-2xl text-neutral-400 font-bold tracking-tight">
+            For Investors who demand safe, fixed returns. Lend protected by real collateral.
           </span>
         </motion.p>
 
