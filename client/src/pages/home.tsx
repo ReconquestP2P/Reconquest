@@ -574,8 +574,8 @@ export default function Home() {
       </section>
 
       {/* ── NEED HELP ─────────────────────────────────────── */}
-      <section className="border-t border-neutral-900 py-16 text-center">
-        <div className="max-w-xl mx-auto px-6">
+      <section className="border-t border-neutral-900 py-16">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">Need Help?</h2>
           <p className="text-neutral-400 mb-6">
             Have questions about Bitcoin-backed lending or need support with your account?
