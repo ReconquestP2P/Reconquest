@@ -94,10 +94,14 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={2}
-          className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed"
+          className="flex flex-col items-center gap-3 mb-12"
         >
-          Built for Bitcoiners seeking capital and Investors looking for safe, fixed returns.
-          Secure, non-custodial lending with Bitcoin as collateral.
+          <span className="text-lg md:text-xl text-white font-medium tracking-tight">
+            For Bitcoiners who need liquidity.
+          </span>
+          <span className="text-lg md:text-xl text-neutral-400 font-light tracking-tight">
+            For Investors looking for safe, fixed returns.
+          </span>
         </motion.p>
 
         <motion.div
