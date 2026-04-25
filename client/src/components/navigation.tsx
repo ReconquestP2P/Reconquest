@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, User } from "lucide-react";
 import logoDark from "@assets/reconquest_logo_v10.png";
-import logoLight from "@assets/reconquest_logo_light.png";
 import BitcoinPriceOracle from "@/components/bitcoin-price-oracle";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -26,7 +25,7 @@ export default function Navigation() {
 
   const navLinkClass = (path: string) =>
     `text-sm font-medium transition-colors ${
-      location === path ? "text-white" : "text-neutral-500 hover:text-white"
+      location === path ? "text-white" : "text-neutral-400 hover:text-white"
     }`;
 
   return (
@@ -35,8 +34,7 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" onClick={() => setMobileMenuOpen(false)}>
-            <img src={logoLight} alt="Reconquest" className="h-14 w-auto block dark:hidden" />
-            <img src={logoDark}  alt="Reconquest" className="h-14 w-auto hidden dark:block" />
+            <img src={logoDark} alt="Reconquest" className="h-14 w-auto" />
           </Link>
 
           {/* Desktop centre links */}
@@ -47,7 +45,7 @@ export default function Navigation() {
                 <Link href="/lender" className={navLinkClass("/lender")}>Lend</Link>
               </>
             )}
-            <button onClick={scrollToHowItWorks} className="text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+            <button onClick={scrollToHowItWorks} className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">
               How it Works
             </button>
             <Link href="/about" className={navLinkClass("/about")}>About</Link>
