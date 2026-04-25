@@ -70,8 +70,9 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={0}
-          className="text-sm tracking-[0.2em] text-neutral-400 mb-6 font-medium"
+          className="inline-flex items-center gap-2 text-xs tracking-[0.2em] text-neutral-200 mb-6 font-medium uppercase border border-neutral-700 px-4 py-1.5"
         >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#f97316] inline-block" />
           The Future of Lending Is Bitcoin-Backed
         </motion.p>
 
