@@ -53,7 +53,7 @@ export default function BitcoinPriceOracle({
 
   if (isLoading) {
     return (
-      <div className="flex items-center space-x-2 text-sm text-gray-500">
+      <div className="flex items-center space-x-2 text-sm text-neutral-400">
         <RefreshCw className="h-4 w-4 animate-spin" />
         <span>Loading BTC price...</span>
       </div>
@@ -62,7 +62,7 @@ export default function BitcoinPriceOracle({
 
   if (error || !btcPrice) {
     return (
-      <div className="flex items-center space-x-2 text-sm text-red-500">
+      <div className="flex items-center space-x-2 text-sm text-red-400">
         <Bitcoin className="h-4 w-4" />
         <span>Price unavailable</span>
       </div>
@@ -71,27 +71,27 @@ export default function BitcoinPriceOracle({
 
   if (variant === "compact") {
     return (
-      <div className="flex items-center space-x-4 text-sm">
-        <Bitcoin className="h-4 w-4 text-orange-500" />
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1">
-            <span className="text-gray-600">USD:</span>
-            <span className="font-semibold text-primary">
+      <div className="flex items-center gap-4 text-sm font-medium">
+        <Bitcoin className="h-4 w-4 text-[#f97316]" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <span className="text-neutral-400">USD:</span>
+            <span className="font-bold text-white">
               {formatPrice(btcPrice.usd, "USD")}
             </span>
             {btcPrice.usd_24h_change !== undefined && (
-              <span className={`text-xs ${getChangeColor(btcPrice.usd_24h_change)}`}>
+              <span className={`text-xs font-medium ${btcPrice.usd_24h_change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatChange(btcPrice.usd_24h_change)}
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-1">
-            <span className="text-gray-600">EUR:</span>
-            <span className="font-semibold text-primary">
+          <div className="flex items-center gap-1">
+            <span className="text-neutral-400">EUR:</span>
+            <span className="font-bold text-white">
               {formatPrice(btcPrice.eur, "EUR")}
             </span>
             {btcPrice.eur_24h_change !== undefined && (
-              <span className={`text-xs ${getChangeColor(btcPrice.eur_24h_change)}`}>
+              <span className={`text-xs font-medium ${btcPrice.eur_24h_change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatChange(btcPrice.eur_24h_change)}
               </span>
             )}
