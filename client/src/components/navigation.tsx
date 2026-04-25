@@ -73,7 +73,7 @@ export default function Navigation() {
                   </button>
                 </Link>
                 <Link href="/signup">
-                  <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none font-medium px-6 border-0">
+                  <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full font-medium px-6 border-0">
                     Sign Up
                   </Button>
                 </Link>
@@ -130,7 +130,7 @@ export default function Navigation() {
                     </Button>
                   </Link>
                   <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none font-medium border-0">
+                    <Button className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full font-medium border-0">
                       Sign Up
                     </Button>
                   </Link>
