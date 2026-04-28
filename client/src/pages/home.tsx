@@ -233,7 +233,7 @@ export default function Home() {
                     <div className="pt-0.5">
                       <h4 className="font-semibold text-white mb-1 flex items-center gap-2">
                         {s.title}
-                        <s.Icon className="h-3.5 w-3.5 text-neutral-500 flex-shrink-0" />
+                        <s.Icon className="h-3.5 w-3.5 text-[#f97316] flex-shrink-0" />
                       </h4>
                       <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
                     </div>
@@ -270,7 +270,7 @@ export default function Home() {
                     <div className="pt-0.5">
                       <h4 className="font-semibold text-white mb-1 flex items-center gap-2">
                         {s.title}
-                        <s.Icon className="h-3.5 w-3.5 text-neutral-500 flex-shrink-0" />
+                        <s.Icon className="h-3.5 w-3.5 text-[#f97316] flex-shrink-0" />
                       </h4>
                       <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
                     </div>
