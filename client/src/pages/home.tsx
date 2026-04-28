@@ -148,8 +148,7 @@ export default function Home() {
               Non-Custodial
             </div>
             <div className="text-sm text-neutral-500 leading-snug">
-              Your private key is derived in-browser from your passphrase and
-              never leaves your device.
+              We never hold your keys. Your BTC cannot be re-hypothecated.
             </div>
           </div>
           <div>
