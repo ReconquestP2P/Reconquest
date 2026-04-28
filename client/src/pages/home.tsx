@@ -222,7 +222,7 @@ export default function Home() {
               <div className="space-y-4 relative z-10">
                 {[
                   { n: "01", title: "Post a loan request", desc: "Set the amount in EUR, loan duration, and interest rate.", Icon: FileText },
-                  { n: "02", title: "A lender accepts", desc: "A lender on the marketplace accepts your request.", Icon: Handshake },
+                  { n: "02", title: "A lender accepts", desc: "A lender on the marketplace accepts your request. A 3-of-3 multisignature escrow address is then generated for the loan.", Icon: Handshake },
                   { n: "03", title: "Deposit BTC collateral", desc: "Send the required Bitcoin to the 3-of-3 multisignature address. Reconquest monitors the blockchain for confirmation of deposit and makes sure the required LTV is met.", Icon: Bitcoin },
                   { n: "04", title: "Receive EUR", desc: "Reconquest informs the lender once collateral has been properly deposited, so the lender can send EUR directly to your bank account.", Icon: Banknote },
                 ].map((s) => (
@@ -261,7 +261,7 @@ export default function Home() {
                   { n: "01", title: "Browse loan requests", desc: "View open borrower requests, each showing the loan amount, term, and interest rate.", Icon: Search },
                   { n: "02", title: "Fund a loan", desc: "Select a loan and confirm. Reconquest handles the Bitcoin escrow setup on your behalf — no crypto knowledge needed.", Icon: Wallet },
                   { n: "03", title: "Send EUR to the borrower", desc: "Reconquest will inform you once collateral has been properly deposited on the 3-of-3 multisignature address. Transfer the agreed EUR amount to the borrower's bank account via SEPA.", Icon: Send },
-                  { n: "04", title: "Receive principal + interest", desc: "At maturity, the borrower repays you. Confirmed repayment by the borrower automatically releases the Bitcoin deposit as collateral back to them.", Icon: TrendingUp },
+                  { n: "04", title: "Receive principal + interest", desc: "At maturity, the borrower repays you. Confirmed repayment by the borrower automatically releases the Bitcoin deposit back to them.", Icon: TrendingUp },
                 ].map((s) => (
                   <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
