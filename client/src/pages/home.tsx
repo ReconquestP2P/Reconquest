@@ -224,7 +224,7 @@ export default function Home() {
                   { n: "01", title: "Post a loan request", desc: "Set the amount in EUR, loan duration, and interest rate.", Icon: FileText },
                   { n: "02", title: "A lender accepts", desc: "A lender on the marketplace accepts your request.", Icon: Handshake },
                   { n: "03", title: "Deposit BTC collateral", desc: "Send the required Bitcoin to the 3-of-3 multisignature address. Reconquest monitors the blockchain for confirmation of deposit and makes sure the required LTV is met.", Icon: Bitcoin },
-                  { n: "04", title: "Receive EUR", desc: "Once collateral is confirmed to have been properly deposited in the multi-signature address, the lender sends euro directly to your bank account.", Icon: Banknote },
+                  { n: "04", title: "Receive EUR", desc: "Reconquest informs the lender once collateral has been properly deposited, so the lender can send euro directly to your bank account.", Icon: Banknote },
                 ].map((s) => (
                   <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
