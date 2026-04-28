@@ -221,10 +221,10 @@ export default function Home() {
               <div className="absolute left-5 top-10 bottom-10 w-px border-l-2 border-dashed border-neutral-800 z-0" />
               <div className="space-y-4 relative z-10">
                 {[
-                  { n: "01", title: "Post a loan request", desc: "Set the amount in EUR, loan duration, and interest rate. The platform validates your LTV stays within the allowed limit.", Icon: FileText },
-                  { n: "02", title: "A lender accepts", desc: "A lender on the marketplace selects your request. The escrow address is generated from your three public keys.", Icon: Handshake },
-                  { n: "03", title: "Deposit BTC collateral", desc: "Send the required Bitcoin to the 3-of-3 multisig address. The platform monitors the blockchain for confirmation.", Icon: Bitcoin },
-                  { n: "04", title: "Receive EUR", desc: "Once collateral confirms and the signing ceremony completes, the lender sends EUR directly to your bank account.", Icon: Banknote },
+                  { n: "01", title: "Post a loan request", desc: "Set the amount in EUR, loan duration, and interest rate.", Icon: FileText },
+                  { n: "02", title: "A lender accepts", desc: "A lender on the marketplace accepts your request.", Icon: Handshake },
+                  { n: "03", title: "Deposit BTC collateral", desc: "Send the required Bitcoin to the 3-of-3 multisignature address. The platform monitors the blockchain for confirmation.", Icon: Bitcoin },
+                  { n: "04", title: "Receive EUR", desc: "Once collateral is confirmed to have been properly deposited in the multi-signature address, the lender sends euro directly to your bank account.", Icon: Banknote },
                 ].map((s) => (
                   <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
@@ -258,10 +258,10 @@ export default function Home() {
               <div className="absolute left-5 top-10 bottom-10 w-px border-l-2 border-dashed border-neutral-800 z-0" />
               <div className="space-y-4 relative z-10">
                 {[
-                  { n: "01", title: "Browse loan requests", desc: "View open borrower requests, each showing the loan amount, term, interest rate, and LTV ratio.", Icon: Search },
+                  { n: "01", title: "Browse loan requests", desc: "View open borrower requests, each showing the loan amount, term, and interest rate.", Icon: Search },
                   { n: "02", title: "Fund a loan", desc: "Select a loan and confirm. The platform handles the Bitcoin escrow setup on your behalf — no crypto knowledge needed.", Icon: Wallet },
                   { n: "03", title: "Send EUR to the borrower", desc: "Transfer the agreed EUR amount to the borrower's bank account via SEPA once collateral is confirmed.", Icon: Send },
-                  { n: "04", title: "Receive principal + interest", desc: "At maturity, the borrower repays you. Confirmed repayment automatically releases the Bitcoin collateral back to them.", Icon: TrendingUp },
+                  { n: "04", title: "Receive principal + interest", desc: "At maturity, the borrower repays you. Confirmed repayment by the borrower automatically releases the Bitcoin deposit as collateral back to them.", Icon: TrendingUp },
                 ].map((s) => (
                   <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
