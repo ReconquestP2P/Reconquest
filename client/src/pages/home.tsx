@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown } from "lucide-react";
+import { Shield, Zap, Lock, TrendingUp, ArrowRight, ChevronDown, FileText, Handshake, Bitcoin, Banknote, Search, Wallet, Send } from "lucide-react";
 import bitcoinIcon from "@assets/image_1752547022307.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
@@ -216,41 +216,30 @@ export default function Home() {
             <h3 className="text-sm font-semibold mb-8 text-[#f97316] uppercase tracking-widest">
               For Borrowers
             </h3>
-            <div className="space-y-8">
-              {[
-                {
-                  n: "01",
-                  title: "Post a loan request",
-                  desc: "Set the amount in EUR, loan duration, and interest rate. The platform validates your LTV stays within the allowed limit.",
-                },
-                {
-                  n: "02",
-                  title: "A lender accepts",
-                  desc: "A lender on the marketplace selects your request. The escrow address is generated from your three public keys.",
-                },
-                {
-                  n: "03",
-                  title: "Deposit BTC collateral",
-                  desc: "Send the required Bitcoin to the 3-of-3 multisig address. The platform monitors the blockchain for confirmation.",
-                },
-                {
-                  n: "04",
-                  title: "Receive EUR",
-                  desc: "Once collateral confirms and the signing ceremony completes, the lender sends EUR directly to your bank account.",
-                },
-              ].map((s) => (
-                <div key={s.n} className="flex gap-6">
-                  <span className="text-3xl font-bold text-neutral-800 tabular-nums leading-none mt-1">
-                    {s.n}
-                  </span>
-                  <div>
-                    <h4 className="font-semibold text-white mb-1">{s.title}</h4>
-                    <p className="text-neutral-500 text-sm leading-relaxed">
-                      {s.desc}
-                    </p>
+            <div className="relative">
+              {/* Connector line */}
+              <div className="absolute left-5 top-10 bottom-10 w-px border-l-2 border-dashed border-neutral-800 z-0" />
+              <div className="space-y-4 relative z-10">
+                {[
+                  { n: "01", title: "Post a loan request", desc: "Set the amount in EUR, loan duration, and interest rate. The platform validates your LTV stays within the allowed limit.", Icon: FileText },
+                  { n: "02", title: "A lender accepts", desc: "A lender on the marketplace selects your request. The escrow address is generated from your three public keys.", Icon: Handshake },
+                  { n: "03", title: "Deposit BTC collateral", desc: "Send the required Bitcoin to the 3-of-3 multisig address. The platform monitors the blockchain for confirmation.", Icon: Bitcoin },
+                  { n: "04", title: "Receive EUR", desc: "Once collateral confirms and the signing ceremony completes, the lender sends EUR directly to your bank account.", Icon: Banknote },
+                ].map((s) => (
+                  <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
+                      <span className="text-xs font-bold text-[#f97316] tabular-nums">{s.n}</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <h4 className="font-semibold text-white mb-1 flex items-center gap-2">
+                        {s.title}
+                        <s.Icon className="h-3.5 w-3.5 text-neutral-500 flex-shrink-0" />
+                      </h4>
+                      <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
 
@@ -264,41 +253,30 @@ export default function Home() {
             <h3 className="text-sm font-semibold mb-8 text-white uppercase tracking-widest">
               For Lenders
             </h3>
-            <div className="space-y-8">
-              {[
-                {
-                  n: "01",
-                  title: "Browse loan requests",
-                  desc: "View open borrower requests, each showing the loan amount, term, interest rate, and LTV ratio.",
-                },
-                {
-                  n: "02",
-                  title: "Fund a loan",
-                  desc: "Select a loan and confirm. The platform handles the Bitcoin escrow setup on your behalf — no crypto knowledge needed.",
-                },
-                {
-                  n: "03",
-                  title: "Send EUR to the borrower",
-                  desc: "Transfer the agreed EUR amount to the borrower's bank account via SEPA once collateral is confirmed.",
-                },
-                {
-                  n: "04",
-                  title: "Receive principal + interest",
-                  desc: "At maturity, the borrower repays you. Confirmed repayment automatically releases the Bitcoin collateral back to them.",
-                },
-              ].map((s) => (
-                <div key={s.n} className="flex gap-6">
-                  <span className="text-3xl font-bold text-neutral-800 tabular-nums leading-none mt-1">
-                    {s.n}
-                  </span>
-                  <div>
-                    <h4 className="font-semibold text-white mb-1">{s.title}</h4>
-                    <p className="text-neutral-500 text-sm leading-relaxed">
-                      {s.desc}
-                    </p>
+            <div className="relative">
+              {/* Connector line */}
+              <div className="absolute left-5 top-10 bottom-10 w-px border-l-2 border-dashed border-neutral-800 z-0" />
+              <div className="space-y-4 relative z-10">
+                {[
+                  { n: "01", title: "Browse loan requests", desc: "View open borrower requests, each showing the loan amount, term, interest rate, and LTV ratio.", Icon: Search },
+                  { n: "02", title: "Fund a loan", desc: "Select a loan and confirm. The platform handles the Bitcoin escrow setup on your behalf — no crypto knowledge needed.", Icon: Wallet },
+                  { n: "03", title: "Send EUR to the borrower", desc: "Transfer the agreed EUR amount to the borrower's bank account via SEPA once collateral is confirmed.", Icon: Send },
+                  { n: "04", title: "Receive principal + interest", desc: "At maturity, the borrower repays you. Confirmed repayment automatically releases the Bitcoin collateral back to them.", Icon: TrendingUp },
+                ].map((s) => (
+                  <div key={s.n} className="flex gap-4 p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-600 hover:shadow-[0_0_16px_rgba(249,115,22,0.08)] transition-all duration-200">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[#f97316] flex items-center justify-center">
+                      <span className="text-xs font-bold text-[#f97316] tabular-nums">{s.n}</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <h4 className="font-semibold text-white mb-1 flex items-center gap-2">
+                        {s.title}
+                        <s.Icon className="h-3.5 w-3.5 text-neutral-500 flex-shrink-0" />
+                      </h4>
+                      <p className="text-neutral-500 text-sm leading-relaxed">{s.desc}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
