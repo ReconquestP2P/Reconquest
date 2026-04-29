@@ -21,7 +21,7 @@ import Navigation from "@/components/navigation";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-gradient-hero dark:bg-gray-900">
+    <div className="noise min-h-screen bg-black text-white">
       <Navigation />
       <Switch>
         <Route path="/" component={Home} />
@@ -34,10 +34,8 @@ function Router() {
         <Route path="/lender" component={LenderDashboard} />
         <Route path="/my-account" component={MyAccount} />
         <Route path="/confirm-details-change" component={ConfirmDetailsChange} />
-
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin-dashboard" component={AdminDashboard} />
-
         <Route component={NotFound} />
       </Switch>
     </div>
@@ -48,7 +46,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider defaultTheme="light" storageKey="reconquest-ui-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="reconquest-ui-theme">
           <TooltipProvider>
             <Toaster />
             <Router />

@@ -2,94 +2,159 @@
 @tailwind components;
 @tailwind utilities;
 
-.bitcoin-b {
-  color: white !important;
-  fill: white !important;
-}
+/* ── Bitcoin Noir — single dark-first palette ────────────────────────────── */
+/* App is dark-only. :root mirrors .dark so there's zero flash of light mode. */
 
-:root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
-  --border: hsl(20, 5.9%, 90%);
-  --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(32 100% 60%);
-  --primary-foreground: hsl(0, 0%, 0%);
-  --secondary: hsl(0 0% 88%);
-  --secondary-foreground: hsl(0, 0%, 100%);
-  --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
-  --destructive: hsl(0, 84.2%, 60.2%);
-  --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
-  --radius: 0.5rem;
-  
-  /* Custom Bitcoin and financial colors */
-  --bitcoin-gold: hsl(25, 95%, 53%);
-  --trust-blue: hsl(217, 91%, 60%);
-  --deep-blue: hsl(224, 76%, 48%);
-  --success: hsl(142, 76%, 36%);
-  --warning: hsl(45, 93%, 47%);
-}
-
+:root,
 .dark {
-  --background: hsl(0 0% 0%);
-  --foreground: hsl(0 0% 96%);
-  --muted: hsl(0, 0%, 8%);
-  --muted-foreground: hsl(0, 0%, 44%);
-  --popover: hsl(0, 0%, 5%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(0, 0%, 5%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(0, 0%, 12%);
-  --input: hsl(0, 0%, 12%);
-  --primary: hsl(32 100% 60%);
-  --primary-foreground: hsl(0, 0%, 0%);
-  --secondary: hsl(0 0% 88%);
-  --secondary-foreground: hsl(0, 0%, 100%);
-  --accent: hsl(0 0% 72%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
-  --radius: 0.5rem;
+  /* Core surfaces */
+  --background:         hsl(0 0% 0%);        /* page bg — pure black         */
+  --surface-1:          hsl(0 0% 5%);         /* cards / dialogs               */
+  --surface-2:          hsl(0 0% 8%);         /* input fills / nested panels   */
+  --surface-3:          hsl(0 0% 10%);        /* hover surfaces                */
+  
+  /* Text */
+  --foreground:         hsl(0 0% 96%);        /* primary text                  */
+  --muted-foreground:   hsl(0 0% 44%);        /* body copy / labels            */
+
+  /* Borders */
+  --border:             hsl(0 0% 12%);        /* default dividers              */
+  --border-subtle:      hsl(0 0% 9%);         /* hairlines                     */
+  --border-strong:      hsl(0 0% 20%);        /* focus rings / hover borders   */
+
+  /* Accent — bitcoin orange */
+  --primary:            hsl(32 100% 60%);     /* #f97316                       */
+  --primary-hover:      hsl(24 94% 45%);      /* #ea580c                       */
+  --primary-foreground: hsl(0 0% 0%);
+
+  /* Semantic tokens mapped to shadcn names */
+  --card:               var(--surface-1);
+  --card-foreground:    var(--foreground);
+  --popover:            var(--surface-1);
+  --popover-foreground: var(--foreground);
+  --muted:              var(--surface-2);
+  --input:              var(--surface-2);
+  --secondary:          hsl(0 0% 14%);
+  --secondary-foreground: hsl(0 0% 90%);
+  --accent:             hsl(0 0% 14%);
+  --accent-foreground:  var(--foreground);
+  --destructive:        hsl(0 72% 45%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --ring:               var(--primary);
+
+  /* Border radius */
+  --radius: 0.375rem;   /* 6 px — slightly tighter than default 8 px         */
+
+  /* Custom semantic shortcuts */
+  --bitcoin:            hsl(32 100% 60%);
+  --bitcoin-muted:      hsl(32 100% 60% / 0.15);
+  --success:            hsl(142 70% 42%);
+  --warning:            hsl(45 93% 47%);
 }
+
+/* ── Base reset ──────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     @apply border-border;
   }
 
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* Force scrollbar to match dark theme */
+  ::-webkit-scrollbar         { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track   { background: hsl(0 0% 4%); }
+  ::-webkit-scrollbar-thumb   { background: hsl(0 0% 18%); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 28%); }
 }
 
+/* ── Noise texture overlay ───────────────────────────────────────────────── */
+/* Applied via .noise class on the root layout wrapper                        */
+
+.noise::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+.noise > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Component utilities ─────────────────────────────────────────────────── */
+
 @layer components {
-  .gradient-gold-blue {
-    background: linear-gradient(135deg, hsl(44, 100%, 54%) 0%, hsl(217, 91%, 60%) 100%);
-  }
-  
-  .gradient-hero {
-    background: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(217, 91%, 95%) 30%, hsl(44, 100%, 95%) 100%);
+  /* --- Surface cards ------------------------------------ */
+  .card-surface {
+    @apply bg-[hsl(0_0%_5%)] border border-[hsl(0_0%_12%)] rounded-md;
   }
 
-  .dark .gradient-hero {
-    background: linear-gradient(135deg, hsl(240, 10%, 3.9%) 0%, hsl(217, 91%, 15%) 30%, hsl(44, 100%, 15%) 100%);
+  .card-surface-2 {
+    @apply bg-[hsl(0_0%_8%)] border border-[hsl(0_0%_12%)] rounded-md;
   }
 
-  .bitcoin-gold {
-    color: hsl(25, 95%, 53%);
+  /* --- Orange CTA button -------------------------------- */
+  .btn-orange {
+    @apply bg-[#f97316] hover:bg-[#ea580c] text-black font-semibold
+           rounded-none border-0 transition-colors;
   }
 
-  .trust-blue {
-    color: hsl(217, 91%, 60%);
+  /* --- Ghost pill button -------------------------------- */
+  .btn-ghost-pill {
+    @apply border border-neutral-600 hover:border-neutral-400
+           text-neutral-300 hover:text-white
+           rounded-full bg-transparent transition-colors;
   }
+
+  /* --- Input -------------------------------------------- */
+  .input-noir {
+    @apply bg-[hsl(0_0%_8%)] border-[hsl(0_0%_15%)] text-white
+           placeholder:text-neutral-500
+           focus:border-[#f97316] focus:ring-0 rounded-md;
+  }
+
+  /* --- Tight headline typography ----------------------- */
+  .headline {
+    @apply font-extrabold tracking-tight leading-none text-white;
+  }
+
+  /* --- Section divider ---------------------------------- */
+  .section-divider {
+    @apply border-t border-[hsl(0_0%_9%)];
+  }
+
+  /* --- Muted text ---------------------------------------- */
+  .text-body {
+    @apply text-neutral-400 leading-relaxed;
+  }
+
+  /* --- Badge / pill label ------------------------------- */
+  .badge-orange {
+    @apply inline-flex items-center gap-1.5 rounded-full
+           bg-[#f97316]/10 border border-[#f97316]/25
+           px-3 py-1 text-xs font-medium text-[#f97316]
+           tracking-wide uppercase;
+  }
+
+  /* Legacy / landing-page helpers kept for backward compat */
+  .bitcoin-b    { color: white !important; fill: white !important; }
+  .bitcoin-gold { color: hsl(25, 95%, 53%); }
+  .trust-blue   { color: hsl(217, 91%, 60%); }
 
   .text-gradient-gold {
     background: linear-gradient(135deg, hsl(44, 100%, 54%) 0%, hsl(25, 95%, 53%) 100%);
@@ -98,33 +163,21 @@
     background-clip: text;
   }
 
-  .floating {
-    animation: floating 3s ease-in-out infinite;
-  }
-
-  @keyframes floating {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
+  /* gradient-hero now matches dark theme */
+  .gradient-hero {
+    background: hsl(0 0% 0%);
   }
 
   .glassmorphism {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(17, 17, 17, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .dark .glassmorphism {
-    background: rgba(17, 17, 17, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
 }
 
-/* ── Feature SVG / CSS animations ─────────────────── */
+/* ── Feature SVG / CSS animations ───────────────────────────────────────── */
+
 @keyframes flow-right {
   from { stroke-dashoffset: 18; }
   to   { stroke-dashoffset: 0;  }
@@ -162,12 +215,12 @@
 }
 
 @keyframes bell-shake-85 {
-  0%, 52%, 67%, 100% { transform: rotate(0deg);  opacity: 0.25; }
-  55%                { transform: rotate(-22deg); opacity: 1;    }
-  57%                { transform: rotate(22deg);  opacity: 1;    }
-  59%                { transform: rotate(-16deg); opacity: 1;    }
-  62%                { transform: rotate(16deg);  opacity: 1;    }
-  65%                { transform: rotate(0deg);   opacity: 0.25; }
+  0%, 52%, 67%, 100% { transform: rotate(0deg);   opacity: 0.25; }
+  55%                { transform: rotate(-22deg);  opacity: 1;    }
+  57%                { transform: rotate(22deg);   opacity: 1;    }
+  59%                { transform: rotate(-16deg);  opacity: 1;    }
+  62%                { transform: rotate(16deg);   opacity: 1;    }
+  65%                { transform: rotate(0deg);    opacity: 0.25; }
 }
 .ltv-bell-85 {
   animation: bell-shake-85 9s ease-in-out infinite;
@@ -180,4 +233,12 @@
 }
 .ltv-danger {
   animation: bar-flash-danger 9s ease-in-out infinite;
+}
+
+@keyframes floating {
+  0%, 100% { transform: translateY(0px);   }
+  50%      { transform: translateY(-10px); }
+}
+.floating {
+  animation: floating 3s ease-in-out infinite;
 }
