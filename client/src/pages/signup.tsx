@@ -2,22 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link, useLocation } from "wouter";
 import PasswordStrengthMeter from "@/components/password-strength-meter";
-import { Shield, Mail, User, ArrowLeft, CheckCircle } from "lucide-react";
+import { Shield, Mail, User, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 
 export default function SignUp() {
-  const [formData, setFormData] = useState({
-    email: "",
-    username: "",
-    password: "",
-    confirmPassword: ""
-  });
+  const [formData, setFormData] = useState({ email: "", username: "", password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -28,298 +21,180 @@ export default function SignUp() {
     mutationFn: async (userData: any) => {
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
       });
-      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Registration failed");
       }
-      
       return response.json();
     },
     onSuccess: (data) => {
       setRegistrationSuccess(true);
-      toast({
-        title: "Account Created Successfully!",
-        description: data.message || "Please check your email to verify your account before logging in.",
-      });
+      toast({ title: "Account Created!", description: data.message || "Please check your email to verify your account." });
     },
     onError: (error: any) => {
-      console.error("Registration failed:", error);
-      
       const errorMessage = error.message || "Registration failed. Please try again.";
-      
-      // Handle specific validation errors
       if (errorMessage.includes("Email already registered")) {
         setErrors({ email: "This email is already registered" });
       } else if (errorMessage.includes("Username already taken")) {
         setErrors({ username: "This username is already taken" });
       } else {
-        toast({
-          title: "Registration Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
       }
     },
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear specific field error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }));
-    }
-  };
-
-  const handlePasswordStrengthChange = (strength: number, isValid: boolean) => {
-    setPasswordStrength(strength);
-    setIsPasswordValid(isValid);
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (!formData.username) {
-      newErrors.username = "Username is required";
-    } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (!isPasswordValid) {
-      newErrors.password = "Password does not meet security requirements";
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
+    if (!formData.email) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = "Please enter a valid email address";
+    if (!formData.username) newErrors.username = "Username is required";
+    else if (formData.username.length < 3) newErrors.username = "Username must be at least 3 characters";
+    if (!formData.password) newErrors.password = "Password is required";
+    else if (!isPasswordValid) newErrors.password = "Password does not meet security requirements";
+    if (!formData.confirmPassword) newErrors.confirmPassword = "Please confirm your password";
+    else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log("Form submission attempted");
-    console.log("Form data:", formData);
-    console.log("Password valid:", isPasswordValid);
-    console.log("Form validation:", validateForm());
-    
-    if (validateForm()) {
-      console.log("Calling registration API...");
-      registrationMutation.mutate(formData);
-    } else {
-      console.log("Form validation failed, errors:", errors);
-    }
+    if (validateForm()) registrationMutation.mutate(formData);
   };
 
-  // Show success state if registration completed
+  const inputClass = (field: string) =>
+    `bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#f97316] focus:ring-0 ${errors[field] ? "border-red-500" : ""}`;
+
   if (registrationSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <Mail className="h-12 w-12 text-blue-500" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-green-700">Check Your Email!</CardTitle>
-            <CardDescription>
-              Account created successfully - email verification required
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800">
-              <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
-                📧 We've sent a verification email to <strong>{formData.email}</strong>
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-300 mt-2">
-                Click the verification link in the email to activate your account
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                You must verify your email before you can log in to the platform
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
-                Check your spam folder if you don't see the email within a few minutes
-              </p>
-            </div>
-
-            <div className="flex flex-col space-y-2">
-              <Button 
-                onClick={() => navigate("/login")}
-                className="bg-primary hover:bg-primary/90 text-black"
-              >
-                Go to Login Page
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => navigate("/")}
-                className="text-gray-600 dark:text-gray-300"
-              >
-                Return to Homepage
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-lg p-8 text-center space-y-6">
+          <div className="space-y-2">
+            <Mail className="h-12 w-12 text-[#f97316] mx-auto" />
+            <h2 className="text-2xl font-bold text-white">Check Your Email</h2>
+            <p className="text-neutral-400 text-sm">Account created successfully — verification required</p>
+          </div>
+          <div className="bg-neutral-800 border border-neutral-700 rounded p-4 text-left space-y-1">
+            <p className="text-sm text-neutral-300 font-medium">
+              We've sent a verification email to <span className="text-[#f97316]">{formData.email}</span>
+            </p>
+            <p className="text-xs text-neutral-500">
+              Click the link in the email to activate your account. Check your spam folder if it doesn't arrive within a few minutes.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Button onClick={() => navigate("/login")} className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none h-11 border-0">
+              Go to Login
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")} className="w-full text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-none">
+              Return to Homepage
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-primary mr-2" />
-            <CardTitle className="text-2xl font-bold">Join Reconquest</CardTitle>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-lg p-8 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2">
+            <Shield className="h-6 w-6 text-[#f97316]" />
+            <h1 className="text-2xl font-bold text-white">Join Reconquest</h1>
           </div>
-          <CardDescription>
-            Create your secure Bitcoin-backed lending account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center">
-                <Mail className="h-4 w-4 mr-2" />
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="your@email.com"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className={errors.email ? "border-red-500" : ""}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
+          <p className="text-sm text-neutral-400">Create your secure Bitcoin-backed lending account</p>
+        </div>
 
-            {/* Username Field */}
-            <div className="space-y-2">
-              <Label htmlFor="username" className="flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                Username
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="bitcoiner123"
-                value={formData.username}
-                onChange={(e) => handleInputChange("username", e.target.value)}
-                className={errors.username ? "border-red-500" : ""}
-              />
-              {errors.username && (
-                <p className="text-sm text-red-600">{errors.username}</p>
-              )}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="flex items-center gap-2 text-white text-sm font-medium">
+              <Mail className="h-4 w-4" /> Email Address
+            </Label>
+            <Input id="email" type="email" placeholder="your@email.com" value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)} className={inputClass("email")} />
+            {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+          </div>
 
-            {/* Password Field */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center">
-                <Shield className="h-4 w-4 mr-2" />
-                Password
-              </Label>
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a secure password"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className={errors.password ? "border-red-500" : ""}
-              />
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
+          {/* Username */}
+          <div className="space-y-2">
+            <Label htmlFor="username" className="flex items-center gap-2 text-white text-sm font-medium">
+              <User className="h-4 w-4" /> Username
+            </Label>
+            <Input id="username" type="text" placeholder="bitcoiner123" value={formData.username}
+              onChange={(e) => handleInputChange("username", e.target.value)} className={inputClass("username")} />
+            {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
+          </div>
 
-            {/* Password Strength Meter */}
-            {formData.password && (
-              <PasswordStrengthMeter
-                password={formData.password}
-                onStrengthChange={handlePasswordStrengthChange}
-                showPassword={showPassword}
-                onToggleVisibility={() => setShowPassword(!showPassword)}
-              />
+          {/* Password */}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="flex items-center gap-2 text-white text-sm font-medium">
+              <Shield className="h-4 w-4" /> Password
+            </Label>
+            <Input id="password" type={showPassword ? "text" : "password"} placeholder="Create a secure password"
+              value={formData.password} onChange={(e) => handleInputChange("password", e.target.value)}
+              className={inputClass("password")} />
+            {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+          </div>
+
+          {formData.password && (
+            <PasswordStrengthMeter
+              password={formData.password}
+              onStrengthChange={(strength, isValid) => setIsPasswordValid(isValid)}
+              showPassword={showPassword}
+              onToggleVisibility={() => setShowPassword(!showPassword)}
+            />
+          )}
+
+          {/* Confirm Password */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-white text-sm font-medium">Confirm Password</Label>
+            <Input id="confirmPassword" type="password" placeholder="Confirm your password"
+              value={formData.confirmPassword} onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+              className={inputClass("confirmPassword")} />
+            {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
+          </div>
+
+          {/* Submit */}
+          <Button type="submit"
+            className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white font-semibold rounded-none h-11 border-0"
+            disabled={!isPasswordValid || !formData.email || !formData.username || registrationMutation.isPending}
+          >
+            {registrationMutation.isPending ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                <span>Creating Account...</span>
+              </div>
+            ) : (
+              "Create Secure Account"
             )}
+          </Button>
+        </form>
 
-            {/* Confirm Password Field */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className={errors.confirmPassword ? "border-red-500" : ""}
-              />
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
-            </div>
-
-            {/* Debug info - remove this in production */}
-            <div className="text-xs text-gray-500 space-y-1 p-2 bg-gray-50 rounded">
-              <div>Email: {formData.email ? "✓" : "✗"}</div>
-              <div>Username: {formData.username ? "✓" : "✗"}</div>
-              <div>Password Valid: {isPasswordValid ? "✓" : "✗"}</div>
-              <div>Passwords Match: {formData.password === formData.confirmPassword ? "✓" : "✗"}</div>
-            </div>
-
-            {/* Submit Button */}
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-black"
-              disabled={!isPasswordValid || !formData.email || !formData.username || registrationMutation.isPending}
-            >
-              {registrationMutation.isPending ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                  <span>Creating Account...</span>
-                </div>
-              ) : (
-                "Create Secure Account"
-              )}
-            </Button>
-          </form>
-
-          {/* Footer Links */}
-          <div className="mt-6 text-center space-y-2">
-            <p className="text-sm text-gray-600">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline font-medium">
-                Log in here
-              </Link>
-            </p>
-            <Link href="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to homepage
+        {/* Footer */}
+        <div className="text-center space-y-2">
+          <p className="text-sm text-neutral-400">
+            Already have an account?{" "}
+            <Link href="/login" className="text-[#f97316] hover:text-[#ea580c] font-medium transition-colors">
+              Log in here
             </Link>
-          </div>
-        </CardContent>
-      </Card>
+          </p>
+          <Link href="/" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-300 transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to homepage
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
