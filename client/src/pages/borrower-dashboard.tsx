@@ -260,10 +260,10 @@ export default function BorrowerDashboard() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-8 bg-neutral-800 rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+              <div key={i} className="h-24 bg-neutral-800 rounded"></div>
             ))}
           </div>
         </div>
@@ -401,7 +401,7 @@ export default function BorrowerDashboard() {
                             </div>
                           </div>
 
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="bg-neutral-800 p-4 rounded-lg border border-neutral-700">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-green-600 dark:text-green-400 font-semibold">✓ Lender Sent Funds</span>
                             </div>
@@ -420,7 +420,7 @@ export default function BorrowerDashboard() {
                           <Button 
                             onClick={() => confirmReceiptMutation.mutate(loan.id)}
                             disabled={confirmReceiptMutation.isPending}
-                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                            className="w-full bg-green-700 hover:bg-green-600 text-white"
                             data-testid={`button-confirm-receipt-${loan.id}`}
                           >
                             {confirmReceiptMutation.isPending ? "Confirming..." : "✓ I've Received the Funds"}
@@ -584,7 +584,7 @@ export default function BorrowerDashboard() {
                               
                               {/* Collateral Release Status for repaid/completed loans */}
                               {(loan.status === 'repaid' || (loan.status === 'completed' && !loan.collateralReleased)) && (
-                                <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                                <TableRow className="bg-neutral-900/50">
                                   <TableCell colSpan={8} className="p-4">
                                     <CollateralReleaseStatus
                                       loanId={loan.id}
@@ -603,16 +603,16 @@ export default function BorrowerDashboard() {
                               
                               {/* Collateral Deposit History (expandable) */}
                               {isExpanded && (
-                                <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                                <TableRow className="bg-neutral-900/50">
                                   <TableCell colSpan={8} className="p-4">
                                     <div className="space-y-3">
                                       <h4 className="font-semibold text-sm flex items-center gap-2">
                                         <Bitcoin className="h-4 w-4 text-orange-500" />
                                         Collateral Deposit History
                                       </h4>
-                                      <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden">
+                                      <div className="bg-neutral-900 rounded-lg border border-neutral-800 overflow-hidden">
                                         <table className="w-full text-sm">
-                                          <thead className="bg-gray-100 dark:bg-gray-700">
+                                          <thead className="bg-neutral-800">
                                             <tr>
                                               <th className="text-left p-2 font-medium">Type</th>
                                               <th className="text-left p-2 font-medium">Amount</th>
@@ -719,7 +719,7 @@ export default function BorrowerDashboard() {
                                     ? '🔴 URGENT: Your collateral is at risk. Add more BTC immediately to avoid automatic liquidation at 95% LTV.'
                                     : '⚠️ Your LTV is rising. Consider adding more collateral to protect your position.'}
                                 </p>
-                                <div className="bg-white dark:bg-gray-900 p-3 rounded border mb-3">
+                                <div className="bg-neutral-800 p-3 rounded border border-neutral-700 mb-3">
                                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Send additional BTC to this address:</p>
                                   <code className="text-xs break-all text-blue-600 dark:text-blue-400 block p-2 bg-blue-50 dark:bg-blue-950/30 rounded" data-testid={`topup-address-${loan.id}`}>
                                     {loan.escrowAddress || 'Address not available'}
@@ -969,7 +969,7 @@ export default function BorrowerDashboard() {
           
           {topUpLoan && (
             <div className="space-y-4 py-4">
-              <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+              <div className="bg-neutral-800 p-3 rounded-lg">
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-gray-600 dark:text-gray-400">Loan</span>
                   <span className="font-medium">#{topUpLoan.id}</span>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
@@ -11,24 +10,19 @@ export default function ConfirmDetailsChange() {
 
   useEffect(() => {
     const confirmChanges = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get("token");
-
+      const token = new URLSearchParams(window.location.search).get("token");
       if (!token) {
         setStatus("error");
         setMessage("Invalid confirmation link. No token provided.");
         return;
       }
-
       try {
         const response = await fetch("/api/auth/confirm-details-change", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
-
         const data = await response.json();
-
         if (response.ok && data.success) {
           setStatus("success");
           setMessage(data.message || "Your personal details have been updated successfully!");
@@ -36,40 +30,38 @@ export default function ConfirmDetailsChange() {
           setStatus("error");
           setMessage(data.message || "Failed to confirm changes. Please try again.");
         }
-      } catch (error) {
+      } catch {
         setStatus("error");
         setMessage("An error occurred. Please try again later.");
       }
     };
-
     confirmChanges();
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2">
-            {status === "loading" && <Loader2 className="h-6 w-6 animate-spin text-blue-500" />}
-            {status === "success" && <CheckCircle className="h-6 w-6 text-green-500" />}
-            {status === "error" && <XCircle className="h-6 w-6 text-red-500" />}
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-lg p-8 text-center space-y-6">
+        <div className="space-y-3">
+          <div className="mx-auto w-12 h-12 flex items-center justify-center">
+            {status === "loading" && <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />}
+            {status === "success" && <CheckCircle className="h-8 w-8 text-green-500" />}
+            {status === "error" && <XCircle className="h-8 w-8 text-red-500" />}
+          </div>
+          <h2 className="text-2xl font-bold text-white">
             {status === "loading" ? "Confirming Changes..." : status === "success" ? "Changes Confirmed!" : "Confirmation Failed"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">{message || "Processing your request..."}</p>
-          
-          {status !== "loading" && (
-            <Button 
-              onClick={() => setLocation("/my-account")}
-              className="w-full"
-              data-testid="button-go-to-account"
-            >
-              Go to My Account
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+          </h2>
+          <p className="text-neutral-400 text-sm">{message || "Processing your request..."}</p>
+        </div>
+        {status !== "loading" && (
+          <Button
+            onClick={() => setLocation("/my-account")}
+            className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white rounded-none h-11 border-0"
+            data-testid="button-go-to-account"
+          >
+            Go to My Account
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

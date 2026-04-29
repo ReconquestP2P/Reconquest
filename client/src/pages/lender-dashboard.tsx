@@ -285,10 +285,10 @@ export default function LenderDashboard() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-8">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-8 bg-neutral-800 rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+              <div key={i} className="h-24 bg-neutral-800 rounded"></div>
             ))}
           </div>
         </div>
@@ -443,7 +443,7 @@ export default function LenderDashboard() {
                           </div>
 
                           {/* Escrow Verification */}
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="bg-neutral-800 p-4 rounded-lg border border-neutral-700">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-green-600 dark:text-green-400 font-semibold">✓ Bitcoin Deposited</span>
                             </div>
@@ -500,7 +500,7 @@ export default function LenderDashboard() {
                               <Button 
                                 onClick={() => confirmFiatMutation.mutate(loan.id)}
                                 disabled={confirmFiatMutation.isPending}
-                                className="w-full bg-gradient-to-r from-yellow-500 to-blue-500 hover:from-yellow-600 hover:to-blue-600 text-white"
+                                className="w-full bg-[#f97316] hover:bg-[#ea580c] text-white"
                                 data-testid={`button-confirm-transfer-${loan.id}`}
                               >
                                 {confirmFiatMutation.isPending ? "Confirming..." : "✓ I've Sent the Funds"}
@@ -918,16 +918,16 @@ export default function LenderDashboard() {
                             
                             {/* Collateral Deposit History (expandable) */}
                             {isExpanded && (
-                              <TableRow className="bg-gray-50 dark:bg-gray-900/50">
+                              <TableRow className="bg-neutral-900/50">
                                 <TableCell colSpan={8} className="p-4">
                                   <div className="space-y-3">
                                     <h4 className="font-semibold text-sm flex items-center gap-2">
                                       <Bitcoin className="h-4 w-4 text-orange-500" />
                                       Collateral Deposit History
                                     </h4>
-                                    <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden">
+                                    <div className="bg-neutral-900 rounded-lg border border-neutral-800 overflow-hidden">
                                       <table className="w-full text-sm">
-                                        <thead className="bg-gray-100 dark:bg-gray-700">
+                                        <thead className="bg-neutral-800">
                                           <tr>
                                             <th className="text-left p-2 font-medium">Type</th>
                                             <th className="text-left p-2 font-medium">Amount</th>
@@ -1183,7 +1183,7 @@ export default function LenderDashboard() {
               return (
                 <div className="space-y-4">
                   {/* Header Card */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-4 border">
+                  <div className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
                     <div className="flex justify-between items-start">
                       <div>
                         <Badge className="bg-green-100 text-green-700 mb-2">
@@ -1214,7 +1214,7 @@ export default function LenderDashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-4 space-y-3">
+                  <div className="bg-neutral-800 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Collateral</span>
                       <span className="font-semibold text-orange-500" data-testid="text-collateral">
@@ -1297,9 +1297,9 @@ export default function LenderDashboard() {
                           <Bitcoin className="h-4 w-4 text-orange-500" />
                           Collateral Deposit History
                         </h4>
-                        <div className="bg-white dark:bg-gray-800 rounded-lg border overflow-hidden">
+                        <div className="bg-neutral-900 rounded-lg border border-neutral-800 overflow-hidden">
                           <table className="w-full text-sm">
-                            <thead className="bg-gray-100 dark:bg-gray-700">
+                            <thead className="bg-neutral-800">
                               <tr>
                                 <th className="text-left p-2 font-medium">Type</th>
                                 <th className="text-left p-2 font-medium">Amount</th>
