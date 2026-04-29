@@ -68,7 +68,7 @@ export default function Navigation() {
             ) : (
               <>
                 <Link href="/login">
-                  <button className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">
+                  <button className="text-sm font-medium text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full px-5 h-9 transition-colors">
                     Log in
                   </button>
                 </Link>
