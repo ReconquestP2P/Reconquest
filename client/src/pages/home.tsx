@@ -307,12 +307,39 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800/10 to-transparent" />
-            <div className="w-48 h-48 border border-neutral-700 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-700">
-              <div className="w-24 h-24 border border-[#f97316]/30 rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-[#f97316] rounded-full shadow-[0_0_15px_#f97316]" />
-              </div>
-            </div>
+            <svg viewBox="0 0 280 210" className="w-full max-w-[280px] px-4" xmlns="http://www.w3.org/2000/svg">
+              {/* Static background lines */}
+              <path d="M140,50 L35,178" stroke="#2a2a2a" strokeWidth="1" fill="none"/>
+              <path d="M35,178 L245,178" stroke="#2a2a2a" strokeWidth="1" fill="none"/>
+              <path d="M245,178 L140,50" stroke="#2a2a2a" strokeWidth="1" fill="none"/>
+              {/* Traveling pulse: You → Lender */}
+              <path d="M140,50 L35,178" stroke="#f97316" strokeWidth="2" fill="none"
+                strokeDasharray="15 85" pathLength="100"
+                style={{animation:"pulse-travel 3s linear infinite"}}/>
+              {/* Traveling pulse: Lender → Platform */}
+              <path d="M35,178 L245,178" stroke="#f97316" strokeWidth="2" fill="none"
+                strokeDasharray="15 85" pathLength="100"
+                style={{animation:"pulse-travel 3s linear infinite", animationDelay:"-1s"}}/>
+              {/* Traveling pulse: Platform → You */}
+              <path d="M245,178 L140,50" stroke="#f97316" strokeWidth="2" fill="none"
+                strokeDasharray="15 85" pathLength="100"
+                style={{animation:"pulse-travel 3s linear infinite", animationDelay:"-2s"}}/>
+              {/* Center lock */}
+              <rect x="127" y="108" width="26" height="18" rx="3" fill="#1a1a1a" stroke="#404040" strokeWidth="1.5"/>
+              <path d="M133,108 V102 a7,7 0 0 1 14,0 V108" fill="none" stroke="#404040" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="140" cy="117" r="2.5" fill="#525252"/>
+              {/* "You" node — orange */}
+              <circle cx="140" cy="28" r="22" fill="rgba(249,115,22,0.12)" stroke="#f97316" strokeWidth="2"/>
+              <text x="140" y="33" textAnchor="middle" fill="#f97316" fontSize="12" fontWeight="700" fontFamily="sans-serif">You</text>
+              {/* "Lender" node */}
+              <circle cx="35" cy="178" r="22" fill="#111" stroke="#404040" strokeWidth="1.5"/>
+              <text x="35" y="182" textAnchor="middle" fill="#a3a3a3" fontSize="9" fontWeight="600" fontFamily="sans-serif">Lender</text>
+              {/* "Platform" node */}
+              <circle cx="245" cy="178" r="22" fill="#111" stroke="#404040" strokeWidth="1.5"/>
+              <text x="245" y="182" textAnchor="middle" fill="#a3a3a3" fontSize="9" fontWeight="600" fontFamily="sans-serif">Platform</text>
+              {/* Label */}
+              <text x="140" y="207" textAnchor="middle" fill="#3a3a3a" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">2-OF-3 SIGNATURES REQUIRED</text>
+            </svg>
           </div>
         </motion.div>
 
@@ -339,25 +366,39 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tl from-neutral-800/10 to-transparent" />
-            <div className="w-full max-w-[220px] h-48 border-l border-b border-neutral-700 relative group-hover:border-neutral-500 transition-colors duration-700">
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#f97316] w-0 group-hover:w-full transition-all duration-1000 ease-out" />
-              {[
-                { left: 16, h: 96 },
-                { left: 80, h: 144 },
-                { left: 144, h: 64 },
-              ].map((b, i) => (
-                <div
-                  key={i}
-                  className="absolute bottom-[2px] w-10 bg-neutral-800 group-hover:bg-neutral-700 transition-colors duration-500"
-                  style={{
-                    left: b.left,
-                    height: b.h,
-                    transitionDelay: `${i * 100}ms`,
-                  }}
-                />
-              ))}
-            </div>
+            <svg viewBox="0 0 300 130" className="w-full max-w-[300px] px-4" xmlns="http://www.w3.org/2000/svg">
+              {/* EUR node */}
+              <circle cx="32" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
+              <text x="32" y="67" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="monospace">€</text>
+              <text x="32" y="98" textAnchor="middle" fill="#404040" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">EUR IN</text>
+              {/* Arrow EUR → Escrow (dim layer) */}
+              <line x1="57" y1="60" x2="110" y2="60" stroke="#2a2a2a" strokeWidth="1.5" strokeDasharray="5 4"/>
+              {/* Animated orange flow */}
+              <line x1="57" y1="60" x2="110" y2="60" stroke="#f97316" strokeWidth="1.5" strokeDasharray="5 4"
+                style={{animation:"flow-right 1.1s linear infinite"}}/>
+              {/* Arrowhead */}
+              <path d="M108,56 L114,60 L108,64" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              {/* BTC Escrow vault */}
+              <rect x="114" y="38" width="72" height="44" rx="4" fill="rgba(249,115,22,0.07)" stroke="#f97316" strokeWidth="1.5"/>
+              {/* Lock shackle */}
+              <path d="M141,56 V50 a9,9 0 0 1 18,0 V56" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round"/>
+              {/* Lock body */}
+              <rect x="138" y="56" width="24" height="17" rx="3" fill="#f97316"/>
+              <circle cx="150" cy="64.5" r="3" fill="rgba(0,0,0,0.4)"/>
+              <text x="150" y="98" textAnchor="middle" fill="#f97316" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">BTC ESCROW</text>
+              {/* Arrow Escrow → Yield (dim) */}
+              <line x1="187" y1="60" x2="240" y2="60" stroke="#2a2a2a" strokeWidth="1.5" strokeDasharray="5 4"/>
+              {/* Animated orange flow (offset) */}
+              <line x1="187" y1="60" x2="240" y2="60" stroke="#f97316" strokeWidth="1.5" strokeDasharray="5 4"
+                style={{animation:"flow-right 1.1s linear infinite", animationDelay:"-0.55s"}}/>
+              {/* Arrowhead */}
+              <path d="M238,56 L244,60 L238,64" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              {/* Yield node */}
+              <circle cx="268" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
+              <text x="268" y="55" textAnchor="middle" fill="#d4d4d4" fontSize="11" fontWeight="600" fontFamily="monospace">+</text>
+              <text x="268" y="70" textAnchor="middle" fill="white" fontSize="15" fontWeight="700" fontFamily="monospace">%</text>
+              <text x="268" y="98" textAnchor="middle" fill="#404040" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">YIELD</text>
+            </svg>
           </div>
         </motion.div>
 
@@ -384,10 +425,36 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800/10 to-transparent" />
-            <div className="w-48 h-48 relative flex items-center justify-center">
-              <div className="absolute inset-0 border border-neutral-800 rotate-45 group-hover:rotate-[50deg] transition-transform duration-700" />
-              <TrendingUp className="h-12 w-12 text-[#f97316]/60 group-hover:text-[#f97316] transition-colors duration-500" />
+            <div className="w-full px-8 space-y-5">
+              {/* LTV label */}
+              <div className="text-[10px] tracking-[0.2em] text-neutral-500 uppercase">LTV Ratio</div>
+              {/* Bar */}
+              <div className="relative h-3 w-full flex rounded-sm overflow-hidden">
+                <div className="h-full bg-green-700/80" style={{width:"72%"}}/>
+                <div className="h-full bg-yellow-500/80" style={{width:"10%"}}/>
+                <div className="h-full bg-[#f97316]/80" style={{width:"10%"}}/>
+                <div className="ltv-danger h-full bg-red-600/80" style={{width:"8%"}}/>
+                {/* Animated indicator */}
+                <div className="ltv-indicator absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" style={{left:"0%"}}/>
+              </div>
+              {/* Bell icons at thresholds */}
+              <div className="relative h-6 text-base">
+                <span className="ltv-bell-75 absolute -translate-x-1/2 select-none" style={{left:"72%"}}>🔔</span>
+                <span className="ltv-bell-85 absolute -translate-x-1/2 select-none" style={{left:"82%"}}>🔔</span>
+              </div>
+              {/* Threshold markers */}
+              <div className="relative text-[9px] text-neutral-600 h-4">
+                <span className="absolute -translate-x-1/2" style={{left:"72%"}}>75%</span>
+                <span className="absolute -translate-x-1/2" style={{left:"82%"}}>85%</span>
+                <span className="absolute -translate-x-1/2 text-red-600" style={{left:"94%"}}>95%</span>
+              </div>
+              {/* Zone labels */}
+              <div className="flex text-[9px] font-semibold tracking-wider pt-1">
+                <span className="text-green-600" style={{width:"72%"}}>SAFE</span>
+                <span className="text-yellow-500" style={{width:"10%"}}>WARN</span>
+                <span className="text-orange-500" style={{width:"10%"}}>CRIT</span>
+                <span className="text-red-600" style={{width:"8%"}}>LIQ</span>
+              </div>
             </div>
           </div>
         </motion.div>

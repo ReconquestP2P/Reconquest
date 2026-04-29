@@ -123,3 +123,61 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
+
+/* ── Feature SVG / CSS animations ─────────────────── */
+@keyframes flow-right {
+  from { stroke-dashoffset: 18; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+@keyframes pulse-travel {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: -100; }
+}
+
+@keyframes ltv-sweep {
+  0%, 1%  { left: 0%;   }
+  30%     { left: 72%;  }
+  41%     { left: 72%;  }
+  55%     { left: 82%;  }
+  64%     { left: 82%;  }
+  73%     { left: 94%;  }
+  83%     { left: 94%;  }
+  91%     { left: 100%; }
+  92%     { left: 0%;   }
+  100%    { left: 0%;   }
+}
+.ltv-indicator {
+  animation: ltv-sweep 9s ease-in-out infinite;
+}
+
+@keyframes bell-pulse-75 {
+  0%, 26%, 44%, 100% { transform: scale(1);   opacity: 0.25; }
+  31%                { transform: scale(1.6); opacity: 1;    }
+  36%                { transform: scale(0.9); opacity: 0.7;  }
+  40%                { transform: scale(1.4); opacity: 1;    }
+}
+.ltv-bell-75 {
+  animation: bell-pulse-75 9s ease-in-out infinite;
+}
+
+@keyframes bell-shake-85 {
+  0%, 52%, 67%, 100% { transform: rotate(0deg);  opacity: 0.25; }
+  55%                { transform: rotate(-22deg); opacity: 1;    }
+  57%                { transform: rotate(22deg);  opacity: 1;    }
+  59%                { transform: rotate(-16deg); opacity: 1;    }
+  62%                { transform: rotate(16deg);  opacity: 1;    }
+  65%                { transform: rotate(0deg);   opacity: 0.25; }
+}
+.ltv-bell-85 {
+  animation: bell-shake-85 9s ease-in-out infinite;
+}
+
+@keyframes bar-flash-danger {
+  0%, 71%, 86%, 100% { opacity: 1;    }
+  75%, 82%           { opacity: 0.08; }
+  78%                { opacity: 0.9;  }
+}
+.ltv-danger {
+  animation: bar-flash-danger 9s ease-in-out infinite;
+}
