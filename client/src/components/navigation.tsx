@@ -68,12 +68,12 @@ export default function Navigation() {
             ) : (
               <>
                 <Link href="/login">
-                  <button className="text-sm font-medium text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full px-5 h-9 transition-colors">
+                  <button className="text-sm font-medium text-neutral-300 hover:text-white border border-neutral-600 hover:border-neutral-400 rounded-full px-6 h-10 w-28 transition-colors">
                     Log in
                   </button>
                 </Link>
                 <Link href="/signup">
-                  <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full font-medium px-6 border-0">
+                  <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white rounded-full font-medium px-6 h-10 w-28 border-0">
                     Sign Up
                   </Button>
                 </Link>
