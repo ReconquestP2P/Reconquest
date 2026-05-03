@@ -94,16 +94,11 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="25000"
-                className="pr-24 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-blue-500"
+                className="pr-16 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-blue-500"
               />
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="absolute right-1 top-1 w-20 h-8 border-0 bg-transparent text-neutral-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                </SelectContent>
-              </Select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-neutral-400 pointer-events-none">
+                EUR
+              </span>
             </div>
           </div>
 
