@@ -14,17 +14,17 @@ export default function StatsCard({
   value,
   icon: Icon,
   iconColor = "text-primary",
-  valueColor = "text-gray-900",
+  valueColor = "text-white",
 }: StatsCardProps) {
   return (
-    <Card className="border-gray-200 shadow-sm">
+    <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600">{title}</p>
+            <p className="text-sm text-neutral-400">{title}</p>
             <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
           </div>
-          <div className="bg-gray-50 p-3 rounded-xl">
+          <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700">
             <Icon className={`h-6 w-6 ${iconColor}`} />
           </div>
         </div>

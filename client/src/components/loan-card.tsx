@@ -14,37 +14,37 @@ interface LoanCardProps {
 export default function LoanCard({ loan, onFund, showFundButton = true }: LoanCardProps) {
 
   return (
-    <Card className="border-gray-200 hover:border-primary transition-colors cursor-pointer">
+    <Card className="hover:border-primary transition-colors cursor-pointer">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h4 className="font-semibold text-gray-900">
+            <h4 className="font-semibold text-white">
               {formatCurrency(loan.amount, loan.currency)} Loan Request
             </h4>
-            <p className="text-sm text-gray-600">{loan.purpose || "Loan request"}</p>
+            <p className="text-sm text-neutral-400">{loan.purpose || "Loan request"}</p>
           </div>
           <div className="text-right">
             <span className="text-lg font-bold text-primary">
               {formatPercentage(loan.interestRate)} APY
             </span>
-            <p className="text-sm text-gray-500">{loan.termMonths} months</p>
+            <p className="text-sm text-neutral-400">{loan.termMonths} months</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           <div>
-            <p className="text-xs text-gray-500">Collateral</p>
-            <p className="font-semibold">{formatBTC(loan.collateralBtc)}</p>
+            <p className="text-xs text-neutral-500">Collateral</p>
+            <p className="font-semibold text-neutral-200">{formatBTC(loan.collateralBtc)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">LTV Ratio</p>
-            <p className="font-semibold text-green-600">
+            <p className="text-xs text-neutral-500">LTV Ratio</p>
+            <p className="font-semibold text-green-400">
               {formatPercentage(loan.ltvRatio)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Due Date</p>
-            <p className="font-semibold flex items-center">
+            <p className="text-xs text-neutral-500">Due Date</p>
+            <p className="font-semibold text-neutral-200 flex items-center">
               <Calendar className="h-3 w-3 mr-1" />
               {loan.dueDate ? formatDate(loan.dueDate) : "TBD"}
             </p>
@@ -53,15 +53,12 @@ export default function LoanCard({ loan, onFund, showFundButton = true }: LoanCa
 
         <div className="flex justify-between items-center">
           <div className="flex space-x-2">
-            <Badge
-              variant="default"
-              className="bg-green-100 text-green-800"
-            >
+            <Badge className="bg-green-900/40 text-green-300 border border-green-700">
               <Shield className="h-3 w-3 mr-1" />
               Verified Borrower
             </Badge>
             <Badge variant="outline" className="capitalize">
-              {loan.status === "pending" ? "Pending" : 
+              {loan.status === "pending" ? "Pending" :
                loan.status === "posted" ? "Available" :
                loan.status === "initiated" ? "Funded" :
                loan.status === "funding" ? "Funding" :

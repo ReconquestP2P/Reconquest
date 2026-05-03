@@ -303,8 +303,8 @@ export default function LenderDashboard() {
     <FirefishWASMProvider>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Lender Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
+          <h1 className="text-3xl font-bold text-white">Lender Dashboard</h1>
+          <p className="text-neutral-400 mt-2">Invest in Bitcoin-secured loans and earn fixed returns</p>
         </div>
 
         {/* Admin Warning Banner */}
@@ -350,7 +350,7 @@ export default function LenderDashboard() {
               title="Active Investments"
               value={activeInvestments.length.toString()}
               icon={TrendingUp}
-              iconColor="text-secondary"
+              iconColor="text-neutral-300"
             />
             <StatsCard
               title="Total Invested"
@@ -369,7 +369,7 @@ export default function LenderDashboard() {
               title="Avg. APY"
               value={formatPercentage(avgAPY)}
               icon={Percent}
-              iconColor="text-secondary"
+              iconColor="text-neutral-300"
               valueColor="text-secondary"
             />
           </div>
@@ -549,7 +549,7 @@ export default function LenderDashboard() {
                 <CardContent className="space-y-6">
                   {/* Period Filter */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Period</Label>
+                    <Label className="text-sm font-medium text-neutral-300">Period</Label>
                     <div className="space-y-2 mt-2">
                       {[3, 6, 9, 12, 18].map((term) => (
                         <div key={term} className="flex items-center space-x-2">
@@ -571,7 +571,7 @@ export default function LenderDashboard() {
 
                   {/* Currency Filter */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Currency</Label>
+                    <Label className="text-sm font-medium text-neutral-300">Currency</Label>
                     <RadioGroup 
                       value={selectedCurrency} 
                       onValueChange={setSelectedCurrency}
@@ -594,7 +594,7 @@ export default function LenderDashboard() {
 
                   {/* Loan Amount Filter */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Loan amount (from - to)</Label>
+                    <Label className="text-sm font-medium text-neutral-300">Loan amount (from - to)</Label>
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       <Input
                         type="number"
@@ -612,7 +612,7 @@ export default function LenderDashboard() {
                       />
                     </div>
                     <div className="mt-3">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <div className="flex justify-between text-xs text-neutral-500 mb-1">
                         <span>1000</span>
                         <span>100000</span>
                       </div>
@@ -629,7 +629,7 @@ export default function LenderDashboard() {
 
                   {/* Status Filter */}
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Status</Label>
+                    <Label className="text-sm font-medium text-neutral-300">Status</Label>
                     <RadioGroup 
                       value={statusFilter} 
                       onValueChange={setStatusFilter}
@@ -658,7 +658,7 @@ export default function LenderDashboard() {
                       <CardTitle>
                         {statusFilter === "available" ? "Available Loan Requests" : "Matched Loans"}
                       </CardTitle>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-neutral-400">
                         ({filteredLoans.length} {statusFilter})
                       </span>
                     </div>
@@ -676,7 +676,7 @@ export default function LenderDashboard() {
                 <CardContent>
                   {filteredLoans.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-gray-500 dark:text-gray-400">
+                      <p className="text-neutral-400">
                         No loan requests match your filters.
                       </p>
                     </div>
@@ -866,11 +866,11 @@ export default function LenderDashboard() {
                               </TableCell>
                               <TableCell>
                                 {loan.status === 'repayment_pending' ? (
-                                  <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100">
+                                  <Badge className="bg-yellow-900/40 text-yellow-300">
                                     Repayment Sent
                                   </Badge>
                                 ) : (
-                                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                  <Badge className="bg-green-900/40 text-green-300">
                                     Active
                                   </Badge>
                                 )}
@@ -937,7 +937,7 @@ export default function LenderDashboard() {
                                         </thead>
                                         <tbody>
                                           {deposits.map((deposit, idx) => (
-                                            <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                            <tr key={idx} className="border-t border-neutral-800">
                                               <td className="p-2">
                                                 <span className={deposit.type.includes('Top-Up') ? 'text-amber-600 font-medium' : ''}>
                                                   {deposit.type}
@@ -946,17 +946,17 @@ export default function LenderDashboard() {
                                               <td className="p-2 font-mono text-xs">{deposit.amount.toFixed(8)} BTC</td>
                                               <td className="p-2">
                                                 {deposit.status === 'confirmed' && (
-                                                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                                                  <Badge variant="secondary" className="bg-green-900/40 text-green-300 text-xs">
                                                     Confirmed
                                                   </Badge>
                                                 )}
                                                 {deposit.status === 'mempool' && (
-                                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs">
+                                                  <Badge variant="secondary" className="bg-yellow-900/40 text-yellow-300 text-xs">
                                                     In Mempool
                                                   </Badge>
                                                 )}
                                                 {deposit.status === 'pending' && (
-                                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                                                  <Badge variant="secondary" className="bg-blue-900/40 text-blue-300 text-xs">
                                                     Monitoring
                                                   </Badge>
                                                 )}
@@ -968,7 +968,7 @@ export default function LenderDashboard() {
                                                     className="text-blue-500 hover:text-blue-700 flex items-center gap-1 font-mono text-xs"
                                                   />
                                                 ) : (
-                                                  <span className="text-gray-400 text-xs">-</span>
+                                                  <span className="text-neutral-500 text-xs">-</span>
                                                 )}
                                               </td>
                                             </tr>
@@ -998,7 +998,7 @@ export default function LenderDashboard() {
                 </Table>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <p className="text-neutral-400">
                     No active investments yet. Complete the loan flow to see active loans here.
                   </p>
                 </div>
@@ -1026,7 +1026,7 @@ export default function LenderDashboard() {
                 if (closedInvestments.length === 0) {
                   return (
                     <div className="text-center py-8">
-                      <p className="text-gray-500 dark:text-gray-400">No past investments yet.</p>
+                      <p className="text-neutral-400">No past investments yet.</p>
                     </div>
                   );
                 }
@@ -1077,26 +1077,26 @@ export default function LenderDashboard() {
                           <TableCell>{loan.interestRate}%</TableCell>
                           <TableCell>
                             {loan.status === 'completed' ? (
-                              <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                              <Badge className="bg-green-900/40 text-green-300 border border-green-700">Completed</Badge>
                             ) : loan.status === 'defaulted' ? (
-                              <Badge className="bg-red-100 text-red-800">Defaulted</Badge>
+                              <Badge className="bg-red-900/40 text-red-300 border border-red-700">Defaulted</Badge>
                             ) : loan.status === 'recovered' ? (
-                              <Badge className="bg-amber-100 text-amber-800">Recovered</Badge>
+                              <Badge className="bg-amber-900/40 text-amber-300 border border-amber-700">Recovered</Badge>
                             ) : (
                               <Badge variant="secondary">{loan.status}</Badge>
                             )}
                           </TableCell>
                           <TableCell>
                             {loan.status === 'completed' ? (
-                              <span className="text-green-700 text-sm">Repaid with interest</span>
+                              <span className="text-green-400 text-sm">Repaid with interest</span>
                             ) : loan.status === 'defaulted' && loan.escrowState === 'liquidated' ? (
-                              <span className="text-red-600 text-sm">Liquidated</span>
+                              <span className="text-red-400 text-sm">Liquidated</span>
                             ) : loan.status === 'defaulted' && loan.collateralReleased ? (
-                              <span className="text-orange-600 text-sm">Fair split applied</span>
+                              <span className="text-orange-400 text-sm">Fair split applied</span>
                             ) : loan.status === 'defaulted' && loan.disputeStatus === 'resolved' ? (
-                              <span className="text-blue-600 text-sm">Dispute resolved</span>
+                              <span className="text-blue-400 text-sm">Dispute resolved</span>
                             ) : loan.status === 'defaulted' ? (
-                              <span className="text-orange-600 text-sm">In dispute</span>
+                              <span className="text-orange-400 text-sm">In dispute</span>
                             ) : loan.status === 'cancelled' ? (
                               <span className="text-sm text-muted-foreground">Cancelled</span>
                             ) : (
@@ -1186,7 +1186,7 @@ export default function LenderDashboard() {
                   <div className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
                     <div className="flex justify-between items-start">
                       <div>
-                        <Badge className="bg-green-100 text-green-700 mb-2">
+                        <Badge className="bg-green-900/40 text-green-300 mb-2">
                           ACTIVE INVESTMENT
                         </Badge>
                         <p className="text-2xl font-bold">
@@ -1309,7 +1309,7 @@ export default function LenderDashboard() {
                             </thead>
                             <tbody>
                               {deposits.map((deposit, idx) => (
-                                <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                <tr key={idx} className="border-t border-neutral-800">
                                   <td className="p-2">
                                     <span className={deposit.type.includes('Top-Up') ? 'text-amber-600 font-medium' : ''}>
                                       {deposit.type}
@@ -1318,17 +1318,17 @@ export default function LenderDashboard() {
                                   <td className="p-2 font-mono text-xs">{deposit.amount.toFixed(8)} BTC</td>
                                   <td className="p-2">
                                     {deposit.status === 'confirmed' && (
-                                      <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                                      <Badge variant="secondary" className="bg-green-900/40 text-green-300 text-xs">
                                         ✓ Confirmed
                                       </Badge>
                                     )}
                                     {deposit.status === 'mempool' && (
-                                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 text-xs">
+                                      <Badge variant="secondary" className="bg-yellow-900/40 text-yellow-300 text-xs">
                                         ⏳ Mempool
                                       </Badge>
                                     )}
                                     {deposit.status === 'pending' && (
-                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                                      <Badge variant="secondary" className="bg-blue-900/40 text-blue-300 text-xs">
                                         🔍 Monitoring
                                       </Badge>
                                     )}
@@ -1341,7 +1341,7 @@ export default function LenderDashboard() {
                                         displayText={`${deposit.txid.slice(0, 6)}...`}
                                       />
                                     ) : (
-                                      <span className="text-gray-400 text-xs">-</span>
+                                      <span className="text-neutral-500 text-xs">-</span>
                                     )}
                                   </td>
                                 </tr>

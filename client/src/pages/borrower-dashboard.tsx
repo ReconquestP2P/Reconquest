@@ -241,15 +241,15 @@ export default function BorrowerDashboard() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-blue-100 text-blue-800">Active</Badge>;
+        return <Badge className="bg-blue-900/40 text-blue-300 border border-blue-700">Active</Badge>;
       case "repayment_pending":
-        return <Badge className="bg-orange-100 text-orange-800">Awaiting Lender Confirmation</Badge>;
+        return <Badge className="bg-orange-900/40 text-orange-300 border border-orange-700">Awaiting Lender Confirmation</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+        return <Badge className="bg-yellow-900/40 text-yellow-300 border border-yellow-700">Pending</Badge>;
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+        return <Badge className="bg-green-900/40 text-green-300 border border-green-700">Completed</Badge>;
       case "defaulted":
-        return <Badge className="bg-red-100 text-red-800">Defaulted</Badge>;
+        return <Badge className="bg-red-900/40 text-red-300 border border-red-700">Defaulted</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -278,8 +278,8 @@ export default function BorrowerDashboard() {
     <FirefishWASMProvider>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Borrower Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
+          <h1 className="text-3xl font-bold text-white">Borrower Dashboard</h1>
+          <p className="text-neutral-400 mt-2">Manage your Bitcoin-backed loans and track your portfolio</p>
         </div>
 
         {/* Admin Warning Banner */}
@@ -331,7 +331,7 @@ export default function BorrowerDashboard() {
               title="Total Borrowed"
               value={formatCurrency(totalBorrowed, "EUR")}
               icon={Euro}
-              iconColor="text-secondary"
+              iconColor="text-neutral-300"
             />
             <StatsCard
               title="BTC Collateral"
@@ -463,7 +463,7 @@ export default function BorrowerDashboard() {
             <CardContent>
               {activeLoans.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">No active loans. Once you deposit BTC and the lender transfers funds, your loan will appear here.</p>
+                  <p className="text-neutral-400">No active loans. Once you deposit BTC and the lender transfers funds, your loan will appear here.</p>
                 </div>
               ) : (
                 <>
@@ -566,7 +566,7 @@ export default function BorrowerDashboard() {
                                 <TableCell>{getStatusBadge(loan.status)}</TableCell>
                                 <TableCell>
                                   {loan.status === 'repaid' ? (
-                                    <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                    <Badge variant="secondary" className="bg-green-900/40 text-green-300">
                                       Repaid
                                     </Badge>
                                   ) : (
@@ -622,7 +622,7 @@ export default function BorrowerDashboard() {
                                           </thead>
                                           <tbody>
                                             {deposits.map((deposit, idx) => (
-                                              <tr key={idx} className="border-t border-gray-100 dark:border-gray-700">
+                                              <tr key={idx} className="border-t border-neutral-800">
                                                 <td className="p-2">
                                                   <span className={deposit.type === 'Top-Up' || deposit.type === 'Pending Top-Up' ? 'text-amber-600 font-medium' : ''}>
                                                     {deposit.type}
@@ -631,17 +631,17 @@ export default function BorrowerDashboard() {
                                                 <td className="p-2 font-mono">{deposit.amount.toFixed(8)} BTC</td>
                                                 <td className="p-2">
                                                   {deposit.status === 'confirmed' && (
-                                                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                                    <Badge variant="secondary" className="bg-green-900/40 text-green-300">
                                                       ✓ Confirmed
                                                     </Badge>
                                                   )}
                                                   {deposit.status === 'mempool' && (
-                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                                                    <Badge variant="secondary" className="bg-yellow-900/40 text-yellow-300">
                                                       ⏳ In Mempool
                                                     </Badge>
                                                   )}
                                                   {deposit.status === 'pending' && (
-                                                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                                    <Badge variant="secondary" className="bg-blue-900/40 text-blue-300">
                                                       🔍 Monitoring
                                                     </Badge>
                                                   )}
@@ -654,7 +654,7 @@ export default function BorrowerDashboard() {
                                                       testId={`link-tx-${loan.id}-${idx}`}
                                                     />
                                                   ) : (
-                                                    <span className="text-gray-400 text-xs">-</span>
+                                                    <span className="text-neutral-500 text-xs">-</span>
                                                   )}
                                                 </td>
                                               </tr>
@@ -790,7 +790,7 @@ export default function BorrowerDashboard() {
                 (loan.escrowState === 'deposit_confirmed' && !loan.borrowerSigningComplete && loan.status !== 'repaid' && loan.status !== 'completed')
               ).length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <p className="text-neutral-400">
                     No loans awaiting BTC deposit. Once a lender commits to fund your loan request, it will appear here.
                   </p>
                 </div>
@@ -831,7 +831,7 @@ export default function BorrowerDashboard() {
                 if (closedLoans.length === 0) {
                   return (
                     <div className="text-center py-8">
-                      <p className="text-gray-500 dark:text-gray-400">No past loans yet.</p>
+                      <p className="text-neutral-400">No past loans yet.</p>
                     </div>
                   );
                 }
@@ -890,15 +890,15 @@ export default function BorrowerDashboard() {
                           <TableCell>{getStatusBadge(loan.status)}</TableCell>
                           <TableCell>
                             {loan.collateralReleased && loan.escrowState === 'liquidated' ? (
-                              <Badge className="bg-red-100 text-red-800">Liquidated</Badge>
+                              <Badge className="bg-red-900/40 text-red-300 border border-red-700">Liquidated</Badge>
                             ) : loan.collateralReleased ? (
-                              <Badge className="bg-green-100 text-green-800">Released</Badge>
+                              <Badge className="bg-green-900/40 text-green-300 border border-green-700">Released</Badge>
                             ) : loan.status === 'cancelled' ? (
                               <Badge variant="outline">No Escrow</Badge>
                             ) : loan.status === 'defaulted' && loan.disputeStatus === 'resolved' ? (
-                              <Badge className="bg-blue-100 text-blue-800">Dispute Resolved</Badge>
+                              <Badge className="bg-blue-900/40 text-blue-300 border border-blue-700">Dispute Resolved</Badge>
                             ) : loan.status === 'defaulted' ? (
-                              <Badge className="bg-orange-100 text-orange-800">In Dispute</Badge>
+                              <Badge className="bg-orange-900/40 text-orange-300 border border-orange-700">In Dispute</Badge>
                             ) : (
                               <Badge variant="outline">Pending</Badge>
                             )}
@@ -1003,7 +1003,7 @@ export default function BorrowerDashboard() {
 
               {topUpAmount && parseFloat(topUpAmount) > 0 && (
                 <div className="bg-green-50 dark:bg-green-950/30 p-3 rounded-lg">
-                  <p className="text-sm text-green-700 dark:text-green-300">
+                  <p className="text-sm text-green-400 dark:text-green-300">
                     <strong>After confirmation:</strong>
                   </p>
                   <div className="flex justify-between text-sm mt-1">
