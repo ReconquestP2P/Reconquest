@@ -141,16 +141,6 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
             </div>
           </div>
 
-          <div>
-            <Label className="text-sm font-medium text-neutral-300">
-              Current BTC Price
-            </Label>
-            <div className="mt-1 p-3 bg-neutral-800 border border-neutral-700 rounded-lg">
-              <span className="text-lg font-semibold text-white">
-                {currency === "EUR" ? "€" : "$"}{currentBtcPrice.toLocaleString()}
-              </span>
-            </div>
-          </div>
         </div>
 
         <div className="border-t border-neutral-800 pt-6">
@@ -161,7 +151,7 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
               <p className="text-lg font-bold text-yellow-400">
                 {formatBTC(requiredCollateral)}
               </p>
-              <p className="text-xs text-neutral-500">2:1 collateral ratio</p>
+              <p className="text-xs text-neutral-500">2:1 ratio · BTC @ €{currentBtcPrice.toLocaleString()}</p>
             </div>
 
             <div className="bg-blue-950/20 border border-blue-900/30 p-4 rounded-lg">
