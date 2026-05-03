@@ -161,15 +161,15 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
         <div className="border-t border-neutral-800 pt-6">
           <h4 className="font-semibold text-white mb-4">Calculation Results</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-orange-950/40 border border-orange-800/50 p-4 rounded-lg">
+            <div className="bg-yellow-950/20 border border-yellow-900/30 p-4 rounded-lg">
               <p className="text-sm text-neutral-400">Required Collateral</p>
-              <p className="text-lg font-bold text-orange-400">
+              <p className="text-lg font-bold text-yellow-400">
                 {formatBTC(requiredCollateral)}
               </p>
               <p className="text-xs text-neutral-500">2:1 collateral ratio</p>
             </div>
 
-            <div className="bg-blue-950/40 border border-blue-800/50 p-4 rounded-lg">
+            <div className="bg-blue-950/20 border border-blue-900/30 p-4 rounded-lg">
               <p className="text-sm text-neutral-400">Total Interest</p>
               <p className="text-lg font-bold text-blue-400">
                 {formatCurrency(totalInterest, currency)}
@@ -177,7 +177,7 @@ export default function LoanCalculator({ disabled = false }: LoanCalculatorProps
               <p className="text-xs text-neutral-500">Paid at loan end</p>
             </div>
 
-            <div className="bg-green-950/40 border border-green-800/50 p-4 rounded-lg">
+            <div className="bg-green-950/20 border border-green-900/30 p-4 rounded-lg">
               <p className="text-sm text-neutral-400">Total Repayment</p>
               <p className="text-lg font-bold text-green-400">
                 {formatCurrency(monthlyPayment * parseInt(term), currency)}
