@@ -19,12 +19,12 @@ export default function StatsCard({
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-neutral-400">{title}</p>
-            <p className={`text-2xl font-bold whitespace-nowrap ${valueColor}`}>{value}</p>
+            <p className={`text-xl font-bold whitespace-nowrap ${valueColor}`}>{value}</p>
           </div>
-          <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700">
+          <div className="flex-shrink-0 bg-neutral-800 p-3 rounded-xl border border-neutral-700">
             <Icon className={`h-6 w-6 ${iconColor}`} />
           </div>
         </div>
