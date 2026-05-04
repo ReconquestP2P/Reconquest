@@ -48,7 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **Buttons**: `rounded-none` sharp corners. Orange filled CTA, neutral-bordered ghost secondary.
 - **Noise texture**: Fixed SVG fractalNoise overlay at 2.5% opacity on all pages.
 - **Navbar**: Pure black bar, no blur/glass. Logo left, nav links centre (neutral-500 → white), BTC price + auth buttons right.
-- **Logo**: Custom shield + wordmark with a sunrise gradient, available in dark and light mode variants (`reconquest_logo_v10.png` dark, `reconquest_logo_light.png` light), and optimized for email usage.
+- **Logo**: Custom shield + wordmark with a blue/gold gradient, available in dark and light mode variants (`reconquest_logo_v7_dark_mode_1777857359847.png` dark, `reconquest_logo_v7_light_mode_1777857359848.png` light). Dark version used across the website; light version used in emails. Both are also copied to `client/public/` as `reconquest-logo.png`, `reconquest-logo-light.png`, and `logo.png` (for email serving).
 
 ## External Dependencies
 

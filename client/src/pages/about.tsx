@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import logoDark from "@assets/reconquest_logo_v10.png";
+import logoDark from "@assets/reconquest_logo_v7_dark_mode_1777857359847.png";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function About() {
