@@ -307,7 +307,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <svg viewBox="0 0 280 210" className="w-full max-w-[280px] px-4" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 280 210" className="w-full max-w-[420px] px-2" xmlns="http://www.w3.org/2000/svg">
               {/* Static background lines */}
               <path d="M140,50 L35,178" stroke="#2a2a2a" strokeWidth="1" fill="none"/>
               <path d="M35,178 L245,178" stroke="#2a2a2a" strokeWidth="1" fill="none"/>
@@ -338,7 +338,7 @@ export default function Home() {
               <circle cx="245" cy="178" r="22" fill="#111" stroke="#404040" strokeWidth="1.5"/>
               <text x="245" y="182" textAnchor="middle" fill="#a3a3a3" fontSize="9" fontWeight="600" fontFamily="sans-serif">Platform</text>
               {/* Label */}
-              <text x="140" y="207" textAnchor="middle" fill="#a3a3a3" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">2-OF-3 SIGNATURES REQUIRED</text>
+              <text x="140" y="207" textAnchor="middle" fill="#a3a3a3" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">3-OF-3 SIGNATURES REQUIRED</text>
             </svg>
           </div>
         </motion.div>
@@ -363,7 +363,7 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <svg viewBox="0 0 300 130" className="w-full max-w-[300px] px-4" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 300 130" className="w-full max-w-[440px] px-2" xmlns="http://www.w3.org/2000/svg">
               {/* EUR node */}
               <circle cx="32" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
               <text x="32" y="67" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="monospace">€</text>
@@ -422,35 +422,35 @@ export default function Home() {
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
-            <div className="w-full px-8 space-y-5">
+            <div className="w-full px-6 space-y-6">
               {/* LTV label */}
-              <div className="text-[10px] tracking-[0.2em] text-neutral-500 uppercase">LTV Ratio</div>
+              <div className="text-xs tracking-[0.2em] text-neutral-400 uppercase font-semibold">LTV Ratio</div>
               {/* Bar */}
-              <div className="relative h-3 w-full flex rounded-sm overflow-hidden">
+              <div className="relative h-5 w-full flex rounded-sm overflow-hidden">
                 <div className="h-full bg-green-700/80" style={{width:"72%"}}/>
                 <div className="h-full bg-yellow-500/80" style={{width:"10%"}}/>
                 <div className="h-full bg-[#f97316]/80" style={{width:"10%"}}/>
                 <div className="ltv-danger h-full bg-red-600/80" style={{width:"8%"}}/>
                 {/* Animated indicator */}
-                <div className="ltv-indicator absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" style={{left:"0%"}}/>
+                <div className="ltv-indicator absolute top-0 bottom-0 w-[3px] bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" style={{left:"0%"}}/>
               </div>
               {/* Bell icons at thresholds */}
-              <div className="relative h-6 text-base">
+              <div className="relative h-7 text-lg">
                 <span className="ltv-bell-75 absolute -translate-x-1/2 select-none" style={{left:"72%"}}>🔔</span>
                 <span className="ltv-bell-85 absolute -translate-x-1/2 select-none" style={{left:"82%"}}>🔔</span>
               </div>
               {/* Threshold markers */}
-              <div className="relative text-[9px] text-neutral-400 h-4">
+              <div className="relative text-xs text-neutral-400 h-5">
                 <span className="absolute -translate-x-1/2" style={{left:"72%"}}>75%</span>
                 <span className="absolute -translate-x-1/2" style={{left:"82%"}}>85%</span>
                 <span className="absolute -translate-x-1/2 text-red-400" style={{left:"94%"}}>95%</span>
               </div>
               {/* Zone labels */}
-              <div className="flex text-[9px] font-semibold tracking-wider pt-1">
-                <span className="text-green-600" style={{width:"72%"}}>SAFE</span>
-                <span className="text-yellow-500" style={{width:"10%"}}>WARN</span>
-                <span className="text-orange-500" style={{width:"10%"}}>CRIT</span>
-                <span className="text-red-600" style={{width:"8%"}}>LIQ</span>
+              <div className="flex text-xs font-semibold tracking-wider pt-1">
+                <span className="text-green-500" style={{width:"72%"}}>SAFE</span>
+                <span className="text-yellow-400" style={{width:"10%"}}>WARN</span>
+                <span className="text-orange-400" style={{width:"10%"}}>CRIT</span>
+                <span className="text-red-500" style={{width:"8%"}}>LIQ</span>
               </div>
             </div>
           </div>
