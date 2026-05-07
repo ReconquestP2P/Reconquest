@@ -359,10 +359,7 @@ export default function Home() {
               Bitcoin-blind for lenders.
             </h2>
             <p className="text-neutral-400 text-lg leading-relaxed max-w-md">
-              Lenders interact entirely in EUR. The platform generates and
-              manages the lender's Bitcoin key on their behalf, so no crypto
-              wallet or technical knowledge is required to earn yield on
-              collateralised loans.
+              Lenders work entirely in EUR — no Bitcoin wallet, no crypto knowledge needed. Reconquest handles the Bitcoin side automatically. And because the borrower cryptographically locks in every possible outcome before the loan begins, the platform can only ever release collateral in one direction: to you.
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
@@ -370,7 +367,7 @@ export default function Home() {
               {/* EUR node */}
               <circle cx="32" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
               <text x="32" y="67" textAnchor="middle" fill="white" fontSize="20" fontWeight="bold" fontFamily="monospace">€</text>
-              <text x="32" y="98" textAnchor="middle" fill="#404040" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">EUR IN</text>
+              <text x="32" y="98" textAnchor="middle" fill="#a3a3a3" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">EUR IN</text>
               {/* Arrow EUR → Escrow (dim layer) */}
               <line x1="57" y1="60" x2="110" y2="60" stroke="#2a2a2a" strokeWidth="1.5" strokeDasharray="5 4"/>
               {/* Animated orange flow */}
@@ -397,7 +394,7 @@ export default function Home() {
               <circle cx="268" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
               <text x="268" y="55" textAnchor="middle" fill="#d4d4d4" fontSize="11" fontWeight="600" fontFamily="monospace">+</text>
               <text x="268" y="70" textAnchor="middle" fill="white" fontSize="15" fontWeight="700" fontFamily="monospace">%</text>
-              <text x="268" y="98" textAnchor="middle" fill="#404040" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">YIELD</text>
+              <text x="268" y="98" textAnchor="middle" fill="#a3a3a3" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">YIELD</text>
             </svg>
           </div>
         </motion.div>
