@@ -328,9 +328,9 @@ export default function Home() {
               <rect x="127" y="108" width="26" height="18" rx="3" fill="#1a1a1a" stroke="#404040" strokeWidth="1.5"/>
               <path d="M133,108 V102 a7,7 0 0 1 14,0 V108" fill="none" stroke="#404040" strokeWidth="1.5" strokeLinecap="round"/>
               <circle cx="140" cy="117" r="2.5" fill="#525252"/>
-              {/* "You" node — orange */}
-              <circle cx="140" cy="28" r="22" fill="rgba(249,115,22,0.12)" stroke="#f97316" strokeWidth="2"/>
-              <text x="140" y="33" textAnchor="middle" fill="#f97316" fontSize="12" fontWeight="700" fontFamily="sans-serif">You</text>
+              {/* "Borrower" node — orange */}
+              <circle cx="140" cy="28" r="26" fill="rgba(249,115,22,0.12)" stroke="#f97316" strokeWidth="2"/>
+              <text x="140" y="32" textAnchor="middle" fill="#f97316" fontSize="9" fontWeight="700" fontFamily="sans-serif">Borrower</text>
               {/* "Lender" node */}
               <circle cx="35" cy="178" r="22" fill="#111" stroke="#404040" strokeWidth="1.5"/>
               <text x="35" y="182" textAnchor="middle" fill="#a3a3a3" fontSize="9" fontWeight="600" fontFamily="sans-serif">Lender</text>
@@ -392,8 +392,7 @@ export default function Home() {
               <path d="M238,56 L244,60 L238,64" fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               {/* Yield node */}
               <circle cx="268" cy="60" r="24" fill="none" stroke="#333" strokeWidth="1.5"/>
-              <text x="268" y="55" textAnchor="middle" fill="#d4d4d4" fontSize="11" fontWeight="600" fontFamily="monospace">+</text>
-              <text x="268" y="70" textAnchor="middle" fill="white" fontSize="15" fontWeight="700" fontFamily="monospace">%</text>
+              <text x="268" y="67" textAnchor="middle" fontSize="18" fontFamily="sans-serif">📈</text>
               <text x="268" y="98" textAnchor="middle" fill="#a3a3a3" fontSize="8" letterSpacing="1.5" fontFamily="sans-serif">YIELD</text>
             </svg>
           </div>
