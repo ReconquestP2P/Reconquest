@@ -359,7 +359,7 @@ export default function Home() {
               Bitcoin-blind for lenders.
             </h2>
             <p className="text-neutral-400 text-lg leading-relaxed max-w-md">
-              Lenders work entirely in EUR — no Bitcoin wallet, no crypto knowledge needed. Reconquest handles the Bitcoin side automatically. And because the borrower cryptographically locks in every possible outcome before the loan begins, the platform can only release collateral to you in the event of a default — never arbitrarily, never for any other reason.
+              Lenders work entirely in EUR — no Bitcoin wallet, no crypto knowledge needed. Reconquest handles the Bitcoin side automatically. In the event of a default, the platform can only ever release collateral to you. Never arbitrarily, never for any other reason.
             </p>
           </div>
           <div className="flex-1 w-full aspect-square bg-neutral-900/30 border border-neutral-800 flex items-center justify-center relative overflow-hidden">
