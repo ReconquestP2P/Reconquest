@@ -338,7 +338,7 @@ export default function Home() {
               <circle cx="245" cy="178" r="22" fill="#111" stroke="#404040" strokeWidth="1.5"/>
               <text x="245" y="182" textAnchor="middle" fill="#a3a3a3" fontSize="9" fontWeight="600" fontFamily="sans-serif">Platform</text>
               {/* Label */}
-              <text x="140" y="207" textAnchor="middle" fill="#3a3a3a" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">2-OF-3 SIGNATURES REQUIRED</text>
+              <text x="140" y="207" textAnchor="middle" fill="#a3a3a3" fontSize="7.5" letterSpacing="1.5" fontFamily="sans-serif">2-OF-3 SIGNATURES REQUIRED</text>
             </svg>
           </div>
         </motion.div>
@@ -440,10 +440,10 @@ export default function Home() {
                 <span className="ltv-bell-85 absolute -translate-x-1/2 select-none" style={{left:"82%"}}>🔔</span>
               </div>
               {/* Threshold markers */}
-              <div className="relative text-[9px] text-neutral-600 h-4">
+              <div className="relative text-[9px] text-neutral-400 h-4">
                 <span className="absolute -translate-x-1/2" style={{left:"72%"}}>75%</span>
                 <span className="absolute -translate-x-1/2" style={{left:"82%"}}>85%</span>
-                <span className="absolute -translate-x-1/2 text-red-600" style={{left:"94%"}}>95%</span>
+                <span className="absolute -translate-x-1/2 text-red-400" style={{left:"94%"}}>95%</span>
               </div>
               {/* Zone labels */}
               <div className="flex text-[9px] font-semibold tracking-wider pt-1">
