@@ -515,13 +515,7 @@ export default function Home() {
 
           <FaqItem question="How does the 3-of-3 multisig escrow work?">
             <p>
-              The escrow address is generated from three public keys: yours (the
-              borrower), the lender's (managed by the platform on their behalf),
-              and the platform's. Any spending transaction requires all three
-              signatures. At loan creation, a set of pre-signed transaction
-              templates (repayment, default liquidation, borrower recovery) is
-              agreed by all parties — these are the only transactions the escrow
-              can execute.
+              Three keys are required to move your Bitcoin — yours, the lender's, and the platform's. Since most lenders on Reconquest are not Bitcoin users, we hold the lender's key on their behalf as a convenience. But here is the important part: <strong>before your loan even starts, you pre-sign every possible outcome</strong> — repayment back to you, default to the lender, and an emergency recovery to yourself. Those are the only transactions the escrow can ever execute. No new transaction can be created after that point. This means that even though Reconquest co-signs twice, it is mathematically impossible for us to send your Bitcoin anywhere you have not already agreed to. The escrow is a vault with pre-set doors — we hold keys to those doors, but you decided where every door leads.
             </p>
           </FaqItem>
 
